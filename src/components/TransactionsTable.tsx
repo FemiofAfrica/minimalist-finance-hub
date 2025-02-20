@@ -1,4 +1,5 @@
 
+import { useEffect, useState } from "react";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import {
   Table,
@@ -8,43 +9,63 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
-const transactions = [
-  {
-    id: 1,
-    name: "Netflix Subscription",
-    amount: -14.99,
-    type: "expense",
-    category: "Entertainment",
-    date: "2024-02-20",
-  },
-  {
-    id: 2,
-    name: "Salary Deposit",
-    amount: 5000.00,
-    type: "income",
-    category: "Salary",
-    date: "2024-02-19",
-  },
-  {
-    id: 3,
-    name: "Grocery Shopping",
-    amount: -89.47,
-    type: "expense",
-    category: "Food",
-    date: "2024-02-18",
-  },
-  {
-    id: 4,
-    name: "Freelance Payment",
-    amount: 750.00,
-    type: "income",
-    category: "Freelance",
-    date: "2024-02-17",
-  },
-];
+interface Transaction {
+  transaction_id: string;
+  description: string;
+  amount: number;
+  type: string;
+  category_id: string | null;
+  date: string;
+}
 
 const TransactionsTable = () => {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  const fetchTransactions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('date', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      setTransactions(data || []);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch transactions",
+        variant: "destructive",
+      });
+      console.error('Error fetching transactions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center py-4">Loading transactions...</div>;
+  }
+
+  if (transactions.length === 0) {
+    return (
+      <div className="text-center py-4 text-gray-500">
+        No transactions found. Add your first transaction to get started!
+      </div>
+    );
+  }
+
   return (
     <Table>
       <TableHeader>
@@ -57,7 +78,7 @@ const TransactionsTable = () => {
       </TableHeader>
       <TableBody>
         {transactions.map((transaction) => (
-          <TableRow key={transaction.id} className="group">
+          <TableRow key={transaction.transaction_id} className="group">
             <TableCell className="font-medium">
               <div className="flex items-center space-x-2">
                 {transaction.type === "expense" ? (
@@ -65,11 +86,11 @@ const TransactionsTable = () => {
                 ) : (
                   <ArrowUpRight className="w-4 h-4 text-emerald-500" />
                 )}
-                <span>{transaction.name}</span>
+                <span>{transaction.description}</span>
               </div>
             </TableCell>
-            <TableCell>{transaction.category}</TableCell>
-            <TableCell>{transaction.date}</TableCell>
+            <TableCell>{transaction.category_id || 'Uncategorized'}</TableCell>
+            <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
             <TableCell className="text-right">
               <span
                 className={
