@@ -6,7 +6,7 @@ import DashboardSidebar from "@/components/DashboardSidebar";
 import { Card } from "@/components/ui/card";
 import TransactionsTable from "@/components/TransactionsTable";
 import RevenueChart from "@/components/RevenueChart";
-import AddTransactionDialog from "@/components/AddTransactionDialog";
+import ChatInput from "@/components/ChatInput";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
@@ -33,24 +33,29 @@ const Index = () => {
     }
   };
 
+  const handleTransactionAdded = () => {
+    // Force a refresh of the transactions table
+    const transactionsTable = document.querySelector('table');
+    if (transactionsTable) {
+      transactionsTable.dispatchEvent(new Event('refresh'));
+    }
+  };
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-slate-50 dark:bg-neutral-950">
         <DashboardSidebar />
-        <main className="flex-1 p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
+        <main className="flex-1 p-6 flex flex-col">
+          <div className="max-w-7xl mx-auto space-y-6 flex-1 w-full">
             <header className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50">Dashboard</h1>
                 <p className="text-sm text-slate-500 dark:text-slate-400">Welcome back, {user?.email}</p>
               </div>
-              <div className="flex items-center space-x-4">
-                <AddTransactionDialog />
-                <Button variant="outline" onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </Button>
-              </div>
+              <Button variant="outline" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -150,6 +155,7 @@ const Index = () => {
                 </button>
               </div>
               <TransactionsTable />
+              <ChatInput onTransactionAdded={handleTransactionAdded} />
             </Card>
           </div>
         </main>
