@@ -1,11 +1,10 @@
-
-import { useState } from "react";
 import { LayoutDashboard, Wallet, ArrowUpRight, ArrowDownRight, Activity, PieChart, CreditCard, Users } from "lucide-react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import { Card } from "@/components/ui/card";
 import TransactionsTable from "@/components/TransactionsTable";
 import RevenueChart from "@/components/RevenueChart";
+import AddTransactionDialog from "@/components/AddTransactionDialog";
 
 const Index = () => {
   return (
@@ -20,9 +19,7 @@ const Index = () => {
                 <p className="text-sm text-slate-500 dark:text-slate-400">Welcome back, Alex</p>
               </div>
               <div className="flex items-center space-x-4">
-                <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
-                  Add Transaction
-                </button>
+                <AddTransactionDialog />
               </div>
             </header>
 
