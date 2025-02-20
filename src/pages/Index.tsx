@@ -1,12 +1,38 @@
-import { LayoutDashboard, Wallet, ArrowUpRight, ArrowDownRight, Activity, PieChart, CreditCard, Users } from "lucide-react";
+
+import { LayoutDashboard, Wallet, ArrowUpRight, ArrowDownRight, Activity, PieChart, CreditCard, Users, LogOut } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
 import { SidebarProvider } from "@/components/ui/sidebar";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import { Card } from "@/components/ui/card";
 import TransactionsTable from "@/components/TransactionsTable";
 import RevenueChart from "@/components/RevenueChart";
 import AddTransactionDialog from "@/components/AddTransactionDialog";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
 
 const Index = () => {
+  const { signOut, user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/login');
+      toast({
+        title: "Signed out",
+        description: "You have been successfully signed out.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-slate-50 dark:bg-neutral-950">
@@ -16,10 +42,14 @@ const Index = () => {
             <header className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50">Dashboard</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Welcome back, Alex</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Welcome back, {user?.email}</p>
               </div>
               <div className="flex items-center space-x-4">
                 <AddTransactionDialog />
+                <Button variant="outline" onClick={handleSignOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </Button>
               </div>
             </header>
 
