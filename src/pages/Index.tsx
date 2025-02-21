@@ -1,4 +1,3 @@
-
 import { LayoutDashboard, Wallet, ArrowUpRight, ArrowDownRight, Activity, PieChart, CreditCard, Users, LogOut } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -57,6 +56,19 @@ const Index = () => {
                 Sign Out
               </Button>
             </header>
+
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold">Recent Transactions</h3>
+                <button className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                  View All
+                </button>
+              </div>
+              <ChatInput onTransactionAdded={handleTransactionAdded} />
+              <div className="mt-6">
+                <TransactionsTable />
+              </div>
+            </Card>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="p-6 hover:shadow-lg transition-shadow">
@@ -146,17 +158,6 @@ const Index = () => {
                 </div>
               </Card>
             </div>
-
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold">Recent Transactions</h3>
-                <button className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
-                  View All
-                </button>
-              </div>
-              <TransactionsTable />
-              <ChatInput onTransactionAdded={handleTransactionAdded} />
-            </Card>
           </div>
         </main>
       </div>

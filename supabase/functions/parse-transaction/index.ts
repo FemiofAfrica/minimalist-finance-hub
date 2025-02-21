@@ -21,6 +21,10 @@ serve(async (req) => {
 
     const { text } = await req.json();
 
+    if (!text) {
+      throw new Error('No text provided');
+    }
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -44,7 +48,7 @@ serve(async (req) => {
                 "description": "Groceries",
                 "amount": -50,
                 "type": "expense",
-                "date": "2024-02-20", // yesterday's date
+                "date": "2024-02-20",
                 "category_id": "groceries"
               }`
           },
@@ -57,9 +61,16 @@ serve(async (req) => {
       }),
     });
 
-    const data = await response.json();
-    const parsedTransaction = JSON.parse(data.choices[0].message.content);
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.statusText}`);
+    }
 
+    const data = await response.json();
+    if (!data.choices?.[0]?.message?.content) {
+      throw new Error('Invalid response from OpenAI');
+    }
+
+    const parsedTransaction = JSON.parse(data.choices[0].message.content);
     console.log('Parsed transaction:', parsedTransaction);
 
     return new Response(JSON.stringify(parsedTransaction), {
@@ -67,9 +78,12 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ error: error.message }), 
+      { 
+        status: 200, // Always return 200 to handle errors in the client
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
   }
 });
