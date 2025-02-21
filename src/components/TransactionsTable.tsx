@@ -21,6 +21,14 @@ interface Transaction {
   date: string;
 }
 
+// Format number to Nigerian Naira
+const formatNaira = (amount: number) => {
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+  }).format(amount);
+};
+
 const TransactionsTable = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,8 +107,8 @@ const TransactionsTable = () => {
                     : "text-emerald-500"
                 }
               >
-                {transaction.type === "expense" ? "-" : "+"}$
-                {Math.abs(transaction.amount).toFixed(2)}
+                {transaction.type === "expense" ? "-" : "+"}
+                {formatNaira(transaction.amount)}
               </span>
             </TableCell>
           </TableRow>

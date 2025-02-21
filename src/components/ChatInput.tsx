@@ -73,7 +73,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       <Input
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="Describe your transaction... (e.g., 'Spent $50 on groceries yesterday')"
+        placeholder="Describe your transaction... (e.g., 'Spent ₦5000 on groceries yesterday')"
         disabled={isProcessing}
         className="flex-1"
       />

@@ -14,9 +14,9 @@ serve(async (req) => {
   }
 
   try {
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is not set');
+    const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
+    if (!PERPLEXITY_API_KEY) {
+      throw new Error('PERPLEXITY_API_KEY is not set');
     }
 
     const { text } = await req.json();
@@ -25,32 +25,34 @@ serve(async (req) => {
       throw new Error('No text provided');
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'llama-3.1-sonar-small-128k-online',
         messages: [
           {
             role: 'system',
-            content: `You are a financial transaction parser. Extract transaction details from user input and return a JSON object with:
+            content: `You are a financial transaction parser for Nigerian Naira transactions. Extract transaction details from user input and return a JSON object with:
               - description: string (what the transaction was for)
               - amount: number (positive for income, negative for expenses)
               - type: "income" | "expense"
               - date: ISO string (default to today if not specified)
               - category_id: string (map to common categories like "groceries", "salary", "entertainment", etc.)
               
-              For example, "spent $50 on groceries yesterday" should return:
+              For example, "spent ₦5000 on groceries yesterday" should return:
               {
                 "description": "Groceries",
-                "amount": -50,
+                "amount": -5000,
                 "type": "expense",
                 "date": "2024-02-20",
                 "category_id": "groceries"
-              }`
+              }
+              
+              Make sure to handle Nigerian Naira amounts (₦) correctly.`
           },
           {
             role: 'user',
@@ -62,12 +64,12 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`);
+      throw new Error(`Perplexity API error: ${response.statusText}`);
     }
 
     const data = await response.json();
     if (!data.choices?.[0]?.message?.content) {
-      throw new Error('Invalid response from OpenAI');
+      throw new Error('Invalid response from Perplexity');
     }
 
     const parsedTransaction = JSON.parse(data.choices[0].message.content);
