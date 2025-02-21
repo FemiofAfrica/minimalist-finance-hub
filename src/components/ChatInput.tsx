@@ -22,18 +22,32 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
     setIsProcessing(true);
     try {
       // First, parse the natural language input using our Edge Function
-      const { data: parsedData, error: parseError } = await supabase.functions.invoke('parse-transaction', {
+      const { data, error: parseError } = await supabase.functions.invoke('parse-transaction', {
         body: { text: input },
       });
 
       if (parseError) throw parseError;
+      if (data.error) throw new Error(data.error);
+
+      // Format the data according to our database schema
+      const transaction = {
+        description: data.description,
+        amount: Math.abs(data.amount), // Store amount as positive number
+        type: data.type,
+        date: new Date(data.date).toISOString(),
+        category_id: data.category_id,
+        source: 'chat'
+      };
 
       // Then, insert the parsed transaction into the database
       const { error: insertError } = await supabase
         .from('transactions')
-        .insert([parsedData]);
+        .insert([transaction]);
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Insert error:', insertError);
+        throw new Error('Failed to save transaction');
+      }
 
       toast({
         title: "Transaction added",
