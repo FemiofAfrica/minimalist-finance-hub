@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface Transaction {
   transaction_id: string;
@@ -34,10 +34,6 @@ const TransactionsTable = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
-
   const fetchTransactions = async () => {
     try {
       const { data, error } = await supabase
@@ -45,9 +41,7 @@ const TransactionsTable = () => {
         .select('*')
         .order('date', { ascending: false });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       setTransactions(data || []);
     } catch (error) {
@@ -61,6 +55,22 @@ const TransactionsTable = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  // Add event listener for refresh events
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchTransactions();
+    };
+
+    document.addEventListener('refresh', handleRefresh);
+    return () => {
+      document.removeEventListener('refresh', handleRefresh);
+    };
+  }, []);
 
   if (loading) {
     return <div className="text-center py-4">Loading transactions...</div>;
@@ -86,7 +96,7 @@ const TransactionsTable = () => {
       </TableHeader>
       <TableBody>
         {transactions.map((transaction) => (
-          <TableRow key={transaction.transaction_id} className="group">
+          <TableRow key={transaction.transaction_id}>
             <TableCell className="font-medium">
               <div className="flex items-center space-x-2">
                 {transaction.type === "expense" ? (

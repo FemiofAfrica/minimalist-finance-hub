@@ -4,7 +4,7 @@ import { Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface ChatInputProps {
   onTransactionAdded?: () => void;
@@ -44,10 +44,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
         .from('transactions')
         .insert([transaction]);
 
-      if (insertError) {
-        console.error('Insert error:', insertError);
-        throw new Error('Failed to save transaction');
-      }
+      if (insertError) throw insertError;
 
       toast({
         title: "Transaction added",
