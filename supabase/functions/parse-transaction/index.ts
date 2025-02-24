@@ -35,8 +35,8 @@ serve(async (req) => {
     const prompt = `Parse this financial transaction into a structured format: "${text}"
     
     Rules:
-    - For expenses, amount should be negative
-    - For income, amount should be positive
+    - If money is spent, it's an "expense"
+    - If money is received, it's an "income"
     - Categories must be one of: groceries, salary, entertainment, utilities, transport
     - If no date is specified, use today's date
     - Description should be clear and concise
@@ -44,8 +44,8 @@ serve(async (req) => {
     Return ONLY a JSON object with this exact structure:
     {
       "description": "string",
-      "amount": number,
-      "type": "income" or "expense",
+      "amount": positive number,
+      "type": "expense" or "income",
       "date": "ISO date string",
       "category": "one of the allowed categories"
     }`;
@@ -79,9 +79,9 @@ serve(async (req) => {
       throw new Error('No JSON found in AI response');
     }
 
-    console.log('AI Response:', aiResponse); // Add logging
+    console.log('AI Response:', aiResponse);
     const parsedTransaction = JSON.parse(jsonMatch[0]);
-    console.log('Parsed transaction:', parsedTransaction); // Add logging
+    console.log('Parsed transaction:', parsedTransaction);
 
     // Validate all required fields
     if (!parsedTransaction.description || 
@@ -102,12 +102,12 @@ serve(async (req) => {
     const processedTransaction = {
       description: parsedTransaction.description,
       amount: Math.abs(parsedTransaction.amount), // Store as positive
-      type: parsedTransaction.type,
+      type: parsedTransaction.type.toLowerCase(), // Ensure lowercase
       date: new Date(parsedTransaction.date).toISOString(),
       category_id: categoryId
     };
 
-    console.log('Processed transaction:', processedTransaction); // Add logging
+    console.log('Processed transaction:', processedTransaction);
 
     return new Response(JSON.stringify(processedTransaction), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -51,7 +51,6 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
           type: parsedData.type,
           date: parsedData.date,
           category_id: parsedData.category_id
-          // Removed the source field since it seems to have a constraint
         }]);
 
       if (insertError) throw insertError;
