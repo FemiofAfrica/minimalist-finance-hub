@@ -11,9 +11,9 @@ const corsHeaders = {
 const defaultCategories = {
   'groceries': 'c1f7a875-dc5d-4d82-a1c7-ebca2c6de43b',
   'salary': 'd2f7b985-e36d-4d92-b1c8-fbca3c7de54c',
-  'entertainment': 'e3f8c195-f47d-4da2-c1c9-gbca4c8de65d',
-  'utilities': 'f4f9d305-g58d-4eb2-d1d0-hbca5c9de76e',
-  'transport': 'g5f0e415-h69d-4fc2-e1e1-ibca6c0de87f'
+  'entertainment': 'e3f8c195-f47d-4da2-c1c9-1bca4c8de65d',
+  'utilities': 'f4f9d305-158d-4eb2-91d0-2bca5c9de76e',
+  'transport': '55f0e415-168d-4fc2-a1e1-3bca6c0de87f'
 };
 
 serve(async (req) => {
@@ -40,18 +40,20 @@ serve(async (req) => {
       throw new Error('No text provided');
     }
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-goog-api-key': GEMINI_API_KEY,
       },
       body: JSON.stringify({
         contents: [
           {
             parts: [
               {
-                text: `You are a financial transaction parser for Nigerian Naira transactions. Extract transaction details from the following input and return ONLY a JSON object (no other text) with:
-                - description: string (what the transaction was for)
+                text: `You are a transaction parser. Convert this natural language input into a structured transaction object.
+                Return ONLY a JSON object with these fields:
+                - description: string
                 - amount: number (positive for income, negative for expenses)
                 - type: "income" | "expense"
                 - date: ISO string (default to today if not specified)
@@ -64,26 +66,23 @@ serve(async (req) => {
         ],
         generationConfig: {
           temperature: 0.1,
-          topP: 0.8,
-          topK: 40
+          topK: 1,
+          topP: 1,
         }
-      }),
+      })
     });
 
-    if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.statusText}`);
-    }
-
     const data = await response.json();
+    
     if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-      throw new Error('Invalid response from Gemini');
+      throw new Error('Invalid response from AI');
     }
 
-    // Extract the JSON from the response text
-    const responseText = data.candidates[0].content.parts[0].text;
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    const aiResponse = data.candidates[0].content.parts[0].text;
+    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+    
     if (!jsonMatch) {
-      throw new Error('Could not find JSON in response');
+      throw new Error('No JSON found in AI response');
     }
 
     const parsedTransaction = JSON.parse(jsonMatch[0]);
