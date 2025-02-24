@@ -10,6 +10,15 @@ interface ChatInputProps {
   onTransactionAdded?: () => void;
 }
 
+interface ParsedTransaction {
+  description: string;
+  amount: number;
+  type: 'income' | 'expense';
+  date: string;
+  category_id: string;
+  source: 'chat';
+}
+
 const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -21,28 +30,30 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
 
     setIsProcessing(true);
     try {
-      // First, parse the natural language input using our Edge Function
-      const { data, error: parseError } = await supabase.functions.invoke('parse-transaction', {
+      // Parse the natural language input
+      const { data: parsedData, error: parseError } = await supabase.functions.invoke<ParsedTransaction>('parse-transaction', {
         body: { text: input },
       });
 
       if (parseError) throw parseError;
-      if (data.error) throw new Error(data.error);
+      if (!parsedData) throw new Error('No data returned from parser');
 
-      // Format the data according to our database schema
-      const transaction = {
-        description: data.description,
-        amount: Math.abs(data.amount), // Store amount as positive number
-        type: data.type,
-        date: new Date(data.date).toISOString(),
-        category_id: data.category_id,
-        source: 'chat'
-      };
+      // Validate the parsed data
+      if (!parsedData.description || !parsedData.amount || !parsedData.type || !parsedData.date || !parsedData.category_id) {
+        throw new Error('Invalid transaction format returned by AI');
+      }
 
-      // Then, insert the parsed transaction into the database
+      // Insert the transaction
       const { error: insertError } = await supabase
         .from('transactions')
-        .insert([transaction]);
+        .insert([{
+          description: parsedData.description,
+          amount: parsedData.amount,
+          type: parsedData.type,
+          date: parsedData.date,
+          category_id: parsedData.category_id,
+          source: 'chat'
+        }]);
 
       if (insertError) throw insertError;
 

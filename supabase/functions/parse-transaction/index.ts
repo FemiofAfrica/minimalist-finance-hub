@@ -1,7 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,22 +22,34 @@ serve(async (req) => {
 
   try {
     const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
     
     if (!GEMINI_API_KEY) {
       throw new Error('GEMINI_API_KEY is not set');
     }
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      throw new Error('Supabase environment variables are not set');
-    }
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const { text } = await req.json();
     if (!text) {
       throw new Error('No text provided');
     }
+
+    // Prepare a more structured prompt for better parsing
+    const prompt = `Parse this financial transaction into a structured format: "${text}"
+    
+    Rules:
+    - For expenses, amount should be negative
+    - For income, amount should be positive
+    - Categories must be one of: groceries, salary, entertainment, utilities, transport
+    - If no date is specified, use today's date
+    - Description should be clear and concise
+    
+    Return ONLY a JSON object with this exact structure:
+    {
+      "description": "string",
+      "amount": number,
+      "type": "income" or "expense",
+      "date": "ISO date string",
+      "category": "one of the allowed categories"
+    }`;
 
     const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', {
       method: 'POST',
@@ -47,23 +58,7 @@ serve(async (req) => {
         'x-goog-api-key': GEMINI_API_KEY,
       },
       body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: `You are a transaction parser. Convert this natural language input into a structured transaction object.
-                Return ONLY a JSON object with these fields:
-                - description: string
-                - amount: number (positive for income, negative for expenses)
-                - type: "income" | "expense"
-                - date: ISO string (default to today if not specified)
-                - category: string (one of: groceries, salary, entertainment, utilities, transport)
-                
-                Parse this transaction: ${text}`
-              }
-            ]
-          }
-        ],
+        contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.1,
           topK: 1,
@@ -86,27 +81,31 @@ serve(async (req) => {
     }
 
     const parsedTransaction = JSON.parse(jsonMatch[0]);
-    console.log('Initial parsed transaction:', parsedTransaction);
+
+    // Validate all required fields
+    if (!parsedTransaction.description || 
+        typeof parsedTransaction.amount !== 'number' ||
+        !['income', 'expense'].includes(parsedTransaction.type) ||
+        !parsedTransaction.date ||
+        !parsedTransaction.category) {
+      throw new Error('Missing or invalid fields in parsed transaction');
+    }
 
     // Map the category to a valid UUID
-    const categoryId = defaultCategories[parsedTransaction.category?.toLowerCase() || ''] || null;
-    
-    // Prepare the final transaction data
+    const categoryId = defaultCategories[parsedTransaction.category.toLowerCase()];
+    if (!categoryId) {
+      throw new Error(`Invalid category. Must be one of: ${Object.keys(defaultCategories).join(', ')}`);
+    }
+
+    // Return the formatted transaction data
     const processedTransaction = {
       description: parsedTransaction.description,
-      amount: parsedTransaction.amount,
+      amount: Math.abs(parsedTransaction.amount), // Store as positive
       type: parsedTransaction.type,
-      date: parsedTransaction.date,
-      category_id: categoryId
+      date: new Date(parsedTransaction.date).toISOString(),
+      category_id: categoryId,
+      source: 'chat' // Include the source field
     };
-
-    console.log('Processed transaction:', processedTransaction);
-
-    // Validate the response structure
-    if (!processedTransaction.description || !processedTransaction.amount || 
-        !processedTransaction.type || !processedTransaction.date) {
-      throw new Error('Invalid transaction format returned by AI');
-    }
 
     return new Response(JSON.stringify(processedTransaction), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -116,7 +115,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ error: error.message }), 
       { 
-        status: 200,
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
