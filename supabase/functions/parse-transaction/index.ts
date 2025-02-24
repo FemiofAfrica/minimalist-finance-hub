@@ -15,6 +15,12 @@ const defaultCategories = {
   'transport': '55f0e415-168d-4fc2-a1e1-3bca6c0de87f'
 };
 
+// Map user-friendly types to database types
+const transactionTypes = {
+  'income': 'INCOME',
+  'expense': 'EXPENSE'
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -86,7 +92,7 @@ serve(async (req) => {
     // Validate all required fields
     if (!parsedTransaction.description || 
         typeof parsedTransaction.amount !== 'number' ||
-        !['income', 'expense'].includes(parsedTransaction.type) ||
+        !['income', 'expense'].includes(parsedTransaction.type.toLowerCase()) ||
         !parsedTransaction.date ||
         !parsedTransaction.category) {
       throw new Error('Missing or invalid fields in parsed transaction');
@@ -98,11 +104,17 @@ serve(async (req) => {
       throw new Error(`Invalid category. Must be one of: ${Object.keys(defaultCategories).join(', ')}`);
     }
 
+    // Map the type to database-accepted format
+    const dbType = transactionTypes[parsedTransaction.type.toLowerCase()];
+    if (!dbType) {
+      throw new Error('Invalid transaction type');
+    }
+
     // Return the formatted transaction data
     const processedTransaction = {
       description: parsedTransaction.description,
       amount: Math.abs(parsedTransaction.amount), // Store as positive
-      type: parsedTransaction.type.toLowerCase(), // Ensure lowercase
+      type: dbType, // Use uppercase database type
       date: new Date(parsedTransaction.date).toISOString(),
       category_id: categoryId
     };

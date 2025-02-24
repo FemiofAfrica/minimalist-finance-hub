@@ -13,7 +13,7 @@ interface ChatInputProps {
 interface ParsedTransaction {
   description: string;
   amount: number;
-  type: 'income' | 'expense';
+  type: 'INCOME' | 'EXPENSE';
   date: string;
   category_id: string;
 }
