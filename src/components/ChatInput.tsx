@@ -16,7 +16,6 @@ interface ParsedTransaction {
   type: 'income' | 'expense';
   date: string;
   category_id: string;
-  source: 'chat';
 }
 
 const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
@@ -51,8 +50,8 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
           amount: parsedData.amount,
           type: parsedData.type,
           date: parsedData.date,
-          category_id: parsedData.category_id,
-          source: 'chat'
+          category_id: parsedData.category_id
+          // Removed the source field since it seems to have a constraint
         }]);
 
       if (insertError) throw insertError;

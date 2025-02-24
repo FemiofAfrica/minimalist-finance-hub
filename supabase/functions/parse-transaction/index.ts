@@ -32,7 +32,6 @@ serve(async (req) => {
       throw new Error('No text provided');
     }
 
-    // Prepare a more structured prompt for better parsing
     const prompt = `Parse this financial transaction into a structured format: "${text}"
     
     Rules:
@@ -80,7 +79,9 @@ serve(async (req) => {
       throw new Error('No JSON found in AI response');
     }
 
+    console.log('AI Response:', aiResponse); // Add logging
     const parsedTransaction = JSON.parse(jsonMatch[0]);
+    console.log('Parsed transaction:', parsedTransaction); // Add logging
 
     // Validate all required fields
     if (!parsedTransaction.description || 
@@ -103,9 +104,10 @@ serve(async (req) => {
       amount: Math.abs(parsedTransaction.amount), // Store as positive
       type: parsedTransaction.type,
       date: new Date(parsedTransaction.date).toISOString(),
-      category_id: categoryId,
-      source: 'chat' // Include the source field
+      category_id: categoryId
     };
+
+    console.log('Processed transaction:', processedTransaction); // Add logging
 
     return new Response(JSON.stringify(processedTransaction), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
