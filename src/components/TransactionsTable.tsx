@@ -19,6 +19,11 @@ interface Transaction {
   type: "EXPENSE" | "INCOME";
   category_id: string | null;
   date: string;
+  created_at: string;
+  updated_at: string;
+  notes: string | null;
+  source: string | null;
+  user_id: string | null;
 }
 
 // Format number to Nigerian Naira
@@ -43,7 +48,13 @@ const TransactionsTable = () => {
 
       if (error) throw error;
 
-      setTransactions(data || []);
+      // Type assertion to ensure the data matches our Transaction interface
+      const typedData = (data || []).map(t => ({
+        ...t,
+        type: t.type as "EXPENSE" | "INCOME"
+      }));
+
+      setTransactions(typedData);
     } catch (error) {
       toast({
         title: "Error",
