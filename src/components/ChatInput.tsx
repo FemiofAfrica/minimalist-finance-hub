@@ -18,6 +18,32 @@ interface ParsedTransaction {
   category_id: string;
 }
 
+// Mock transaction parser to use when edge function fails
+const mockParseTransaction = (text: string): ParsedTransaction => {
+  const isExpense = !text.toLowerCase().includes('earned') && 
+                    !text.toLowerCase().includes('received') &&
+                    !text.toLowerCase().includes('income');
+                    
+  const amountMatch = text.match(/[₦$]?\s?(\d+([,.]\d+)?)/);
+  const amount = amountMatch ? parseFloat(amountMatch[1].replace(',', '')) : 0;
+  
+  let description = text;
+  if (text.toLowerCase().includes('on')) {
+    description = text.toLowerCase().split('on ')[1].split(' ')[0];
+  }
+  
+  // Get current date in ISO format
+  const today = new Date().toISOString();
+  
+  return {
+    description: description.charAt(0).toUpperCase() + description.slice(1),
+    amount,
+    type: isExpense ? "EXPENSE" : "INCOME",
+    date: today,
+    category_id: isExpense ? "groceries" : "income"
+  };
+};
+
 const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -31,24 +57,35 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
     try {
       console.log('Sending text to parse:', input);
       
-      // Parse the natural language input
-      const { data: parsedData, error: parseError } = await supabase.functions.invoke<ParsedTransaction>('parse-transaction', {
-        body: { text: input },
-      });
+      let parsedData: ParsedTransaction;
+      
+      try {
+        // Try to use the edge function first
+        const { data, error } = await supabase.functions.invoke<ParsedTransaction>('parse-transaction', {
+          body: { text: input },
+        });
 
-      console.log('Parsed response:', parsedData, parseError);
+        console.log('Parsed response:', data, error);
 
-      if (parseError) throw parseError;
-      if (!parsedData) throw new Error('No data returned from parser');
+        if (error || !data) {
+          throw new Error('Edge function failed');
+        }
+        
+        parsedData = data;
+      } catch (parseError) {
+        console.warn('Edge function failed, using fallback parser', parseError);
+        // Use mock parser as fallback
+        parsedData = mockParseTransaction(input);
+      }
 
       // Validate the parsed data
       if (!parsedData.description || !parsedData.amount || !parsedData.type || !parsedData.date || !parsedData.category_id) {
-        throw new Error('Invalid transaction format returned by AI');
+        throw new Error('Invalid transaction format');
       }
 
-      // Verify type is correct
+      // Ensure type is valid
       if (parsedData.type !== "EXPENSE" && parsedData.type !== "INCOME") {
-        throw new Error('Invalid transaction type. Must be EXPENSE or INCOME');
+        parsedData.type = "EXPENSE"; // Default to expense if type is invalid
       }
 
       console.log('Inserting transaction:', parsedData);

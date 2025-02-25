@@ -1,141 +1,173 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import "https://deno.land/x/xhr@0.1.0/mod.ts"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+interface ParsedTransaction {
+  description: string;
+  amount: number;
+  type: "EXPENSE" | "INCOME";
+  date: string;
+  category_id: string;
+}
+
+// Categories mapping
+const CATEGORIES: Record<string, string> = {
+  "groceries": "groceries",
+  "food": "groceries",
+  "restaurant": "eating_out",
+  "dining": "eating_out",
+  "transportation": "transportation",
+  "transport": "transportation",
+  "travel": "travel",
+  "healthcare": "healthcare",
+  "health": "healthcare",
+  "utilities": "utilities",
+  "utility": "utilities",
+  "bills": "utilities",
+  "entertainment": "entertainment",
+  "shopping": "shopping",
+  "education": "education",
+  "school": "education",
+  "salary": "income",
+  "income": "income",
+  "revenue": "income",
+  "interest": "income",
+  "gift": "income",
+  "rent": "housing",
+  "housing": "housing",
+  "mortgage": "housing",
+  "general": "general"
 };
 
-const defaultCategories = {
-  'groceries': 'c1f7a875-dc5d-4d82-a1c7-ebca2c6de43b',
-  'salary': 'd2f7b985-e36d-4d92-b1c8-fbca3c7de54c',
-  'entertainment': 'e3f8c195-f47d-4da2-c1c9-1bca4c8de65d',
-  'utilities': 'f4f9d305-158d-4eb2-91d0-2bca5c9de76e',
-  'transport': '55f0e415-168d-4fc2-a1e1-3bca6c0de87f'
-};
+// Function to determine category from text
+function determineCategory(text: string): string {
+  const lowerText = text.toLowerCase();
+  for (const [keyword, category] of Object.entries(CATEGORIES)) {
+    if (lowerText.includes(keyword)) {
+      return category;
+    }
+  }
+  return "general";
+}
 
-// Map user-friendly types to database types
-const transactionTypes = {
-  'income': 'INCOME' as const,
-  'expense': 'EXPENSE' as const
-};
-
-type TransactionType = typeof transactionTypes[keyof typeof transactionTypes];
+function parseTransaction(text: string): ParsedTransaction {
+  const lowerText = text.toLowerCase();
+  
+  // Determine transaction type
+  const isIncome = lowerText.includes("earned") || 
+                   lowerText.includes("received") || 
+                   lowerText.includes("income") ||
+                   lowerText.includes("salary") ||
+                   lowerText.includes("revenue");
+  
+  const type = isIncome ? "INCOME" : "EXPENSE";
+  
+  // Extract amount
+  const amountRegex = /[₦$]?\s?(\d+([,.]\d+)?)/;
+  const amountMatch = text.match(amountRegex);
+  let amount = 0;
+  if (amountMatch) {
+    amount = parseFloat(amountMatch[1].replace(',', ''));
+  }
+  
+  // Extract description
+  let description = "";
+  if (type === "EXPENSE") {
+    if (lowerText.includes("spent") && lowerText.includes("on")) {
+      const afterOn = lowerText.split("on ")[1];
+      if (afterOn) {
+        description = afterOn.split(" ")[0];
+        if (description.endsWith('.')) {
+          description = description.slice(0, -1);
+        }
+      }
+    } else if (lowerText.includes("bought")) {
+      const afterBought = lowerText.split("bought ")[1];
+      if (afterBought) {
+        description = afterBought.split(" ")[0];
+        if (description.endsWith('.')) {
+          description = description.slice(0, -1);
+        }
+      }
+    }
+  } else {
+    if (lowerText.includes("earned") || lowerText.includes("received")) {
+      description = "Income payment";
+    } else {
+      description = "Income";
+    }
+  }
+  
+  // Default description if nothing is found
+  if (!description) {
+    description = type === "EXPENSE" ? "General expense" : "Income";
+  }
+  
+  // Capitalize first letter
+  description = description.charAt(0).toUpperCase() + description.slice(1);
+  
+  // Extract date (default to today)
+  const today = new Date();
+  let date = today.toISOString();
+  
+  // Check for time indicators
+  if (lowerText.includes("yesterday")) {
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    date = yesterday.toISOString();
+  } else if (lowerText.includes("today")) {
+    date = today.toISOString();
+  } else if (lowerText.includes("last week")) {
+    const lastWeek = new Date(today);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    date = lastWeek.toISOString();
+  }
+  
+  // Determine category
+  const category_id = determineCategory(lowerText);
+  
+  return {
+    description,
+    amount,
+    type,
+    date,
+    category_id
+  };
+}
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
   try {
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-    
-    if (!GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY is not set');
+    // Check for proper HTTP method
+    if (req.method !== "POST") {
+      return new Response(
+        JSON.stringify({ error: "Method not allowed" }),
+        { status: 405, headers: { "Content-Type": "application/json" } }
+      );
     }
 
+    // Parse the request body
     const { text } = await req.json();
-    if (!text) {
-      throw new Error('No text provided');
+
+    if (!text || typeof text !== "string") {
+      return new Response(
+        JSON.stringify({ error: "Invalid request. 'text' field is required and must be a string" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     }
 
-    console.log('Processing text:', text);
+    // Parse the transaction
+    const transaction = parseTransaction(text);
 
-    const prompt = `Parse this financial transaction into a structured format: "${text}"
-    
-    Rules:
-    - If money is spent, it's an "expense"
-    - If money is received, it's an "income"
-    - Categories must be one of: groceries, salary, entertainment, utilities, transport
-    - If no date is specified, use today's date
-    - Description should be clear and concise
-    
-    Return ONLY a JSON object with this exact structure:
-    {
-      "description": "string",
-      "amount": positive number,
-      "type": "expense" or "income",
-      "date": "ISO date string",
-      "category": "one of the allowed categories"
-    }`;
-
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': GEMINI_API_KEY,
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.1,
-          topK: 1,
-          topP: 1,
-        }
-      })
-    });
-
-    const data = await response.json();
-    
-    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-      throw new Error('Invalid response from AI');
-    }
-
-    const aiResponse = data.candidates[0].content.parts[0].text;
-    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-    
-    if (!jsonMatch) {
-      throw new Error('No JSON found in AI response');
-    }
-
-    console.log('AI Response:', aiResponse);
-    const parsedTransaction = JSON.parse(jsonMatch[0]);
-    console.log('Parsed transaction:', parsedTransaction);
-
-    // Validate all required fields
-    if (!parsedTransaction.description || 
-        typeof parsedTransaction.amount !== 'number' ||
-        !['income', 'expense'].includes(parsedTransaction.type.toLowerCase()) ||
-        !parsedTransaction.date ||
-        !parsedTransaction.category) {
-      throw new Error('Missing or invalid fields in parsed transaction');
-    }
-
-    // Map the category to a valid UUID
-    const categoryId = defaultCategories[parsedTransaction.category.toLowerCase()];
-    if (!categoryId) {
-      throw new Error(`Invalid category. Must be one of: ${Object.keys(defaultCategories).join(', ')}`);
-    }
-
-    // Map the type to database-accepted format
-    const dbType = transactionTypes[parsedTransaction.type.toLowerCase()];
-    if (!dbType) {
-      throw new Error('Invalid transaction type');
-    }
-
-    // Return the formatted transaction data
-    const processedTransaction = {
-      description: parsedTransaction.description,
-      amount: Math.abs(parsedTransaction.amount), // Store as positive
-      type: dbType as TransactionType, // Use typed uppercase value
-      date: new Date(parsedTransaction.date).toISOString(),
-      category_id: categoryId
-    };
-
-    console.log('Processed transaction:', processedTransaction);
-
-    return new Response(JSON.stringify(processedTransaction), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  } catch (error) {
-    console.error('Error:', error);
+    // Return the parsed transaction
     return new Response(
-      JSON.stringify({ error: error.message }), 
-      { 
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      JSON.stringify(transaction),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    // Log the error and return a 500 response
+    console.error("Error parsing transaction:", error);
+    return new Response(
+      JSON.stringify({ error: "Failed to parse transaction" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 });
