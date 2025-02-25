@@ -15,7 +15,7 @@ interface ParsedTransaction {
   amount: number;
   type: "EXPENSE" | "INCOME";
   date: string;
-  category_id: string | null;
+  category_id: string;
 }
 
 // Mock transaction parser to use when edge function fails
@@ -40,8 +40,7 @@ const mockParseTransaction = (text: string): ParsedTransaction => {
     amount,
     type: isExpense ? "EXPENSE" : "INCOME",
     date: today,
-    // Important: Setting this to null instead of a string value to avoid UUID errors
-    category_id: null
+    category_id: isExpense ? "groceries" : "income"
   };
 };
 
@@ -80,7 +79,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       }
 
       // Validate the parsed data
-      if (!parsedData.description || !parsedData.amount || !parsedData.type || !parsedData.date) {
+      if (!parsedData.description || !parsedData.amount || !parsedData.type || !parsedData.date || !parsedData.category_id) {
         throw new Error('Invalid transaction format');
       }
 
@@ -98,7 +97,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
         throw new Error('You must be logged in to add transactions');
       }
 
-      // Insert the transaction with user_id - Note: category_id is now nullable
+      // Insert the transaction with user_id
       const { error: insertError } = await supabase
         .from('transactions')
         .insert([{
@@ -106,7 +105,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
           amount: parsedData.amount,
           type: parsedData.type,
           date: parsedData.date,
-          category_id: null, // Set this to null to avoid UUID format errors
+          category_id: parsedData.category_id,
           user_id: user.id
         }]);
 
@@ -120,4 +119,39 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
         description: "Your transaction has been successfully recorded.",
       });
 
-      set
+      setInput("");
+      
+      // Dispatch refresh event to update table
+      const event = new Event('refresh');
+      document.dispatchEvent(event);
+      
+      onTransactionAdded?.();
+    } catch (error) {
+      console.error('Error processing transaction:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to process transaction",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex items-center gap-2 p-4 border-t">
+      <Input
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Describe your transaction... (e.g., 'Spent ₦5000 on groceries yesterday')"
+        disabled={isProcessing}
+        className="flex-1"
+      />
+      <Button type="submit" size="icon" disabled={isProcessing}>
+        <Send className="h-4 w-4" />
+      </Button>
+    </form>
+  );
+};
+
+export default ChatInput;
