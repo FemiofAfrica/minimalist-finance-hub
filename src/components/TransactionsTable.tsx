@@ -55,7 +55,20 @@ const TransactionsTable = () => {
 
       if (error) throw error;
 
-      setTransactions(data || []);
+      // Validate and transform the data to match our Transaction interface
+      const validTransactions: Transaction[] = (data || []).map(t => {
+        // Validate that type is either "EXPENSE" or "INCOME"
+        if (t.type !== "EXPENSE" && t.type !== "INCOME") {
+          console.warn(`Invalid transaction type found: ${t.type}`);
+          return null;
+        }
+        return {
+          ...t,
+          type: t.type as "EXPENSE" | "INCOME"
+        };
+      }).filter((t): t is Transaction => t !== null); // Remove any invalid transactions
+
+      setTransactions(validTransactions);
     } catch (error) {
       toast({
         title: "Error",
