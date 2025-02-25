@@ -17,9 +17,11 @@ const defaultCategories = {
 
 // Map user-friendly types to database types
 const transactionTypes = {
-  'income': 'INCOME',
-  'expense': 'EXPENSE'
+  'income': 'INCOME' as const,
+  'expense': 'EXPENSE' as const
 };
+
+type TransactionType = typeof transactionTypes[keyof typeof transactionTypes];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -37,6 +39,8 @@ serve(async (req) => {
     if (!text) {
       throw new Error('No text provided');
     }
+
+    console.log('Processing text:', text);
 
     const prompt = `Parse this financial transaction into a structured format: "${text}"
     
@@ -114,7 +118,7 @@ serve(async (req) => {
     const processedTransaction = {
       description: parsedTransaction.description,
       amount: Math.abs(parsedTransaction.amount), // Store as positive
-      type: dbType, // Use uppercase database type
+      type: dbType as TransactionType, // Use typed uppercase value
       date: new Date(parsedTransaction.date).toISOString(),
       category_id: categoryId
     };

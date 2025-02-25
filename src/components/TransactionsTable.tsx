@@ -16,7 +16,7 @@ interface Transaction {
   transaction_id: string;
   description: string;
   amount: number;
-  type: string;
+  type: "EXPENSE" | "INCOME";
   category_id: string | null;
   date: string;
 }
@@ -60,7 +60,6 @@ const TransactionsTable = () => {
     fetchTransactions();
   }, []);
 
-  // Add event listener for refresh events
   useEffect(() => {
     const handleRefresh = () => {
       fetchTransactions();
@@ -99,7 +98,7 @@ const TransactionsTable = () => {
           <TableRow key={transaction.transaction_id}>
             <TableCell className="font-medium">
               <div className="flex items-center space-x-2">
-                {transaction.type === "expense" ? (
+                {transaction.type === "EXPENSE" ? (
                   <ArrowDownRight className="w-4 h-4 text-red-500" />
                 ) : (
                   <ArrowUpRight className="w-4 h-4 text-emerald-500" />
@@ -112,12 +111,12 @@ const TransactionsTable = () => {
             <TableCell className="text-right">
               <span
                 className={
-                  transaction.type === "expense"
+                  transaction.type === "EXPENSE"
                     ? "text-red-500"
                     : "text-emerald-500"
                 }
               >
-                {transaction.type === "expense" ? "-" : "+"}
+                {transaction.type === "EXPENSE" ? "-" : "+"}
                 {formatNaira(transaction.amount)}
               </span>
             </TableCell>

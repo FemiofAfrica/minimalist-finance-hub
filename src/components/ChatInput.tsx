@@ -13,7 +13,7 @@ interface ChatInputProps {
 interface ParsedTransaction {
   description: string;
   amount: number;
-  type: 'INCOME' | 'EXPENSE';
+  type: "EXPENSE" | "INCOME";
   date: string;
   category_id: string;
 }
@@ -29,10 +29,14 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
 
     setIsProcessing(true);
     try {
+      console.log('Sending text to parse:', input);
+      
       // Parse the natural language input
       const { data: parsedData, error: parseError } = await supabase.functions.invoke<ParsedTransaction>('parse-transaction', {
         body: { text: input },
       });
+
+      console.log('Parsed response:', parsedData, parseError);
 
       if (parseError) throw parseError;
       if (!parsedData) throw new Error('No data returned from parser');
@@ -41,6 +45,13 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       if (!parsedData.description || !parsedData.amount || !parsedData.type || !parsedData.date || !parsedData.category_id) {
         throw new Error('Invalid transaction format returned by AI');
       }
+
+      // Verify type is correct
+      if (parsedData.type !== "EXPENSE" && parsedData.type !== "INCOME") {
+        throw new Error('Invalid transaction type. Must be EXPENSE or INCOME');
+      }
+
+      console.log('Inserting transaction:', parsedData);
 
       // Insert the transaction
       const { error: insertError } = await supabase
@@ -53,7 +64,10 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
           category_id: parsedData.category_id
         }]);
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Insert error:', insertError);
+        throw insertError;
+      }
 
       toast({
         title: "Transaction added",
