@@ -41,20 +41,21 @@ const TransactionsTable = () => {
 
   const fetchTransactions = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('You must be logged in to view transactions');
+      }
+
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
+        .eq('user_id', user.id)
         .order('date', { ascending: false });
 
       if (error) throw error;
 
-      // Type assertion to ensure the data matches our Transaction interface
-      const typedData = (data || []).map(t => ({
-        ...t,
-        type: t.type as "EXPENSE" | "INCOME"
-      }));
-
-      setTransactions(typedData);
+      setTransactions(data || []);
     } catch (error) {
       toast({
         title: "Error",
