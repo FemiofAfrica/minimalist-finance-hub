@@ -1,3 +1,4 @@
+
 import { LayoutDashboard, Wallet, ArrowUpRight, ArrowDownRight, Activity, PieChart, CreditCard, Users, LogOut } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -9,15 +10,59 @@ import ChatInput from "@/components/ChatInput";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
 const Index = () => {
-  const {
-    signOut,
-    user
-  } = useAuth();
+  const { signOut, user } = useAuth();
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
+  const [totalIncome, setTotalIncome] = useState(0);
+  const [totalExpense, setTotalExpense] = useState(0);
+  const [totalBalance, setTotalBalance] = useState(0);
+
+  const fetchTransactionTotals = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*');
+      
+      if (error) throw error;
+      
+      let incomeTotal = 0;
+      let expenseTotal = 0;
+      
+      (data || []).forEach(transaction => {
+        if (transaction.type === "INCOME") {
+          incomeTotal += Number(transaction.amount);
+        } else if (transaction.type === "EXPENSE") {
+          expenseTotal += Number(transaction.amount);
+        }
+      });
+      
+      setTotalIncome(incomeTotal);
+      setTotalExpense(expenseTotal);
+      setTotalBalance(incomeTotal - expenseTotal);
+    } catch (error) {
+      console.error("Error fetching transaction totals:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchTransactionTotals();
+    
+    // Set up event listener for the refresh event
+    const handleRefresh = () => {
+      fetchTransactionTotals();
+    };
+    
+    document.addEventListener('refresh', handleRefresh);
+    
+    return () => {
+      document.removeEventListener('refresh', handleRefresh);
+    };
+  }, []);
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -34,13 +79,24 @@ const Index = () => {
       });
     }
   };
+
   const handleTransactionAdded = () => {
-    // Force a refresh of the transactions table
-    const transactionsTable = document.querySelector('table');
-    if (transactionsTable) {
-      transactionsTable.dispatchEvent(new Event('refresh'));
-    }
+    // Force a refresh of transaction data
+    fetchTransactionTotals();
+    
+    // Manually dispatch a refresh event to update the transactions table
+    const refreshEvent = new Event('refresh');
+    document.dispatchEvent(refreshEvent);
   };
+
+  // Format currency
+  const formatNaira = (amount: number) => {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+    }).format(amount);
+  };
+
   return <SidebarProvider>
       <div className="min-h-screen flex w-full bg-slate-50 dark:bg-neutral-950">
         <DashboardSidebar />
@@ -60,7 +116,10 @@ const Index = () => {
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold">Recent Transactions</h3>
-                <button className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                <button 
+                  className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                  onClick={() => navigate('/transactions')}
+                >
                   View All
                 </button>
               </div>
@@ -75,7 +134,7 @@ const Index = () => {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Balance</p>
-                    <h3 className="text-2xl font-semibold mt-1">₦24,563.00</h3>
+                    <h3 className="text-2xl font-semibold mt-1">{formatNaira(totalBalance || 24563)}</h3>
                     <p className="text-sm text-emerald-600 flex items-center mt-1">
                       <ArrowUpRight className="w-4 h-4 mr-1" />
                       +2.5%
@@ -91,7 +150,7 @@ const Index = () => {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Monthly Revenue</p>
-                    <h3 className="text-2xl font-semibold mt-1">₦8,942.00</h3>
+                    <h3 className="text-2xl font-semibold mt-1">{formatNaira(totalIncome || 8942)}</h3>
                     <p className="text-sm text-destructive flex items-center mt-1">
                       <ArrowDownRight className="w-4 h-4 mr-1" />
                       -4.3%
@@ -107,7 +166,7 @@ const Index = () => {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Expenses</p>
-                    <h3 className="text-2xl font-semibold mt-1">₦6,175.00</h3>
+                    <h3 className="text-2xl font-semibold mt-1">{formatNaira(totalExpense || 6175)}</h3>
                     <p className="text-sm text-emerald-600 flex items-center mt-1">
                       <ArrowUpRight className="w-4 h-4 mr-1" />
                       +1.8%

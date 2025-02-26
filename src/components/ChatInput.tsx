@@ -106,7 +106,6 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       console.log('User ID:', user.id);
 
       // Insert transaction without user_id to avoid foreign key constraint error
-      // If you have RLS policies based on auth.uid(), this will still work correctly
       const { error: insertError } = await supabase
         .from('transactions')
         .insert([{
@@ -129,10 +128,12 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
 
       setInput("");
       
-      // Dispatch refresh event to update table
-      const event = new Event('refresh');
-      document.dispatchEvent(event);
+      // Manually trigger a global refresh event to update all transaction components
+      console.log("Dispatching refresh event");
+      const refreshEvent = new Event('refresh');
+      document.dispatchEvent(refreshEvent);
       
+      // Also call the onTransactionAdded callback if provided
       if (onTransactionAdded) {
         onTransactionAdded();
       }

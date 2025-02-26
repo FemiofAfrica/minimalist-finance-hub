@@ -44,6 +44,7 @@ const TransactionsTable = () => {
 
   const fetchTransactions = async () => {
     try {
+      console.log("Fetching transactions...");
       // Fetch all transactions without filtering by user_id
       const { data, error } = await supabase
         .from('transactions')
@@ -51,6 +52,8 @@ const TransactionsTable = () => {
         .order('date', { ascending: false });
 
       if (error) throw error;
+
+      console.log("Transactions data:", data);
 
       // Cast the data as Transaction[] with type validation
       const typedTransactions = (data || []).map(item => {
@@ -66,6 +69,7 @@ const TransactionsTable = () => {
         } as Transaction;
       });
       
+      console.log("Processed transactions:", typedTransactions);
       setTransactions(typedTransactions);
     } catch (error) {
       toast({
@@ -81,14 +85,16 @@ const TransactionsTable = () => {
 
   useEffect(() => {
     fetchTransactions();
-  }, []);
-
-  useEffect(() => {
+    
+    // Set up event listener for the custom refresh event
     const handleRefresh = () => {
+      console.log("Refresh event triggered");
       fetchTransactions();
     };
 
     document.addEventListener('refresh', handleRefresh);
+    
+    // Clean up the event listener when component unmounts
     return () => {
       document.removeEventListener('refresh', handleRefresh);
     };
