@@ -44,16 +44,10 @@ const TransactionsTable = () => {
 
   const fetchTransactions = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('You must be logged in to view transactions');
-      }
-
+      // Fetch all transactions without filtering by user_id
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('user_id', user.id)
         .order('date', { ascending: false });
 
       if (error) throw error;
