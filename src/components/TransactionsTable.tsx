@@ -12,11 +12,14 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+// Define the Transaction types to match exactly what's in the database
+type TransactionType = "EXPENSE" | "INCOME";
+
 interface Transaction {
   transaction_id: string;
   description: string;
   amount: number;
-  type: "EXPENSE" | "INCOME";
+  type: TransactionType;
   category_id: string | null;
   date: string;
   created_at: string;
@@ -55,15 +58,21 @@ const TransactionsTable = () => {
 
       if (error) throw error;
 
-      // Validate and transform the data to match our Transaction interface
-      const validTransactions: Transaction[] = (data || [])
-        .filter(t => t.type === "EXPENSE" || t.type === "INCOME")
-        .map(t => ({
-          ...t,
-          type: t.type as "EXPENSE" | "INCOME"
-        }));
-
-      setTransactions(validTransactions);
+      // Cast the data as Transaction[] with type validation
+      const typedTransactions = (data || []).map(item => {
+        // Make sure type is either "EXPENSE" or "INCOME", default to "EXPENSE" if not
+        const validType: TransactionType = 
+          item.type === "EXPENSE" || item.type === "INCOME" 
+            ? item.type 
+            : "EXPENSE";
+            
+        return {
+          ...item,
+          type: validType
+        } as Transaction;
+      });
+      
+      setTransactions(typedTransactions);
     } catch (error) {
       toast({
         title: "Error",
