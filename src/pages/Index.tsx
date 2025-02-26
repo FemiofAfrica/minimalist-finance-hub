@@ -9,29 +9,31 @@ import ChatInput from "@/components/ChatInput";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
-
 const Index = () => {
-  const { signOut, user } = useAuth();
+  const {
+    signOut,
+    user
+  } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-
+  const {
+    toast
+  } = useToast();
   const handleSignOut = async () => {
     try {
       await signOut();
       navigate('/login');
       toast({
         title: "Signed out",
-        description: "You have been successfully signed out.",
+        description: "You have been successfully signed out."
       });
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to sign out",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const handleTransactionAdded = () => {
     // Force a refresh of the transactions table
     const transactionsTable = document.querySelector('table');
@@ -39,9 +41,7 @@ const Index = () => {
       transactionsTable.dispatchEvent(new Event('refresh'));
     }
   };
-
-  return (
-    <SidebarProvider>
+  return <SidebarProvider>
       <div className="min-h-screen flex w-full bg-slate-50 dark:bg-neutral-950">
         <DashboardSidebar />
         <main className="flex-1 p-6 flex flex-col">
@@ -75,7 +75,7 @@ const Index = () => {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Balance</p>
-                    <h3 className="text-2xl font-semibold mt-1">$24,563.00</h3>
+                    <h3 className="text-2xl font-semibold mt-1">₦24,563.00</h3>
                     <p className="text-sm text-emerald-600 flex items-center mt-1">
                       <ArrowUpRight className="w-4 h-4 mr-1" />
                       +2.5%
@@ -161,8 +161,6 @@ const Index = () => {
           </div>
         </main>
       </div>
-    </SidebarProvider>
-  );
+    </SidebarProvider>;
 };
-
 export default Index;
