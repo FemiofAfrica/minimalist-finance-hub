@@ -15,7 +15,6 @@ interface ParsedTransaction {
   amount: number;
   type: "EXPENSE" | "INCOME";
   date: string;
-  category_id: string;
 }
 
 // Mock transaction parser to use when edge function fails
@@ -29,7 +28,15 @@ const mockParseTransaction = (text: string): ParsedTransaction => {
   
   let description = text;
   if (text.toLowerCase().includes('on')) {
-    description = text.toLowerCase().split('on ')[1].split(' ')[0];
+    const parts = text.toLowerCase().split('on ');
+    if (parts.length > 1) {
+      const words = parts[1].split(' ');
+      if (words.length > 0) {
+        description = words[0];
+        // Remove trailing punctuation if any
+        description = description.replace(/[.,!?]$/, '');
+      }
+    }
   }
   
   // Get current date in ISO format
@@ -39,8 +46,7 @@ const mockParseTransaction = (text: string): ParsedTransaction => {
     description: description.charAt(0).toUpperCase() + description.slice(1),
     amount,
     type: isExpense ? "EXPENSE" : "INCOME",
-    date: today,
-    category_id: isExpense ? "groceries" : "income"
+    date: today
   };
 };
 
@@ -65,7 +71,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
           body: { text: input },
         });
 
-        console.log('Parsed response:', data, error);
+        console.log('Edge function response:', data, error);
 
         if (error || !data) {
           throw new Error('Edge function failed');
@@ -79,7 +85,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       }
 
       // Validate the parsed data
-      if (!parsedData.description || !parsedData.amount || !parsedData.type || !parsedData.date || !parsedData.category_id) {
+      if (!parsedData.description || !parsedData.amount || !parsedData.type || !parsedData.date) {
         throw new Error('Invalid transaction format');
       }
 
@@ -88,7 +94,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
         parsedData.type = "EXPENSE"; // Default to expense if type is invalid
       }
 
-      console.log('Inserting transaction:', parsedData);
+      console.log('Inserting transaction with parsed data:', parsedData);
 
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
@@ -98,6 +104,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       }
 
       // Insert the transaction with user_id
+      // IMPORTANT: We're NOT including category_id here since it's nullable
       const { error: insertError } = await supabase
         .from('transactions')
         .insert([{
@@ -105,7 +112,6 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
           amount: parsedData.amount,
           type: parsedData.type,
           date: parsedData.date,
-          category_id: parsedData.category_id,
           user_id: user.id
         }]);
 
@@ -125,7 +131,9 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       const event = new Event('refresh');
       document.dispatchEvent(event);
       
-      onTransactionAdded?.();
+      if (onTransactionAdded) {
+        onTransactionAdded();
+      }
     } catch (error) {
       console.error('Error processing transaction:', error);
       toast({

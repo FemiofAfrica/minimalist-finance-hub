@@ -1,173 +1,139 @@
 
+// Follow imports from Deno
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+// Define the required transaction properties
 interface ParsedTransaction {
   description: string;
   amount: number;
   type: "EXPENSE" | "INCOME";
   date: string;
-  category_id: string;
 }
 
-// Categories mapping
-const CATEGORIES: Record<string, string> = {
-  "groceries": "groceries",
-  "food": "groceries",
-  "restaurant": "eating_out",
-  "dining": "eating_out",
-  "transportation": "transportation",
-  "transport": "transportation",
-  "travel": "travel",
-  "healthcare": "healthcare",
-  "health": "healthcare",
-  "utilities": "utilities",
-  "utility": "utilities",
-  "bills": "utilities",
-  "entertainment": "entertainment",
-  "shopping": "shopping",
-  "education": "education",
-  "school": "education",
-  "salary": "income",
-  "income": "income",
-  "revenue": "income",
-  "interest": "income",
-  "gift": "income",
-  "rent": "housing",
-  "housing": "housing",
-  "mortgage": "housing",
-  "general": "general"
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'application/json'
 };
 
-// Function to determine category from text
-function determineCategory(text: string): string {
-  const lowerText = text.toLowerCase();
-  for (const [keyword, category] of Object.entries(CATEGORIES)) {
-    if (lowerText.includes(keyword)) {
-      return category;
-    }
-  }
-  return "general";
-}
-
 function parseTransaction(text: string): ParsedTransaction {
+  // Default values
+  let description = "Transaction";
+  let amount = 0;
+  let type: "EXPENSE" | "INCOME" = "EXPENSE";
+  let date = new Date().toISOString();
+  
   const lowerText = text.toLowerCase();
   
-  // Determine transaction type
-  const isIncome = lowerText.includes("earned") || 
-                   lowerText.includes("received") || 
-                   lowerText.includes("income") ||
-                   lowerText.includes("salary") ||
-                   lowerText.includes("revenue");
-  
-  const type = isIncome ? "INCOME" : "EXPENSE";
+  // Check for expense/income indicators
+  if (lowerText.includes("earned") || 
+      lowerText.includes("received") || 
+      lowerText.includes("income") ||
+      lowerText.includes("salary") ||
+      lowerText.includes("paid")) {
+    type = "INCOME";
+  }
   
   // Extract amount
-  const amountRegex = /[₦$]?\s?(\d+([,.]\d+)?)/;
-  const amountMatch = text.match(amountRegex);
-  let amount = 0;
+  const amountMatch = text.match(/[₦$]?\s?(\d+([,.]\d+)?)/);
   if (amountMatch) {
     amount = parseFloat(amountMatch[1].replace(',', ''));
   }
   
   // Extract description
-  let description = "";
   if (type === "EXPENSE") {
     if (lowerText.includes("spent") && lowerText.includes("on")) {
-      const afterOn = lowerText.split("on ")[1];
-      if (afterOn) {
-        description = afterOn.split(" ")[0];
-        if (description.endsWith('.')) {
-          description = description.slice(0, -1);
-        }
+      const parts = lowerText.split("on ");
+      if (parts.length > 1) {
+        const firstWord = parts[1].split(" ")[0];
+        description = firstWord.charAt(0).toUpperCase() + firstWord.slice(1);
+        description = description.replace(/[.,!?]$/, '');
       }
     } else if (lowerText.includes("bought")) {
-      const afterBought = lowerText.split("bought ")[1];
-      if (afterBought) {
-        description = afterBought.split(" ")[0];
-        if (description.endsWith('.')) {
-          description = description.slice(0, -1);
-        }
+      const parts = lowerText.split("bought ");
+      if (parts.length > 1) {
+        const firstWord = parts[1].split(" ")[0];
+        description = firstWord.charAt(0).toUpperCase() + firstWord.slice(1);
+        description = description.replace(/[.,!?]$/, '');
       }
+    } else if (lowerText.includes("paid") && lowerText.includes("for")) {
+      const parts = lowerText.split("for ");
+      if (parts.length > 1) {
+        const firstWord = parts[1].split(" ")[0];
+        description = firstWord.charAt(0).toUpperCase() + firstWord.slice(1);
+        description = description.replace(/[.,!?]$/, '');
+      }
+    } else {
+      description = "Expense";
     }
   } else {
-    if (lowerText.includes("earned") || lowerText.includes("received")) {
-      description = "Income payment";
-    } else {
-      description = "Income";
+    description = "Income";
+    if (lowerText.includes("salary")) {
+      description = "Salary";
+    } else if (lowerText.includes("earned")) {
+      description = "Earnings";
     }
   }
   
-  // Default description if nothing is found
-  if (!description) {
-    description = type === "EXPENSE" ? "General expense" : "Income";
-  }
-  
-  // Capitalize first letter
-  description = description.charAt(0).toUpperCase() + description.slice(1);
-  
-  // Extract date (default to today)
-  const today = new Date();
-  let date = today.toISOString();
-  
-  // Check for time indicators
+  // Extract date if specified
   if (lowerText.includes("yesterday")) {
-    const yesterday = new Date(today);
+    const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     date = yesterday.toISOString();
   } else if (lowerText.includes("today")) {
-    date = today.toISOString();
+    date = new Date().toISOString();
   } else if (lowerText.includes("last week")) {
-    const lastWeek = new Date(today);
+    const lastWeek = new Date();
     lastWeek.setDate(lastWeek.getDate() - 7);
     date = lastWeek.toISOString();
   }
-  
-  // Determine category
-  const category_id = determineCategory(lowerText);
   
   return {
     description,
     amount,
     type,
-    date,
-    category_id
+    date
   };
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+  
   try {
-    // Check for proper HTTP method
-    if (req.method !== "POST") {
+    if (req.method !== 'POST') {
       return new Response(
-        JSON.stringify({ error: "Method not allowed" }),
-        { status: 405, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ error: 'Method not allowed' }),
+        { status: 405, headers: corsHeaders }
       );
     }
-
+    
     // Parse the request body
-    const { text } = await req.json();
-
-    if (!text || typeof text !== "string") {
+    const body = await req.json();
+    const { text } = body;
+    
+    if (!text || typeof text !== 'string') {
       return new Response(
-        JSON.stringify({ error: "Invalid request. 'text' field is required and must be a string" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ error: 'Invalid request. Text field is required' }),
+        { status: 400, headers: corsHeaders }
       );
     }
-
-    // Parse the transaction
-    const transaction = parseTransaction(text);
-
+    
+    // Parse the transaction from the text
+    const parsedTransaction = parseTransaction(text);
+    
     // Return the parsed transaction
     return new Response(
-      JSON.stringify(transaction),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      JSON.stringify(parsedTransaction),
+      { status: 200, headers: corsHeaders }
     );
   } catch (error) {
-    // Log the error and return a 500 response
-    console.error("Error parsing transaction:", error);
+    console.error('Error parsing transaction:', error);
     return new Response(
-      JSON.stringify({ error: "Failed to parse transaction" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      JSON.stringify({ error: 'Failed to parse transaction' }),
+      { status: 500, headers: corsHeaders }
     );
   }
 });
