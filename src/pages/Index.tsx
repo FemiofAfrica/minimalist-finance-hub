@@ -91,7 +91,7 @@ const Index = () => {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Monthly Revenue</p>
-                    <h3 className="text-2xl font-semibold mt-1">$8,942.00</h3>
+                    <h3 className="text-2xl font-semibold mt-1">₦8,942.00</h3>
                     <p className="text-sm text-destructive flex items-center mt-1">
                       <ArrowDownRight className="w-4 h-4 mr-1" />
                       -4.3%
