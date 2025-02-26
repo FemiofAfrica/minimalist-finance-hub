@@ -16,7 +16,13 @@ interface Transaction {
   description: string;
   amount: number;
   type: TransactionType;
+  category_id?: string | null;
   date: string;
+  created_at?: string;
+  updated_at?: string;
+  notes?: string | null;
+  source?: string | null;
+  user_id?: string | null;
 }
 
 // Format number to Nigerian Naira
@@ -44,14 +50,23 @@ const Transactions = () => {
 
         if (error) throw error;
 
+        // Process the data to ensure proper typing
+        const typedTransactions: Transaction[] = (data || []).map(transaction => ({
+          ...transaction,
+          // Ensure type is either "EXPENSE" or "INCOME"
+          type: (transaction.type === "EXPENSE" || transaction.type === "INCOME") 
+            ? transaction.type as TransactionType 
+            : "EXPENSE"
+        }));
+
         // Set the transactions state
-        setTransactions(data || []);
+        setTransactions(typedTransactions);
 
         // Calculate totals
         let incomeTotal = 0;
         let expenseTotal = 0;
 
-        (data || []).forEach((transaction) => {
+        typedTransactions.forEach((transaction) => {
           if (transaction.type === "INCOME") {
             incomeTotal += Number(transaction.amount);
           } else if (transaction.type === "EXPENSE") {
