@@ -25,7 +25,7 @@ const parseTransaction = (text: string): ParsedTransaction => {
                     !text.toLowerCase().includes('income');
                     
   // Extract amount
-  const amountMatch = text.match(/[₦$]?\s?(\d+([,.]\d+)?)/);
+  const amountMatch = text.match(/[₦$]?\s*(\d+([,.]\d+)?)/);
   const amount = amountMatch ? parseFloat(amountMatch[1].replace(',', '')) : 0;
   
   // Extract description
@@ -41,6 +41,15 @@ const parseTransaction = (text: string): ParsedTransaction => {
         // Capitalize first letter
         description = description.charAt(0).toUpperCase() + description.slice(1);
       }
+    }
+  } else if (amountMatch && amountMatch.index !== undefined) {
+    // If "on" pattern isn't found, try to extract description from words after amount
+    const afterAmount = text.substring(amountMatch.index + amountMatch[0].length).trim();
+    const firstWordMatch = afterAmount.match(/^(on|for)?\s*(\w+)/i);
+    if (firstWordMatch && firstWordMatch[2]) {
+      description = firstWordMatch[2];
+      // Capitalize first letter
+      description = description.charAt(0).toUpperCase() + description.slice(1);
     }
   }
   
