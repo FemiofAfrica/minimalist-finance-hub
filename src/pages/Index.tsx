@@ -33,9 +33,9 @@ const Index = () => {
       let expenseTotal = 0;
       
       (data || []).forEach(transaction => {
-        if (transaction.type === "INCOME") {
+        if (transaction.category_type === "INCOME") {
           incomeTotal += Number(transaction.amount);
-        } else if (transaction.type === "EXPENSE") {
+        } else if (transaction.category_type === "EXPENSE") {
           expenseTotal += Number(transaction.amount);
         }
       });
