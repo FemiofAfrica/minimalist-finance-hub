@@ -57,18 +57,18 @@ export type Database = {
       categories: {
         Row: {
           category_id: string
-          name: string
-          type: string
+          category_name: string
+          category_type: string
         }
         Insert: {
           category_id?: string
-          name: string
-          type: string
+          category_name: string
+          category_type: string
         }
         Update: {
           category_id?: string
-          name?: string
-          type?: string
+          category_name?: string
+          category_type?: string
         }
         Relationships: []
       }
@@ -210,39 +210,39 @@ export type Database = {
         Row: {
           amount: number
           category_id: string | null
+          category_type: string | null
           created_at: string
           date: string
           description: string
           notes: string | null
           source: string | null
           transaction_id: string
-          type: string
           updated_at: string
           user_id: string | null
         }
         Insert: {
           amount: number
           category_id?: string | null
+          category_type?: string | null
           created_at?: string
           date: string
           description: string
           notes?: string | null
           source?: string | null
           transaction_id?: string
-          type: string
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           amount?: number
           category_id?: string | null
+          category_type?: string | null
           created_at?: string
           date?: string
           description?: string
           notes?: string | null
           source?: string | null
           transaction_id?: string
-          type?: string
           updated_at?: string
           user_id?: string | null
         }
@@ -302,7 +302,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      insert_transaction: {
+        Args: {
+          p_user_id: string
+          p_amount: number
+          p_date: string
+          p_description: string
+          p_category_name: string
+          p_category_type: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

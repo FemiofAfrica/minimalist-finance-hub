@@ -8,14 +8,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import DashboardSidebar from "@/components/DashboardSidebar";
 
-// Define the Transaction types
-type TransactionType = "EXPENSE" | "INCOME";
-
+// Define the Transaction interface
 interface Transaction {
   transaction_id: string;
   description: string;
   amount: number;
-  type: TransactionType;
+  category_type: string; // Changed from type to category_type
   category_id?: string | null;
   date: string;
   created_at?: string;
@@ -65,15 +63,9 @@ const Transactions = () => {
           return;
         }
 
-        // Process the data to ensure proper typing
-        const typedTransactions: Transaction[] = data.map(transaction => ({
-          ...transaction,
-          // Ensure type is either "EXPENSE" or "INCOME"
-          type: (transaction.type === "EXPENSE" || transaction.type === "INCOME") 
-            ? transaction.type as TransactionType 
-            : "EXPENSE"
-        }));
-
+        // Cast the data as Transaction[]
+        const typedTransactions = data as Transaction[];
+        
         // Set the transactions state
         setTransactions(typedTransactions);
 
@@ -82,9 +74,9 @@ const Transactions = () => {
         let expenseTotal = 0;
 
         typedTransactions.forEach((transaction) => {
-          if (transaction.type === "INCOME") {
+          if (transaction.category_type === "INCOME") {
             incomeTotal += Number(transaction.amount);
-          } else if (transaction.type === "EXPENSE") {
+          } else if (transaction.category_type === "EXPENSE") {
             expenseTotal += Number(transaction.amount);
           }
         });
@@ -183,9 +175,9 @@ const Transactions = () => {
                   <div key={transaction.transaction_id} className="flex items-center justify-between pb-4 border-b">
                     <div className="flex items-center">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${
-                        transaction.type === "EXPENSE" ? "bg-red-100" : "bg-emerald-100"
+                        transaction.category_type === "EXPENSE" ? "bg-red-100" : "bg-emerald-100"
                       }`}>
-                        {transaction.type === "EXPENSE" ? (
+                        {transaction.category_type === "EXPENSE" ? (
                           <ArrowDownRight className="w-4 h-4 text-red-500" />
                         ) : (
                           <ArrowUpRight className="w-4 h-4 text-emerald-500" />
@@ -198,8 +190,8 @@ const Transactions = () => {
                         </div>
                       </div>
                     </div>
-                    <span className={transaction.type === "EXPENSE" ? "text-red-500" : "text-emerald-500"}>
-                      {transaction.type === "EXPENSE" ? "-" : "+"}
+                    <span className={transaction.category_type === "EXPENSE" ? "text-red-500" : "text-emerald-500"}>
+                      {transaction.category_type === "EXPENSE" ? "-" : "+"}
                       {formatNaira(transaction.amount)}
                     </span>
                   </div>

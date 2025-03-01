@@ -13,7 +13,7 @@ interface ChatInputProps {
 interface ParsedTransaction {
   description: string;
   amount: number;
-  type: "EXPENSE" | "INCOME";
+  category_type: string;
   date: string;
 }
 
@@ -77,7 +77,7 @@ const parseTransaction = (text: string): ParsedTransaction => {
   return {
     description,
     amount,
-    type: isExpense ? "EXPENSE" : "INCOME",
+    category_type: isExpense ? "EXPENSE" : "INCOME",
     date: date.toISOString()
   };
 };
@@ -112,7 +112,8 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
         .insert([{
           description: parsedData.description,
           amount: parsedData.amount,
-          type: parsedData.type,
+          // Use the category_type field instead of type
+          category_type: parsedData.category_type,
           date: parsedData.date
         }])
         .select();
@@ -126,7 +127,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
 
       toast({
         title: "Transaction added",
-        description: `Your ${parsedData.type.toLowerCase()} transaction of ${parsedData.amount} NGN has been recorded.`,
+        description: `Your ${parsedData.category_type.toLowerCase()} transaction of ${parsedData.amount} NGN has been recorded.`,
       });
 
       setInput("");
