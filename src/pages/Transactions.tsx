@@ -43,15 +43,30 @@ const Transactions = () => {
   useEffect(() => {
     const fetchTransactionsAndCalculateTotals = async () => {
       try {
+        console.log("Fetching transactions for calculations...");
         const { data, error } = await supabase
           .from('transactions')
           .select('*')
           .order('date', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching transactions:', error);
+          throw error;
+        }
+
+        console.log("Transactions data for calculations:", data);
+
+        if (!data || data.length === 0) {
+          console.log("No transactions found for calculations");
+          setTransactions([]);
+          setTotalIncome(0);
+          setTotalExpense(0);
+          setLoading(false);
+          return;
+        }
 
         // Process the data to ensure proper typing
-        const typedTransactions: Transaction[] = (data || []).map(transaction => ({
+        const typedTransactions: Transaction[] = data.map(transaction => ({
           ...transaction,
           // Ensure type is either "EXPENSE" or "INCOME"
           type: (transaction.type === "EXPENSE" || transaction.type === "INCOME") 
@@ -74,6 +89,7 @@ const Transactions = () => {
           }
         });
 
+        console.log("Calculated totals:", { incomeTotal, expenseTotal });
         setTotalIncome(incomeTotal);
         setTotalExpense(expenseTotal);
       } catch (error) {
@@ -92,6 +108,7 @@ const Transactions = () => {
     
     // Set up refresh event listener
     const handleRefresh = () => {
+      console.log("Refresh event triggered in Transactions page");
       fetchTransactionsAndCalculateTotals();
     };
 

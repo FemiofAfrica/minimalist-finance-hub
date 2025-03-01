@@ -51,16 +51,26 @@ const TransactionsTable = () => {
         .select('*')
         .order('date', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching transactions:', error);
+        throw error;
+      }
 
-      console.log("Transactions data:", data);
+      console.log("Transactions data from Supabase:", data);
+
+      if (!data || data.length === 0) {
+        console.log("No transactions found in database");
+        setTransactions([]);
+        setLoading(false);
+        return;
+      }
 
       // Cast the data as Transaction[] with type validation
-      const typedTransactions = (data || []).map(item => {
+      const typedTransactions = data.map(item => {
         // Make sure type is either "EXPENSE" or "INCOME", default to "EXPENSE" if not
         const validType: TransactionType = 
           item.type === "EXPENSE" || item.type === "INCOME" 
-            ? item.type 
+            ? item.type as TransactionType
             : "EXPENSE";
             
         return {
@@ -88,7 +98,7 @@ const TransactionsTable = () => {
     
     // Set up event listener for the custom refresh event
     const handleRefresh = () => {
-      console.log("Refresh event triggered");
+      console.log("Refresh event triggered in TransactionsTable");
       fetchTransactions();
     };
 

@@ -17,16 +17,19 @@ interface ParsedTransaction {
   date: string;
 }
 
-// Mock transaction parser to use when edge function fails
-const mockParseTransaction = (text: string): ParsedTransaction => {
+// More sophisticated transaction parser to handle date parsing
+const parseTransaction = (text: string): ParsedTransaction => {
+  // Check if it's an expense or income
   const isExpense = !text.toLowerCase().includes('earned') && 
                     !text.toLowerCase().includes('received') &&
                     !text.toLowerCase().includes('income');
                     
+  // Extract amount
   const amountMatch = text.match(/[₦$]?\s?(\d+([,.]\d+)?)/);
   const amount = amountMatch ? parseFloat(amountMatch[1].replace(',', '')) : 0;
   
-  let description = text;
+  // Extract description
+  let description = "Transaction";
   if (text.toLowerCase().includes('on')) {
     const parts = text.toLowerCase().split('on ');
     if (parts.length > 1) {
@@ -35,18 +38,38 @@ const mockParseTransaction = (text: string): ParsedTransaction => {
         description = words[0];
         // Remove trailing punctuation if any
         description = description.replace(/[.,!?]$/, '');
+        // Capitalize first letter
+        description = description.charAt(0).toUpperCase() + description.slice(1);
       }
     }
   }
   
-  // Get current date in ISO format
-  const today = new Date().toISOString();
+  // Parse date from text
+  let date = new Date();
+  const lowerText = text.toLowerCase();
+  
+  if (lowerText.includes('yesterday')) {
+    date = new Date();
+    date.setDate(date.getDate() - 1);
+    console.log("Setting date to yesterday:", date.toISOString());
+  } else if (lowerText.includes('today')) {
+    date = new Date();
+    console.log("Setting date to today:", date.toISOString());
+  } else if (lowerText.includes('last week')) {
+    date = new Date();
+    date.setDate(date.getDate() - 7);
+    console.log("Setting date to last week:", date.toISOString());
+  } else if (lowerText.includes('last month')) {
+    date = new Date();
+    date.setMonth(date.getMonth() - 1);
+    console.log("Setting date to last month:", date.toISOString());
+  }
   
   return {
-    description: description.charAt(0).toUpperCase() + description.slice(1),
+    description,
     amount,
     type: isExpense ? "EXPENSE" : "INCOME",
-    date: today
+    date: date.toISOString()
   };
 };
 
@@ -63,67 +86,38 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
     try {
       console.log('Sending text to parse:', input);
       
-      let parsedData: ParsedTransaction;
-      
-      try {
-        // Try to use the edge function first
-        const { data, error } = await supabase.functions.invoke<ParsedTransaction>('parse-transaction', {
-          body: { text: input },
-        });
-
-        console.log('Edge function response:', data, error);
-
-        if (error || !data) {
-          throw new Error('Edge function failed');
-        }
-        
-        parsedData = data;
-      } catch (parseError) {
-        console.warn('Edge function failed, using fallback parser', parseError);
-        // Use mock parser as fallback
-        parsedData = mockParseTransaction(input);
-      }
+      // Parse the transaction from the input text
+      const parsedData = parseTransaction(input);
+      console.log('Parsed transaction data:', parsedData);
 
       // Validate the parsed data
-      if (!parsedData.description || !parsedData.amount || !parsedData.type || !parsedData.date) {
-        throw new Error('Invalid transaction format');
-      }
-
-      // Ensure type is valid
-      if (parsedData.type !== "EXPENSE" && parsedData.type !== "INCOME") {
-        parsedData.type = "EXPENSE"; // Default to expense if type is invalid
+      if (!parsedData.description || !parsedData.amount) {
+        throw new Error('Could not extract transaction details from your message');
       }
 
       console.log('Inserting transaction with parsed data:', parsedData);
 
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('You must be logged in to add transactions');
-      }
-
-      console.log('User ID:', user.id);
-
-      // Insert transaction without user_id to avoid foreign key constraint error
-      const { error: insertError } = await supabase
+      // Insert the transaction into the database
+      const { data, error: insertError } = await supabase
         .from('transactions')
         .insert([{
           description: parsedData.description,
           amount: parsedData.amount,
           type: parsedData.type,
           date: parsedData.date
-          // Removing user_id field to avoid foreign key constraint error
-        }]);
+        }])
+        .select();
 
       if (insertError) {
         console.error('Insert error:', insertError);
         throw insertError;
       }
 
+      console.log('Transaction inserted successfully:', data);
+
       toast({
         title: "Transaction added",
-        description: "Your transaction has been successfully recorded.",
+        description: `Your ${parsedData.type.toLowerCase()} transaction of ${parsedData.amount} NGN has been recorded.`,
       });
 
       setInput("");
