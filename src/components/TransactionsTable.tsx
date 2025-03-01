@@ -19,8 +19,9 @@ interface Transaction {
   transaction_id: string;
   description: string;
   amount: number;
-  category_type: string; // Changed from type to category_type
+  category_type: string;
   category_id?: string | null;
+  category_name?: string | null;  // Added for joining with categories table
   date: string;
   created_at?: string;
   updated_at?: string;
@@ -45,10 +46,15 @@ const TransactionsTable = () => {
   const fetchTransactions = async () => {
     try {
       console.log("Fetching transactions...");
-      // Fetch all transactions without filtering by user_id
+      // Fetch all transactions with their categories
       const { data, error } = await supabase
         .from('transactions')
-        .select('*')
+        .select(`
+          *,
+          categories:category_id (
+            category_name
+          )
+        `)
         .order('date', { ascending: false });
 
       if (error) {
@@ -65,9 +71,13 @@ const TransactionsTable = () => {
         return;
       }
 
-      // Cast the data as Transaction[]
+      // Cast the data and extract category names
       const typedTransactions = data.map(item => {
-        return item as Transaction;
+        return {
+          ...item,
+          // Extract category_name from the joined categories table
+          category_name: item.categories ? item.categories.category_name : 'Uncategorized'
+        } as Transaction;
       });
       
       console.log("Processed transactions:", typedTransactions);
@@ -136,7 +146,7 @@ const TransactionsTable = () => {
                 <span>{transaction.description}</span>
               </div>
             </TableCell>
-            <TableCell>{transaction.category_id || 'Uncategorized'}</TableCell>
+            <TableCell>{transaction.category_name || 'Uncategorized'}</TableCell>
             <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
             <TableCell className="text-right">
               <span

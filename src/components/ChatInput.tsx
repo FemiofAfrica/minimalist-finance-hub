@@ -14,10 +14,27 @@ interface ParsedTransaction {
   description: string;
   amount: number;
   category_type: string;
+  category_name: string;
   date: string;
 }
 
-// More sophisticated transaction parser to handle date parsing
+// Common expense categories
+const EXPENSE_CATEGORIES = [
+  "Food", "Groceries", "Dining", "Restaurant", "Rent", "Housing", "Utilities", 
+  "Transportation", "Fuel", "Gas", "Car", "Entertainment", "Shopping", "Clothing",
+  "Health", "Medical", "Insurance", "Education", "Travel", "Subscription", 
+  "Bills", "Maintenance", "Gifts", "Charity", "Electronics", "Personal", 
+  "Household", "Phone", "Internet", "Fitness"
+];
+
+// Common income categories
+const INCOME_CATEGORIES = [
+  "Salary", "Wages", "Bonus", "Freelance", "Investment", "Dividend", 
+  "Interest", "Rental", "Gift", "Refund", "Commission", "Business", 
+  "Royalties", "Pension", "Grant", "Allowance"
+];
+
+// More sophisticated transaction parser with category inference
 const parseTransaction = (text: string): ParsedTransaction => {
   // Check if it's an expense or income
   const isExpense = !text.toLowerCase().includes('earned') && 
@@ -28,19 +45,24 @@ const parseTransaction = (text: string): ParsedTransaction => {
   const amountMatch = text.match(/[₦$]?\s*(\d+([,.]\d+)?)/);
   const amount = amountMatch ? parseFloat(amountMatch[1].replace(',', '')) : 0;
   
-  // Extract description
+  // Extract description and infer category
   let description = "Transaction";
+  let inferredCategory = isExpense ? "Uncategorized" : "Income";
+
+  // Extract words from the text for category inference
+  const words = text.toLowerCase()
+    .replace(/[.,!?]/g, '')
+    .split(' ')
+    .map(word => word.trim())
+    .filter(word => word.length > 2);
+  
+  // Try to find description
   if (text.toLowerCase().includes('on')) {
     const parts = text.toLowerCase().split('on ');
     if (parts.length > 1) {
-      const words = parts[1].split(' ');
-      if (words.length > 0) {
-        description = words[0];
-        // Remove trailing punctuation if any
-        description = description.replace(/[.,!?]$/, '');
-        // Capitalize first letter
-        description = description.charAt(0).toUpperCase() + description.slice(1);
-      }
+      description = parts[1].split(' ')[0];
+      description = description.replace(/[.,!?]$/, '');
+      description = description.charAt(0).toUpperCase() + description.slice(1);
     }
   } else if (amountMatch && amountMatch.index !== undefined) {
     // If "on" pattern isn't found, try to extract description from words after amount
@@ -48,8 +70,59 @@ const parseTransaction = (text: string): ParsedTransaction => {
     const firstWordMatch = afterAmount.match(/^(on|for)?\s*(\w+)/i);
     if (firstWordMatch && firstWordMatch[2]) {
       description = firstWordMatch[2];
-      // Capitalize first letter
       description = description.charAt(0).toUpperCase() + description.slice(1);
+    }
+  }
+  
+  // Infer category based on keywords in text
+  if (isExpense) {
+    // Look for expense categories in the text
+    for (const category of EXPENSE_CATEGORIES) {
+      if (text.toLowerCase().includes(category.toLowerCase())) {
+        inferredCategory = category;
+        break;
+      }
+      
+      // Check if the description matches a category
+      if (description.toLowerCase() === category.toLowerCase()) {
+        inferredCategory = category;
+        break;
+      }
+    }
+    
+    // Additional heuristics for common expenses
+    if (inferredCategory === "Uncategorized") {
+      if (text.toLowerCase().includes('food') || text.toLowerCase().includes('eat') || 
+          text.toLowerCase().includes('restaurant') || text.toLowerCase().includes('lunch') || 
+          text.toLowerCase().includes('dinner') || text.toLowerCase().includes('breakfast')) {
+        inferredCategory = "Food";
+      } else if (text.toLowerCase().includes('transport') || text.toLowerCase().includes('uber') || 
+                text.toLowerCase().includes('taxi') || text.toLowerCase().includes('fare')) {
+        inferredCategory = "Transportation";
+      } else if (text.toLowerCase().includes('shop') || text.toLowerCase().includes('buy') || 
+                text.toLowerCase().includes('purchase')) {
+        inferredCategory = "Shopping";
+      }
+    }
+  } else {
+    // Look for income categories in the text
+    for (const category of INCOME_CATEGORIES) {
+      if (text.toLowerCase().includes(category.toLowerCase())) {
+        inferredCategory = category;
+        break;
+      }
+    }
+    
+    // Additional heuristics for income
+    if (inferredCategory === "Income") {
+      if (text.toLowerCase().includes('salary') || text.toLowerCase().includes('wage') || 
+          text.toLowerCase().includes('pay')) {
+        inferredCategory = "Salary";
+      } else if (text.toLowerCase().includes('freelance') || text.toLowerCase().includes('gig')) {
+        inferredCategory = "Freelance";
+      } else if (text.toLowerCase().includes('bonus')) {
+        inferredCategory = "Bonus";
+      }
     }
   }
   
@@ -78,6 +151,7 @@ const parseTransaction = (text: string): ParsedTransaction => {
     description,
     amount,
     category_type: isExpense ? "EXPENSE" : "INCOME",
+    category_name: inferredCategory,
     date: date.toISOString()
   };
 };
@@ -104,16 +178,54 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
         throw new Error('Could not extract transaction details from your message');
       }
 
-      console.log('Inserting transaction with parsed data:', parsedData);
+      console.log('Processing transaction with category:', parsedData.category_name);
 
-      // Insert the transaction into the database
+      // Check if the category exists
+      const { data: existingCategory, error: categoryError } = await supabase
+        .from('categories')
+        .select('category_id')
+        .eq('category_name', parsedData.category_name)
+        .eq('category_type', parsedData.category_type)
+        .maybeSingle();
+
+      if (categoryError) {
+        console.error('Category lookup error:', categoryError);
+        throw categoryError;
+      }
+
+      let categoryId;
+
+      // If category doesn't exist, create it
+      if (!existingCategory) {
+        console.log('Creating new category:', parsedData.category_name);
+        const { data: newCategory, error: insertCategoryError } = await supabase
+          .from('categories')
+          .insert([{
+            category_name: parsedData.category_name,
+            category_type: parsedData.category_type
+          }])
+          .select();
+
+        if (insertCategoryError) {
+          console.error('Category creation error:', insertCategoryError);
+          throw insertCategoryError;
+        }
+
+        categoryId = newCategory?.[0]?.category_id;
+        console.log('Created new category with ID:', categoryId);
+      } else {
+        categoryId = existingCategory.category_id;
+        console.log('Found existing category with ID:', categoryId);
+      }
+
+      // Insert the transaction with the category ID
       const { data, error: insertError } = await supabase
         .from('transactions')
         .insert([{
           description: parsedData.description,
           amount: parsedData.amount,
-          // Use the category_type field instead of type
           category_type: parsedData.category_type,
+          category_id: categoryId,
           date: parsedData.date
         }])
         .select();
@@ -127,7 +239,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
 
       toast({
         title: "Transaction added",
-        description: `Your ${parsedData.category_type.toLowerCase()} transaction of ${parsedData.amount} NGN has been recorded.`,
+        description: `Your ${parsedData.category_type.toLowerCase()} transaction of ${parsedData.amount} NGN (${parsedData.category_name}) has been recorded.`,
       });
 
       setInput("");
