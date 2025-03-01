@@ -206,39 +206,6 @@ export type Database = {
           },
         ]
       }
-      Transaction: {
-        Row: {
-          amount: number | null
-          category: string | null
-          "created at": string | null
-          date: string | null
-          description: string | null
-          id: number
-          type: string | null
-          user_id: number | null
-        }
-        Insert: {
-          amount?: number | null
-          category?: string | null
-          "created at"?: string | null
-          date?: string | null
-          description?: string | null
-          id?: number
-          type?: string | null
-          user_id?: number | null
-        }
-        Update: {
-          amount?: number | null
-          category?: string | null
-          "created at"?: string | null
-          date?: string | null
-          description?: string | null
-          id?: number
-          type?: string | null
-          user_id?: number | null
-        }
-        Relationships: []
-      }
       transactions: {
         Row: {
           amount: number
@@ -280,6 +247,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "transactions_category_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["category_id"]
+          },
           {
             foreignKeyName: "transactions_category_id_fkey"
             columns: ["category_id"]
