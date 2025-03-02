@@ -46,7 +46,7 @@ const TransactionsTable = () => {
   const fetchTransactions = async () => {
     try {
       console.log("Fetching transactions...");
-      // Fetch all transactions with their categories
+      // Fetch all transactions with their categories, using explicit foreign key reference
       const { data, error } = await supabase
         .from('transactions')
         .select(`
@@ -61,7 +61,7 @@ const TransactionsTable = () => {
           notes,
           source,
           user_id,
-          categories (category_name)
+          categories!transactions_category_id_fkey (category_name)
         `)
         .order('date', { ascending: false });
 
@@ -83,7 +83,7 @@ const TransactionsTable = () => {
       const typedTransactions = data.map(item => {
         return {
           ...item,
-          // Extract category_name from the joined categories table
+          // Extract category_name from the joined categories table with specific relationship
           category_name: item.categories ? item.categories.category_name : 'Uncategorized'
         } as Transaction;
       });
