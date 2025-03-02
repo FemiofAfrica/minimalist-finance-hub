@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import {
@@ -49,8 +50,18 @@ const TransactionsTable = () => {
       const { data, error } = await supabase
         .from('transactions')
         .select(`
-          *,
-          categories:category_id (category_name)
+          transaction_id,
+          description,
+          amount,
+          category_type,
+          category_id,
+          date,
+          created_at,
+          updated_at,
+          notes,
+          source,
+          user_id,
+          categories (category_name)
         `)
         .order('date', { ascending: false });
 
