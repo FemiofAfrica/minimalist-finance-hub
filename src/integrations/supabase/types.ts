@@ -255,13 +255,6 @@ export type Database = {
             referencedColumns: ["category_id"]
           },
           {
-            foreignKeyName: "transactions_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["category_id"]
-          },
-          {
             foreignKeyName: "transactions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
