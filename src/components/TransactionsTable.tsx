@@ -47,10 +47,23 @@ const TransactionsTable = () => {
     try {
       console.log("Fetching transactions...");
       
-      // Using a simpler query approach to avoid relationship conflicts
+      // Using explicit foreign key reference to avoid ambiguity
       const { data, error } = await supabase
         .from('transactions')
-        .select('*, categories:category_id(category_name)')
+        .select(`
+          transaction_id,
+          description,
+          amount,
+          category_type,
+          category_id,
+          date,
+          created_at,
+          updated_at,
+          notes,
+          source,
+          user_id,
+          categories!transactions_category_id_fkey(category_name)
+        `)
         .order('date', { ascending: false });
 
       if (error) {
@@ -69,10 +82,12 @@ const TransactionsTable = () => {
 
       // Process the returned data into our Transaction interface
       const typedTransactions = data.map(item => {
+        // Access category_name through the explicitly named relationship
+        const categoryName = item.categories ? item.categories.category_name : 'Uncategorized';
+        
         return {
           ...item,
-          // Extract category_name safely from the returned structure
-          category_name: item.categories ? item.categories.category_name : 'Uncategorized'
+          category_name: categoryName
         } as Transaction;
       });
       
