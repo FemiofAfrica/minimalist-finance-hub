@@ -46,23 +46,11 @@ const TransactionsTable = () => {
   const fetchTransactions = async () => {
     try {
       console.log("Fetching transactions...");
-      // Fetch all transactions with their categories, using explicit foreign key reference
+      
+      // Using a simpler query approach to avoid relationship conflicts
       const { data, error } = await supabase
         .from('transactions')
-        .select(`
-          transaction_id,
-          description,
-          amount,
-          category_type,
-          category_id,
-          date,
-          created_at,
-          updated_at,
-          notes,
-          source,
-          user_id,
-          categories!transactions_category_id_fkey (category_name)
-        `)
+        .select('*, categories:category_id(category_name)')
         .order('date', { ascending: false });
 
       if (error) {
@@ -79,11 +67,11 @@ const TransactionsTable = () => {
         return;
       }
 
-      // Cast the data and extract category names
+      // Process the returned data into our Transaction interface
       const typedTransactions = data.map(item => {
         return {
           ...item,
-          // Extract category_name from the joined categories table with specific relationship
+          // Extract category_name safely from the returned structure
           category_name: item.categories ? item.categories.category_name : 'Uncategorized'
         } as Transaction;
       });
