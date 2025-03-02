@@ -47,78 +47,68 @@ const TransactionsTable = () => {
     try {
       console.log("Fetching transactions...");
       
-      // Using a simpler query approach to avoid relationship conflicts
-      const { data, error } = await supabase
+      // Step 1: Fetch all transactions
+      const { data: transactionsData, error: transactionsError } = await supabase
         .from('transactions')
-        .select(`
-          transaction_id,
-          description,
-          amount,
-          category_type,
-          category_id,
-          date,
-          created_at,
-          updated_at,
-          notes,
-          source,
-          user_id
-        `)
+        .select('*')
         .order('date', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching transactions:', error);
-        throw error;
+      if (transactionsError) {
+        console.error('Error fetching transactions:', transactionsError);
+        throw transactionsError;
       }
 
-      console.log("Transactions data from Supabase:", data);
+      console.log("Transactions data from Supabase:", transactionsData);
 
-      if (!data || data.length === 0) {
+      if (!transactionsData || transactionsData.length === 0) {
         console.log("No transactions found in database");
         setTransactions([]);
         setLoading(false);
         return;
       }
 
-      // Get categories separately to avoid foreign key relationship issues
-      const categoriesMap = new Map();
-      if (data.length > 0) {
-        const categoryIds = data
-          .map(item => item.category_id)
-          .filter(id => id !== null && id !== undefined);
-          
-        if (categoryIds.length > 0) {
-          const { data: categoriesData, error: categoriesError } = await supabase
-            .from('categories')
-            .select('category_id, category_name')
-            .in('category_id', categoryIds);
-            
-          if (!categoriesError && categoriesData) {
-            categoriesData.forEach(cat => {
-              categoriesMap.set(cat.category_id, cat.category_name);
-            });
-          }
+      // Step 2: Extract all category IDs and fetch categories in a separate query
+      const categoryIds = transactionsData
+        .map(transaction => transaction.category_id)
+        .filter(id => id !== null && id !== undefined);
+      
+      let categoriesMap = new Map();
+      
+      if (categoryIds.length > 0) {
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from('categories')
+          .select('*')
+          .in('category_id', categoryIds);
+        
+        if (categoriesError) {
+          console.error('Error fetching categories:', categoriesError);
+        } else if (categoriesData) {
+          // Create a map of category_id to category object for faster lookups
+          categoriesData.forEach(category => {
+            categoriesMap.set(category.category_id, category);
+          });
         }
       }
 
-      // Process the returned data into our Transaction interface
-      const typedTransactions = data.map(item => {
-        const categoryName = item.category_id ? categoriesMap.get(item.category_id) || 'Uncategorized' : 'Uncategorized';
+      // Step 3: Combine transaction data with category data
+      const enrichedTransactions = transactionsData.map(transaction => {
+        const category = transaction.category_id ? categoriesMap.get(transaction.category_id) : null;
         
         return {
-          ...item,
-          category_name: categoryName
+          ...transaction,
+          category_name: category ? category.category_name : 'Uncategorized'
         } as Transaction;
       });
       
-      console.log("Processed transactions:", typedTransactions);
-      setTransactions(typedTransactions);
+      console.log("Processed transactions:", enrichedTransactions);
+      setTransactions(enrichedTransactions);
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to fetch transactions",
         variant: "destructive",
       });
-      console.error('Error fetching transactions:', error);
+      console.error('Error in fetchTransactions:', error);
     } finally {
       setLoading(false);
     }
