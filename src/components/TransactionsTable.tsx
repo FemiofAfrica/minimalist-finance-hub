@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import {
@@ -51,9 +50,7 @@ const TransactionsTable = () => {
         .from('transactions')
         .select(`
           *,
-          categories:category_id (
-            category_name
-          )
+          categories:category_id (category_name)
         `)
         .order('date', { ascending: false });
 
