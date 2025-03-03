@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -198,11 +197,17 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       // If category doesn't exist, create it
       if (!existingCategory) {
         console.log('Creating new category:', parsedData.category_name);
+        
+        // Make sure category_type is exactly "INCOME" or "EXPENSE"
+        const validCategoryType = parsedData.category_type === "INCOME" || 
+                                 parsedData.category_type === "EXPENSE" ? 
+                                 parsedData.category_type : "EXPENSE";
+        
         const { data: newCategory, error: insertCategoryError } = await supabase
           .from('categories')
           .insert([{
             category_name: parsedData.category_name,
-            category_type: parsedData.category_type
+            category_type: validCategoryType
           }])
           .select();
 
