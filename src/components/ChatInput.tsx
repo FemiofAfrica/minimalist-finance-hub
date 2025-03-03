@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -55,25 +56,70 @@ const parseTransaction = (text: string): ParsedTransaction => {
     .map(word => word.trim())
     .filter(word => word.length > 2);
   
-  // Try to find description
-  if (text.toLowerCase().includes('on')) {
-    const parts = text.toLowerCase().split('on ');
+  // Improved description extraction with special handling for "as a" pattern
+  const lowerText = text.toLowerCase();
+  
+  if (lowerText.includes('as a gift') || lowerText.includes('as gift')) {
+    description = "Gift";
+  } else if (lowerText.includes('gift')) {
+    description = "Gift";
+  } else if (lowerText.includes('on')) {
+    const parts = lowerText.split('on ');
     if (parts.length > 1) {
-      description = parts[1].split(' ')[0];
-      description = description.replace(/[.,!?]$/, '');
-      description = description.charAt(0).toUpperCase() + description.slice(1);
+      // Skip prepositions and articles when extracting description
+      const skipWords = ['a', 'an', 'the', 'as', 'for', 'on', 'to', 'at', 'in', 'my', 'your', 'their'];
+      const words = parts[1].split(' ');
+      
+      for (const word of words) {
+        const cleanWord = word.replace(/[.,!?]$/, '').trim();
+        if (cleanWord.length > 1 && !skipWords.includes(cleanWord)) {
+          description = cleanWord.charAt(0).toUpperCase() + cleanWord.slice(1);
+          break;
+        }
+      }
     }
   } else if (amountMatch && amountMatch.index !== undefined) {
     // If "on" pattern isn't found, try to extract description from words after amount
     const afterAmount = text.substring(amountMatch.index + amountMatch[0].length).trim();
-    const firstWordMatch = afterAmount.match(/^(on|for)?\s*(\w+)/i);
-    if (firstWordMatch && firstWordMatch[2]) {
-      description = firstWordMatch[2];
-      description = description.charAt(0).toUpperCase() + description.slice(1);
+    
+    // Handle cases like "received X as Y" or "spent X on Y"
+    if (afterAmount.toLowerCase().includes(' as ')) {
+      const parts = afterAmount.toLowerCase().split(' as ');
+      if (parts.length > 1) {
+        const potentialDescription = parts[1].split(' ')[0].replace(/[.,!?]$/, '');
+        if (potentialDescription.length > 1 && potentialDescription !== 'a') {
+          description = potentialDescription.charAt(0).toUpperCase() + potentialDescription.slice(1);
+        } else if (parts[1].includes('gift')) {
+          description = "Gift";
+        }
+      }
+    } else {
+      // Skip prepositions and articles when extracting the first meaningful word
+      const skipWords = ['a', 'an', 'the', 'as', 'for', 'on', 'to', 'at', 'in', 'my', 'your', 'their'];
+      const words = afterAmount.split(' ');
+      
+      for (const word of words) {
+        const cleanWord = word.replace(/[.,!?]$/, '').trim();
+        if (cleanWord.length > 1 && !skipWords.includes(cleanWord.toLowerCase())) {
+          description = cleanWord.charAt(0).toUpperCase() + cleanWord.slice(1);
+          break;
+        }
+      }
     }
   }
   
-  // Infer category based on keywords in text
+  // Special case handling for common transaction types
+  if (lowerText.includes('salary') || lowerText.includes('wage') || lowerText.includes('pay')) {
+    description = "Salary";
+  } else if (lowerText.includes('food') || lowerText.includes('lunch') || 
+            lowerText.includes('dinner') || lowerText.includes('breakfast')) {
+    description = "Food";
+  } else if (lowerText.includes('transport') || lowerText.includes('uber') || 
+            lowerText.includes('taxi') || lowerText.includes('fare')) {
+    description = "Transport";
+  }
+  
+  // Infer category based on keywords in text and the determined description
   if (isExpense) {
     // Look for expense categories in the text
     for (const category of EXPENSE_CATEGORIES) {
