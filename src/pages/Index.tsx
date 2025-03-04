@@ -1,11 +1,11 @@
-
-import { LayoutDashboard, Wallet, ArrowUpRight, ArrowDownRight, Activity, PieChart, CreditCard, Users, LogOut } from "lucide-react";
+import { LayoutDashboard, Wallet, ArrowUpRight, ArrowDownRight, Activity, CreditCard, Users, LogOut } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { SidebarProvider } from "@/components/ui/sidebar";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import { Card } from "@/components/ui/card";
 import TransactionsTable from "@/components/TransactionsTable";
 import RevenueChart from "@/components/RevenueChart";
+import ExpensesPieChart from "@/components/ExpensesPieChart";
 import ChatInput from "@/components/ChatInput";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -51,7 +51,6 @@ const Index = () => {
   useEffect(() => {
     fetchTransactionTotals();
     
-    // Set up event listener for the refresh event
     const handleRefresh = () => {
       fetchTransactionTotals();
     };
@@ -81,15 +80,12 @@ const Index = () => {
   };
 
   const handleTransactionAdded = () => {
-    // Force a refresh of transaction data
     fetchTransactionTotals();
     
-    // Manually dispatch a refresh event to update the transactions table
     const refreshEvent = new Event('refresh');
     document.dispatchEvent(refreshEvent);
   };
 
-  // Format currency
   const formatNaira = (amount: number) => {
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
@@ -213,7 +209,7 @@ const Index = () => {
                   <h3 className="text-lg font-semibold">Expenses by Category</h3>
                 </div>
                 <div className="h-[300px] flex items-center justify-center">
-                  <PieChart className="w-32 h-32 text-slate-300 dark:text-slate-700" />
+                  <ExpensesPieChart />
                 </div>
               </Card>
             </div>
