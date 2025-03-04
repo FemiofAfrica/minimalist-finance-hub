@@ -27,7 +27,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
     amount: transaction.amount,
     category_name: transaction.category_name || 'Uncategorized',
     category_type: transaction.category_type || 'EXPENSE',
-    date: transaction.date.split('T')[0], // Convert the date string to YYYY-MM-DD format
+    date: transaction.date.split('T')[0], // Convert to YYYY-MM-DD format
   });
   const { toast } = useToast();
 
@@ -53,21 +53,20 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
     try {
       setIsSubmitting(true);
       
-      // First, check if we need to update the category
+      // First, handle the category
       let categoryId = null;
       
-      // Find the category ID based on name and type
-      const category = categories.find(
+      // Find if category exists
+      const existingCategory = categories.find(
         c => c.category_name === editedTransaction.category_name && 
              c.category_type === editedTransaction.category_type
       );
       
-      // If category exists, use its ID
-      if (category) {
-        categoryId = category.category_id;
+      if (existingCategory) {
+        categoryId = existingCategory.category_id;
       } else {
-        // If category doesn't exist, create a new one
-        const { data, error } = await supabase
+        // Create new category if it doesn't exist
+        const { data: newCategory, error: categoryError } = await supabase
           .from('categories')
           .insert({
             category_name: editedTransaction.category_name,
@@ -76,31 +75,31 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
           .select('category_id')
           .single();
         
-        if (error) {
-          throw error;
+        if (categoryError) {
+          throw categoryError;
         }
         
-        categoryId = data.category_id;
+        categoryId = newCategory.category_id;
       }
       
       // Format the date for PostgreSQL timestamp
       const formattedDate = new Date(editedTransaction.date).toISOString();
       
-      // Update the transaction in Supabase
-      const { error } = await supabase
+      // Update the transaction
+      const { error: transactionError } = await supabase
         .from('transactions')
         .update({
           description: editedTransaction.description,
           amount: parseFloat(String(editedTransaction.amount)),
-          date: formattedDate, // Send as ISO string for PostgreSQL timestamp
+          date: formattedDate,
           category_id: categoryId,
           category_name: editedTransaction.category_name,
           category_type: editedTransaction.category_type
         })
         .eq('transaction_id', transaction.transaction_id);
 
-      if (error) {
-        throw error;
+      if (transactionError) {
+        throw transactionError;
       }
 
       toast({
@@ -262,18 +261,28 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
               <Label htmlFor="category_name" className="text-right">
                 Category
               </Label>
-              <Input
-                id="category_name"
+              <Select
                 value={editedTransaction.category_name}
-                onChange={(e) => 
+                onValueChange={(value) =>
                   setEditedTransaction({
                     ...editedTransaction,
-                    category_name: e.target.value,
+                    category_name: value,
                   })
                 }
-                className="col-span-3"
-                placeholder="Enter category name"
-              />
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select or enter category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories
+                    .filter(cat => cat.category_type === editedTransaction.category_type)
+                    .map(category => (
+                      <SelectItem key={category.category_id} value={category.category_name}>
+                        {category.category_name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="date" className="text-right">
