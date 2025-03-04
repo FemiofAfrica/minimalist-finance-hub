@@ -9,6 +9,7 @@ const TransactionTableHeader = () => {
         <TableHead>Category</TableHead>
         <TableHead>Date</TableHead>
         <TableHead className="text-right">Amount</TableHead>
+        <TableHead className="text-right">Actions</TableHead>
       </TableRow>
     </TableHeader>
   );

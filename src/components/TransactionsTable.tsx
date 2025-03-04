@@ -48,6 +48,10 @@ const TransactionsTable = () => {
     };
   }, []);
 
+  const handleTransactionUpdate = () => {
+    loadTransactions();
+  };
+
   if (loading) {
     return <TransactionLoading />;
   }
@@ -61,7 +65,11 @@ const TransactionsTable = () => {
       <TransactionTableHeader />
       <TableBody>
         {transactions.map((transaction) => (
-          <TransactionRow key={transaction.transaction_id} transaction={transaction} />
+          <TransactionRow 
+            key={transaction.transaction_id} 
+            transaction={transaction} 
+            onTransactionUpdate={handleTransactionUpdate}
+          />
         ))}
       </TableBody>
     </Table>
