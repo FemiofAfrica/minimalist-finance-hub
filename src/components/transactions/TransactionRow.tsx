@@ -24,7 +24,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
     description: transaction.description,
     amount: transaction.amount,
     category_name: transaction.category_name || 'Uncategorized',
-    date: new Date(transaction.date).toISOString().split('T')[0],
+    date: transaction.date.split('T')[0], // Convert the date string to YYYY-MM-DD format
   });
   const { toast } = useToast();
 
@@ -38,7 +38,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
         .update({
           description: editedTransaction.description,
           amount: parseFloat(String(editedTransaction.amount)),
-          date: new Date(editedTransaction.date),
+          date: new Date(editedTransaction.date), // Convert string back to Date for database
         })
         .eq('transaction_id', transaction.transaction_id);
 
