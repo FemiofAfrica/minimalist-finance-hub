@@ -1,109 +1,75 @@
 
 import { useEffect, useState } from "react";
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
-
-interface Transaction {
-  transaction_id: string;
-  description: string;
-  amount: number;
-  type: string;
-  category_id: string | null;
-  date: string;
-}
+import { Table, TableBody } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
+import { Transaction } from "@/types/transaction";
+import TransactionRow from "@/components/transactions/TransactionRow";
+import TransactionTableHeader from "@/components/transactions/TransactionTableHeader";
+import TransactionEmptyState from "@/components/transactions/TransactionEmptyState";
+import TransactionLoading from "@/components/transactions/TransactionLoading";
+import { fetchTransactions } from "@/services/transactionService";
 
 const TransactionsTable = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
-
-  const fetchTransactions = async () => {
+  const loadTransactions = async () => {
     try {
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .order('date', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
-      setTransactions(data || []);
+      console.log("Fetching transactions...");
+      const data = await fetchTransactions();
+      setTransactions(data);
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to fetch transactions",
         variant: "destructive",
       });
-      console.error('Error fetching transactions:', error);
+      console.error('Error in fetchTransactions:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    loadTransactions();
+    
+    // Set up event listener for the custom refresh event
+    const handleRefresh = () => {
+      console.log("Refresh event triggered in TransactionsTable");
+      loadTransactions();
+    };
+
+    document.addEventListener('refresh', handleRefresh);
+    
+    // Clean up the event listener when component unmounts
+    return () => {
+      document.removeEventListener('refresh', handleRefresh);
+    };
+  }, []);
+
+  const handleTransactionUpdate = () => {
+    loadTransactions();
+  };
+
   if (loading) {
-    return <div className="text-center py-4">Loading transactions...</div>;
+    return <TransactionLoading />;
   }
 
   if (transactions.length === 0) {
-    return (
-      <div className="text-center py-4 text-gray-500">
-        No transactions found. Add your first transaction to get started!
-      </div>
-    );
+    return <TransactionEmptyState />;
   }
 
   return (
     <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Transaction</TableHead>
-          <TableHead>Category</TableHead>
-          <TableHead>Date</TableHead>
-          <TableHead className="text-right">Amount</TableHead>
-        </TableRow>
-      </TableHeader>
+      <TransactionTableHeader />
       <TableBody>
         {transactions.map((transaction) => (
-          <TableRow key={transaction.transaction_id} className="group">
-            <TableCell className="font-medium">
-              <div className="flex items-center space-x-2">
-                {transaction.type === "expense" ? (
-                  <ArrowDownRight className="w-4 h-4 text-red-500" />
-                ) : (
-                  <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-                )}
-                <span>{transaction.description}</span>
-              </div>
-            </TableCell>
-            <TableCell>{transaction.category_id || 'Uncategorized'}</TableCell>
-            <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
-            <TableCell className="text-right">
-              <span
-                className={
-                  transaction.type === "expense"
-                    ? "text-red-500"
-                    : "text-emerald-500"
-                }
-              >
-                {transaction.type === "expense" ? "-" : "+"}$
-                {Math.abs(transaction.amount).toFixed(2)}
-              </span>
-            </TableCell>
-          </TableRow>
+          <TransactionRow 
+            key={transaction.transaction_id} 
+            transaction={transaction} 
+            onTransactionUpdate={handleTransactionUpdate}
+          />
         ))}
       </TableBody>
     </Table>

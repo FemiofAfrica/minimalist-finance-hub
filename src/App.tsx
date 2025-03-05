@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { Toaster } from '@/components/ui/toaster';
 import Login from '@/pages/Login';
 import Index from '@/pages/Index';
+import Transactions from '@/pages/Transactions';
 import NotFound from '@/pages/NotFound';
 import './App.css';
 
@@ -32,6 +33,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Index />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/transactions"
+            element={
+              <PrivateRoute>
+                <Transactions />
               </PrivateRoute>
             }
           />
