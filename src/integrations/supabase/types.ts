@@ -57,18 +57,18 @@ export type Database = {
       categories: {
         Row: {
           category_id: string
-          name: string
-          type: string
+          category_name: string
+          category_type: string
         }
         Insert: {
           category_id?: string
-          name: string
-          type: string
+          category_name: string
+          category_type: string
         }
         Update: {
           category_id?: string
-          name?: string
-          type?: string
+          category_name?: string
+          category_type?: string
         }
         Relationships: []
       }
@@ -206,82 +206,49 @@ export type Database = {
           },
         ]
       }
-      Transaction: {
-        Row: {
-          amount: number | null
-          category: string | null
-          "created at": string | null
-          date: string | null
-          description: string | null
-          id: number
-          type: string | null
-          user_id: number | null
-        }
-        Insert: {
-          amount?: number | null
-          category?: string | null
-          "created at"?: string | null
-          date?: string | null
-          description?: string | null
-          id?: number
-          type?: string | null
-          user_id?: number | null
-        }
-        Update: {
-          amount?: number | null
-          category?: string | null
-          "created at"?: string | null
-          date?: string | null
-          description?: string | null
-          id?: number
-          type?: string | null
-          user_id?: number | null
-        }
-        Relationships: []
-      }
       transactions: {
         Row: {
           amount: number
           category_id: string | null
+          category_name: string | null
+          category_type: string | null
           created_at: string
           date: string
           description: string
-          notes: string | null
           source: string | null
           transaction_id: string
-          type: string
           updated_at: string
           user_id: string | null
         }
         Insert: {
           amount: number
           category_id?: string | null
+          category_name?: string | null
+          category_type?: string | null
           created_at?: string
           date: string
           description: string
-          notes?: string | null
           source?: string | null
           transaction_id?: string
-          type: string
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           amount?: number
           category_id?: string | null
+          category_name?: string | null
+          category_type?: string | null
           created_at?: string
           date?: string
           description?: string
-          notes?: string | null
           source?: string | null
           transaction_id?: string
-          type?: string
           updated_at?: string
           user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "transactions_category_id_fkey"
+            foreignKeyName: "transactions_category_fkey"
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
@@ -328,7 +295,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_transactions_with_categories: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          transaction_id: string
+          user_id: string
+          amount: number
+          date: string
+          description: string
+          notes: string
+          source: string
+          category_name: string
+          category_type: string
+        }[]
+      }
+      insert_transaction: {
+        Args: {
+          p_user_id: string
+          p_amount: number
+          p_date: string
+          p_description: string
+          p_category_name: string
+          p_category_type: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

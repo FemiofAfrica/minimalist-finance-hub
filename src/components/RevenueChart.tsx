@@ -1,17 +1,49 @@
 
+import { useEffect, useState } from "react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { fetchRevenueData, RevenueChartData, TimePeriod } from "@/services/revenueChartService";
 
-const data = [
-  { month: "Jan", revenue: 4000 },
-  { month: "Feb", revenue: 6000 },
-  { month: "Mar", revenue: 5500 },
-  { month: "Apr", revenue: 7800 },
-  { month: "May", revenue: 7000 },
-  { month: "Jun", revenue: 9000 },
-  { month: "Jul", revenue: 8500 },
-];
+interface RevenueChartProps {
+  period: TimePeriod;
+}
 
-const RevenueChart = () => {
+const RevenueChart = ({ period }: RevenueChartProps) => {
+  const [data, setData] = useState<RevenueChartData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadRevenueData = async () => {
+      setLoading(true);
+      try {
+        const chartData = await fetchRevenueData(period);
+        setData(chartData);
+      } catch (error) {
+        console.error("Failed to load revenue data:", error);
+        setData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRevenueData();
+  }, [period]);
+
+  if (loading) {
+    return (
+      <div className="h-[300px] flex items-center justify-center">
+        <p className="text-gray-500">Loading data...</p>
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="h-[300px] flex items-center justify-center">
+        <p className="text-gray-500">No revenue data available for this period</p>
+      </div>
+    );
+  }
+
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
