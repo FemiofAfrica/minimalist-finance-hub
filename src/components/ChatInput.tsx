@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { parseTransaction, ParsedTransaction } from "@/utils/transactionParser";
 
 interface ChatInputProps {
   onTransactionAdded?: () => void;
@@ -24,8 +23,16 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
     try {
       console.log('Sending text to parse:', input);
       
-      // Parse the transaction from the input text
-      const parsedData = parseTransaction(input);
+      // Call the Groq-powered edge function to parse the transaction
+      const { data: parsedData, error: parseError } = await supabase.functions.invoke('parse-transaction-groq', {
+        body: { text: input }
+      });
+      
+      if (parseError) {
+        console.error('Parse error:', parseError);
+        throw new Error('Failed to parse transaction: ' + parseError.message);
+      }
+      
       console.log('Parsed transaction data:', parsedData);
 
       // Validate the parsed data
