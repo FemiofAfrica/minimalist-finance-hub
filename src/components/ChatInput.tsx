@@ -36,8 +36,16 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       console.log('Parsed transaction data:', parsedData);
 
       // Validate the parsed data
-      if (!parsedData.description || !parsedData.amount) {
-        throw new Error('Could not extract transaction details from your message');
+      if (!parsedData.description || parsedData.amount === undefined || parsedData.amount === null) {
+        throw new Error('Could not extract transaction details from your message. Please try being more specific about the amount and type of transaction.');
+      }
+
+      // Ensure amount is a number
+      if (typeof parsedData.amount !== 'number') {
+        parsedData.amount = parseFloat(parsedData.amount);
+        if (isNaN(parsedData.amount)) {
+          throw new Error('Could not determine the transaction amount. Please specify a clear amount, like "5000 naira".');
+        }
       }
 
       console.log('Processing transaction with category:', parsedData.category_name);
@@ -86,6 +94,15 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
         console.log('Found existing category with ID:', categoryId);
       }
 
+      // Format the date correctly
+      let transactionDate = parsedData.date;
+      if (!transactionDate) {
+        transactionDate = new Date().toISOString();
+      } else if (!transactionDate.includes('T')) {
+        // Convert YYYY-MM-DD to ISO format
+        transactionDate = new Date(transactionDate).toISOString();
+      }
+
       // Insert the transaction with the category ID
       const { data, error: insertError } = await supabase
         .from('transactions')
@@ -94,7 +111,8 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
           amount: parsedData.amount,
           category_type: parsedData.category_type,
           category_id: categoryId,
-          date: parsedData.date
+          date: transactionDate,
+          category_name: parsedData.category_name // Store the category name directly as well
         }])
         .select();
 
@@ -106,7 +124,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       console.log('Transaction inserted successfully:', data);
 
       toast({
-        title: "Transaction added",
+        title: `${parsedData.category_type === "INCOME" ? "Income" : "Expense"} added`,
         description: `Your ${parsedData.category_type.toLowerCase()} transaction of ${parsedData.amount} NGN (${parsedData.category_name}) has been recorded.`,
       });
 

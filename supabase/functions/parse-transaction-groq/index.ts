@@ -40,12 +40,23 @@ serve(async (req) => {
     console.log(`Received transaction text: ${text}`)
 
     const prompt = `
-      Extract transaction details from the following text. Return ONLY a JSON object with the following fields:
-      - description: a brief description of the transaction
-      - amount: the amount as a NUMBER (not a string) in NGN (Nigerian Naira)
-      - category_name: the expense category (e.g., Food, Transport, Shopping, etc.)
-      - category_type: either "INCOME" or "EXPENSE"
-      - date: the transaction date in ISO format (YYYY-MM-DD). If no date is provided, use today's date.
+      Extract transaction details from the following text and determine if it's an income or expense. 
+      Return ONLY a JSON object with the following fields:
+      - description: a brief description of the transaction (capitalized properly, e.g., "Grocery Shopping" not "grocery shopping")
+      - amount: the amount as a NUMBER (not a string) in NGN (Nigerian Naira), without the currency symbol
+      - category_name: the expense or income category using common financial categories (e.g., Groceries, Salary, Transport, Entertainment, Food, Utilities, Housing, etc.)
+      - category_type: either "INCOME" or "EXPENSE" in uppercase. Determine this based on context:
+        * INCOME for: received, earned, got paid, salary, bonus, gift, refund, etc.
+        * EXPENSE for: spent, bought, paid, purchased, etc.
+      - date: the transaction date in ISO format (YYYY-MM-DD). 
+        * If "yesterday" is mentioned, use yesterday's date
+        * If "today" is mentioned, use today's date
+        * If "last week" or similar is mentioned, use an approximate date
+        * If no date is provided, use today's date
+      
+      For example:
+      "I got paid my salary of 250,000 naira yesterday" → {"description": "Salary Payment", "amount": 250000, "category_name": "Salary", "category_type": "INCOME", "date": "2023-06-14"}
+      "Spent 5000 on groceries last Saturday" → {"description": "Grocery Shopping", "amount": 5000, "category_name": "Groceries", "category_type": "EXPENSE", "date": "2023-06-10"}
 
       The text is: ${text}
     `
@@ -62,14 +73,14 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a financial assistant that extracts transaction details from text. Always return valid JSON.'
+            content: 'You are a financial assistant that extracts transaction details from text. Always return valid JSON with the exact fields requested. Be precise with categorization and formatting.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.2,
+        temperature: 0.1, // Lower temperature for more consistent results
       }),
     })
 
@@ -112,10 +123,22 @@ serve(async (req) => {
       }
 
       const parsedData = JSON.parse(cleanContent)
-      console.log('Parsed transaction data:', parsedData)
+      
+      // Additional validation and formatting
+      const validatedData = {
+        description: parsedData.description || "Unknown Transaction",
+        amount: typeof parsedData.amount === 'number' ? parsedData.amount : parseFloat(parsedData.amount) || 0,
+        category_name: parsedData.category_name || "Uncategorized",
+        category_type: ["INCOME", "EXPENSE"].includes(parsedData.category_type) 
+          ? parsedData.category_type 
+          : (parsedData.category_type?.toUpperCase() === "INCOME" ? "INCOME" : "EXPENSE"),
+        date: parsedData.date || new Date().toISOString().split('T')[0]
+      }
+      
+      console.log('Validated transaction data:', validatedData)
       
       return new Response(
-        JSON.stringify(parsedData),
+        JSON.stringify(validatedData),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
@@ -124,16 +147,61 @@ serve(async (req) => {
       console.error('Error parsing JSON from Groq response:', error)
       console.error('Raw content:', content)
       
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to parse JSON from Groq response',
-          rawContent: content
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      // Attempt to extract key information even if JSON parsing fails
+      try {
+        // Simple fallback parser
+        const fallbackData = {
+          description: "Unknown Transaction",
+          amount: 0,
+          category_name: "Uncategorized",
+          category_type: "EXPENSE",
+          date: new Date().toISOString().split('T')[0]
         }
-      )
+        
+        // Try to extract amount if available
+        const amountMatch = content.match(/amount["\s:]+(\d+)/i)
+        if (amountMatch) {
+          fallbackData.amount = parseFloat(amountMatch[1])
+        }
+        
+        // Try to extract description if available
+        const descMatch = content.match(/description["\s:]+["']([^"']+)["']/i)
+        if (descMatch) {
+          fallbackData.description = descMatch[1]
+        }
+        
+        // Try to extract category if available
+        const catMatch = content.match(/category_name["\s:]+["']([^"']+)["']/i)
+        if (catMatch) {
+          fallbackData.category_name = catMatch[1]
+        }
+        
+        // Try to extract type if available
+        const typeMatch = content.match(/category_type["\s:]+["']([^"']+)["']/i)
+        if (typeMatch && typeMatch[1].toUpperCase() === "INCOME") {
+          fallbackData.category_type = "INCOME"
+        }
+        
+        console.log('Fallback parsing result:', fallbackData)
+        
+        return new Response(
+          JSON.stringify(fallbackData),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      } catch (fallbackError) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to parse JSON from Groq response',
+            rawContent: content
+          }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
     }
   } catch (error) {
     console.error('Error processing request:', error)
