@@ -64,14 +64,22 @@ const Index = () => {
 
   return (
     <DashboardLayout>
-      <DashboardHeader userEmail={user?.email} />
-      <StatCardsSection 
-        totalBalance={totalBalance} 
-        totalIncome={totalIncome} 
-        totalExpense={totalExpense} 
-      />
-      <TransactionsSection onTransactionAdded={handleTransactionAdded} />
-      <ChartsSection />
+      <div className="flex flex-col gap-8 pb-8">
+        <DashboardHeader userEmail={user?.email} />
+        <StatCardsSection 
+          totalBalance={totalBalance} 
+          totalIncome={totalIncome} 
+          totalExpense={totalExpense} 
+        />
+        <div className="flex flex-col gap-8">
+          <div className="w-full">
+            <TransactionsSection onTransactionAdded={handleTransactionAdded} />
+          </div>
+          <div className="w-full min-h-[500px]">
+            <ChartsSection />
+          </div>
+        </div>
+      </div>
     </DashboardLayout>
   );
 };

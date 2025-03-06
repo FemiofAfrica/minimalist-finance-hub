@@ -159,6 +159,11 @@ const Transactions = () => {
           </Card>
         </div>
         
+        <div className="mb-8">
+          <h2 className="text-xl font-bold mb-4">All Transactions</h2>
+          <TransactionsTable />
+        </div>
+        
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -204,11 +209,6 @@ const Transactions = () => {
             )}
           </CardContent>
         </Card>
-        
-        <div>
-          <h2 className="text-xl font-bold mb-4">All Transactions</h2>
-          <TransactionsTable />
-        </div>
       </div>
     </div>
   );

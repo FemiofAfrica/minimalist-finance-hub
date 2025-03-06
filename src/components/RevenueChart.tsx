@@ -59,7 +59,7 @@ const RevenueChart = ({ period }: RevenueChartProps) => {
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value) => `$${value}`}
+          tickFormatter={(value) => `₦${value}`}
         />
         <Tooltip
           content={({ active, payload }) => {
@@ -72,7 +72,7 @@ const RevenueChart = ({ period }: RevenueChartProps) => {
                         Revenue
                       </span>
                       <span className="font-bold text-muted-foreground">
-                        ${payload[0].value}
+                        ₦{payload[0].value}
                       </span>
                     </div>
                   </div>

@@ -77,7 +77,7 @@ export default function DashboardSidebar() {
             <Menu className="h-6 w-6" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-72 p-0">
+        <SheetContent side="left" className="w-60 p-0">
           <ScrollArea className="h-full">
             {sidebarContent}
           </ScrollArea>
@@ -88,7 +88,7 @@ export default function DashboardSidebar() {
 
   return (
     <div className="hidden border-r bg-background lg:block">
-      <div className="w-72">
+      <div className="w-60">
         <ScrollArea className="h-screen">
           {sidebarContent}
         </ScrollArea>

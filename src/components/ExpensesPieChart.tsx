@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
+import { useCurrency, formatCurrency } from '@/contexts/CurrencyContext';
 
 type ExpenseCategory = {
   name: string;
@@ -10,11 +11,11 @@ type ExpenseCategory = {
   color: string;
 };
 
-// Color palette for the pie chart
+// Color palette for the pie chart - more harmonious colors
 const COLORS = [
-  '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A259FF', 
-  '#FB6962', '#6DB5FE', '#1E88E5', '#13C2C2', '#8F44AD',
-  '#FF6B6B', '#1ABC9C', '#3498DB', '#9B59B6', '#E74C3C'
+  '#3498DB', '#2ECC71', '#F1C40F', '#E74C3C', '#9B59B6', 
+  '#1ABC9C', '#F39C12', '#D35400', '#8E44AD', '#2980B9',
+  '#27AE60', '#E67E22', '#C0392B', '#16A085', '#7D3C98'
 ];
 
 const ExpensesPieChart = () => {
@@ -81,12 +82,7 @@ const ExpensesPieChart = () => {
     };
   }, []);
 
-  const formatNaira = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-    }).format(amount);
-  };
+  const { currentCurrency } = useCurrency();
 
   if (loading) {
     return (
@@ -106,23 +102,25 @@ const ExpensesPieChart = () => {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
+      <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
         <Pie
           data={expensesByCategory}
-          cx="50%"
+          cx={window.innerWidth < 768 ? "50%" : "40%"}
           cy="50%"
           labelLine={false}
-          label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-          outerRadius={80}
+          label={false}
+          outerRadius={window.innerWidth < 768 ? 70 : 80}
+          innerRadius={window.innerWidth < 768 ? 25 : 30}
           fill="#8884d8"
           dataKey="value"
+          paddingAngle={2}
         >
           {expensesByCategory.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={entry.color} />
           ))}
         </Pie>
         <Tooltip 
-          formatter={(value: number) => formatNaira(value)}
+          formatter={(value: number) => formatCurrency(value, currentCurrency)}
           contentStyle={{ 
             backgroundColor: 'rgba(255, 255, 255, 0.95)', 
             borderRadius: '8px',
@@ -131,13 +129,22 @@ const ExpensesPieChart = () => {
           }}
         />
         <Legend 
-          layout="vertical" 
-          verticalAlign="middle" 
-          align="right"
+          layout={window.innerWidth < 768 ? "horizontal" : "vertical"}
+          verticalAlign={window.innerWidth < 768 ? "bottom" : "middle"}
+          align={window.innerWidth < 768 ? "center" : "right"}
+          wrapperStyle={{
+            paddingLeft: window.innerWidth < 768 ? "0" : "30px",
+            fontSize: "12px",
+            right: 0,
+            width: window.innerWidth < 768 ? "100%" : "40%",
+            paddingTop: window.innerWidth < 768 ? "20px" : "0"
+          }}
           formatter={(value, entry, index) => {
             const { payload } = entry as any;
-            return `${value}: ${formatNaira(payload?.value || 0)}`;
+            return `${value}: ${formatCurrency(payload?.value || 0, currentCurrency)}`;
           }}
+          iconType="circle"
+          iconSize={8}
         />
       </PieChart>
     </ResponsiveContainer>
@@ -145,3 +152,4 @@ const ExpensesPieChart = () => {
 };
 
 export default ExpensesPieChart;
+
