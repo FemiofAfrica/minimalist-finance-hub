@@ -141,7 +141,12 @@ const ExpensesPieChart = () => {
           }}
           formatter={(value, entry, index) => {
             const { payload } = entry as any;
-            return `${value}: ${formatCurrency(payload?.value || 0, currentCurrency)}`;
+            // Calculate total expenses for percentage calculation
+            const totalExpenses = expensesByCategory.reduce((sum, category) => sum + category.value, 0);
+            // Calculate percentage for this category
+            const percentage = totalExpenses > 0 ? (payload?.value / totalExpenses) * 100 : 0;
+            // Format to 1 decimal place
+            return `${value}: ${percentage.toFixed(1)}%`;
           }}
           iconType="circle"
           iconSize={8}

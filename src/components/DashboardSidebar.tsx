@@ -21,47 +21,46 @@ export default function DashboardSidebar() {
 
   const sidebarContent = (
     <>
-      <div className="flex h-14 items-center border-b px-4">
+      <div className="flex h-14 items-center px-4">
         <Link to="/" className="flex items-center text-lg font-bold">
           FinTrack <ArrowRight className="ml-2 h-4 w-4" />
         </Link>
       </div>
-      <div className="px-4 py-2">
-        <AddTransactionDialog />
-      </div>
-      <div className="p-4 pt-0">
-        <Separator className="my-2" />
-        <nav className="grid gap-1">
+      <div className="space-y-4 py-2">
+        <div className="px-4">
+          <AddTransactionDialog />
+        </div>
+        <nav className="space-y-1 px-2">
           <Link to="/">
             <Button
               variant={location.pathname === "/" ? "secondary" : "ghost"}
-              className="w-full justify-start"
+              className="w-full justify-start gap-3 px-4"
             >
-              <Home className="mr-2 h-4 w-4" />
+              <Home className="h-4 w-4" />
               Dashboard
             </Button>
           </Link>
           <Link to="/transactions">
             <Button
               variant={location.pathname === "/transactions" ? "secondary" : "ghost"}
-              className="w-full justify-start"
+              className="w-full justify-start gap-3 px-4"
             >
-              <CreditCard className="mr-2 h-4 w-4" />
+              <CreditCard className="h-4 w-4" />
               Transactions
             </Button>
           </Link>
-          <Button variant="ghost" className="w-full justify-start gap-1">
-            <PieChart className="mr-2 h-4 w-4" />
+          <Button variant="ghost" className="w-full justify-start gap-3 px-4">
+            <PieChart className="h-4 w-4" />
             Reports
             <ChevronDown className="ml-auto h-4 w-4" />
           </Button>
-          <Separator className="my-2" />
+          <Separator className="my-4" />
           <Button 
             variant="ghost" 
-            className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
+            className="w-full justify-start gap-3 px-4 text-red-500 hover:text-red-600 hover:bg-red-50"
             onClick={handleLogout}
           >
-            <LogOut className="mr-2 h-4 w-4" />
+            <LogOut className="h-4 w-4" />
             Logout
           </Button>
         </nav>

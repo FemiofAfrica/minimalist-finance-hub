@@ -167,21 +167,21 @@ export const parseTransaction = (text: string): ParsedTransaction => {
   }
   
   // Parse date from text
-  let date = new Date();
+  const now = new Date();
+  now.setHours(0, 0, 0, 0); // Set to start of day
+  let date = new Date(now);
   
   if (lowerText.includes('yesterday')) {
-    date = new Date();
-    date.setDate(date.getDate() - 1);
+    date = new Date(now.getTime() - 86400000); // Subtract one day in milliseconds
     console.log("Setting date to yesterday:", date.toISOString());
   } else if (lowerText.includes('today')) {
-    date = new Date();
+    // date is already set to today at start of day
     console.log("Setting date to today:", date.toISOString());
   } else if (lowerText.includes('last week')) {
-    date = new Date();
-    date.setDate(date.getDate() - 7);
+    date = new Date(now.getTime() - 7 * 86400000); // Subtract seven days
     console.log("Setting date to last week:", date.toISOString());
   } else if (lowerText.includes('last month')) {
-    date = new Date();
+    date = new Date(now);
     date.setMonth(date.getMonth() - 1);
     console.log("Setting date to last month:", date.toISOString());
   }

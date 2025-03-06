@@ -2,9 +2,8 @@
 import { Activity, CreditCard, Calendar, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import StatCard from "./StatCard";
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrency, useCurrency } from "@/contexts/CurrencyContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useCurrency } from "@/contexts/CurrencyContext";
 
 interface StatCardsSectionProps {
   totalBalance: number;

@@ -2,7 +2,7 @@
 import { ArrowDownRight, ArrowUpRight, Pencil, Trash2 } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Transaction } from "@/types/transaction";
-import { formatNaira } from "@/utils/formatters";
+import { formatNaira, formatDate } from "@/utils/formatters";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -170,7 +170,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
           </div>
         </TableCell>
         <TableCell className="whitespace-nowrap py-3 text-left pl-4">{transaction.category_name || 'Uncategorized'}</TableCell>
-        <TableCell className="whitespace-nowrap py-3">{new Date(transaction.date).toLocaleDateString()}</TableCell>
+        <TableCell className="whitespace-nowrap py-3">{formatDate(transaction.date)}</TableCell>
         <TableCell className="whitespace-nowrap py-3">
           <span
             className={

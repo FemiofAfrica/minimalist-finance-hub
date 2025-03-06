@@ -1,9 +1,10 @@
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'application/json'
 }
 
 // Handle CORS preflight requests
@@ -12,19 +13,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
-  // Get the GROQ_API_KEY from environment variables
-  const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY')
-  if (!GROQ_API_KEY) {
-    return new Response(
-      JSON.stringify({ error: 'GROQ_API_KEY is not configured' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    )
-  }
-
   try {
+    // Get the GROQ_API_KEY from environment variables
+    const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY')
+    
     const { text } = await req.json()
     
     if (!text) {
@@ -32,12 +24,65 @@ serve(async (req) => {
         JSON.stringify({ error: 'No text provided' }),
         { 
           status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...corsHeaders }
         }
       )
     }
 
     console.log(`Received transaction text: ${text}`)
+    
+    // If GROQ_API_KEY is missing, use the local parser instead
+    if (!GROQ_API_KEY) {
+      console.log('GROQ_API_KEY not found, using fallback parser')
+      
+      // Simple fallback parser
+      const fallbackData = {
+        description: "Unknown Transaction",
+        amount: 0,
+        category_name: "Uncategorized",
+        category_type: "EXPENSE",
+        date: new Date().toISOString()
+      }
+      
+      // Extract amount if available
+      const amountMatch = text.match(/[₦$]?\s*(\d+([,.]\d+)?)/)
+      if (amountMatch) {
+        fallbackData.amount = parseFloat(amountMatch[1].replace(',', ''))
+      }
+      
+      // Determine if it's income or expense
+      const lowerText = text.toLowerCase()
+      if (lowerText.includes('earned') || lowerText.includes('received') || 
+          lowerText.includes('income') || lowerText.includes('salary')) {
+        fallbackData.category_type = "INCOME"
+      }
+      
+      // Extract description
+      if (lowerText.includes('on')) {
+        const parts = lowerText.split('on ')
+        if (parts.length > 1) {
+          const firstWord = parts[1].split(' ')[0]
+          fallbackData.description = firstWord.charAt(0).toUpperCase() + firstWord.slice(1)
+          fallbackData.description = fallbackData.description.replace(/[.,!?]$/, '')
+        }
+      }
+      
+      // Handle date
+      if (lowerText.includes('yesterday')) {
+        const yesterday = new Date()
+        yesterday.setDate(yesterday.getDate() - 1)
+        fallbackData.date = yesterday.toISOString()
+      } else if (lowerText.includes('last week')) {
+        const lastWeek = new Date()
+        lastWeek.setDate(lastWeek.getDate() - 7)
+        fallbackData.date = lastWeek.toISOString()
+      }
+      
+      return new Response(
+        JSON.stringify(fallbackData),
+        { headers: corsHeaders }
+      )
+    }
 
     const prompt = `
       Extract transaction details from the following text and determine if it's an income or expense. 
@@ -49,14 +94,16 @@ serve(async (req) => {
         * INCOME for: received, earned, got paid, salary, bonus, gift, refund, etc.
         * EXPENSE for: spent, bought, paid, purchased, etc.
       - date: the transaction date in ISO format (YYYY-MM-DD). 
-        * If "yesterday" is mentioned, use yesterday's date
-        * If "today" is mentioned, use today's date
-        * If "last week" or similar is mentioned, use an approximate date
-        * If no date is provided, use today's date
+        * If "yesterday" is mentioned, subtract exactly 24 hours from the current date
+        * If "today" is mentioned, use the current date
+        * If "last week" or similar is mentioned, subtract 7 days from the current date
+        * If no date is provided, use the current date
+      
+      Important: Always calculate dates dynamically relative to the current date. Do not use hardcoded dates.
       
       For example:
-      "I got paid my salary of 250,000 naira yesterday" → {"description": "Salary Payment", "amount": 250000, "category_name": "Salary", "category_type": "INCOME", "date": "2023-06-14"}
-      "Spent 5000 on groceries last Saturday" → {"description": "Grocery Shopping", "amount": 5000, "category_name": "Groceries", "category_type": "EXPENSE", "date": "2023-06-10"}
+      "I got paid my salary of 250,000 naira yesterday" → {"description": "Salary Payment", "amount": 250000, "category_name": "Salary", "category_type": "INCOME", "date": "YYYY-MM-DD"} (where the date is yesterday's date)
+      "Spent 5000 on groceries last week" → {"description": "Grocery Shopping", "amount": 5000, "category_name": "Groceries", "category_type": "EXPENSE", "date": "YYYY-MM-DD"} (where the date is 7 days ago)
 
       The text is: ${text}
     `
@@ -91,7 +138,7 @@ serve(async (req) => {
         JSON.stringify({ error: 'Error calling Groq API', details: errorData }),
         { 
           status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...corsHeaders }
         }
       )
     }
@@ -107,7 +154,7 @@ serve(async (req) => {
         JSON.stringify({ error: 'No content in Groq response' }),
         { 
           status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...corsHeaders }
         }
       )
     }
@@ -125,6 +172,22 @@ serve(async (req) => {
       const parsedData = JSON.parse(cleanContent)
       
       // Additional validation and formatting
+      const now = new Date()
+      now.setHours(0, 0, 0, 0) // Set to start of day
+      
+      // Handle date calculation
+      let transactionDate = now
+      if (text.toLowerCase().includes('yesterday')) {
+        transactionDate = new Date(now.getTime() - 86400000)
+      } else if (text.toLowerCase().includes('last week')) {
+        transactionDate = new Date(now.getTime() - 7 * 86400000)
+      } else if (text.toLowerCase().includes('last month')) {
+        transactionDate = new Date(now)
+        transactionDate.setMonth(transactionDate.getMonth() - 1)
+      } else if (parsedData.date) {
+        transactionDate = new Date(parsedData.date)
+      }
+      
       const validatedData = {
         description: parsedData.description || "Unknown Transaction",
         amount: typeof parsedData.amount === 'number' ? parsedData.amount : parseFloat(parsedData.amount) || 0,
@@ -132,16 +195,14 @@ serve(async (req) => {
         category_type: ["INCOME", "EXPENSE"].includes(parsedData.category_type) 
           ? parsedData.category_type 
           : (parsedData.category_type?.toUpperCase() === "INCOME" ? "INCOME" : "EXPENSE"),
-        date: parsedData.date || new Date().toISOString().split('T')[0]
+        date: transactionDate.toISOString()
       }
       
       console.log('Validated transaction data:', validatedData)
       
       return new Response(
         JSON.stringify(validatedData),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
+        { headers: corsHeaders }
       )
     } catch (error) {
       console.error('Error parsing JSON from Groq response:', error)
@@ -155,11 +216,11 @@ serve(async (req) => {
           amount: 0,
           category_name: "Uncategorized",
           category_type: "EXPENSE",
-          date: new Date().toISOString().split('T')[0]
+          date: new Date().toISOString()
         }
         
         // Try to extract amount if available
-        const amountMatch = content.match(/amount["\s:]+(\d+)/i)
+        const amountMatch = content.match(/amount["\s:]+([\d.]+)/i)
         if (amountMatch) {
           fallbackData.amount = parseFloat(amountMatch[1])
         }
@@ -186,9 +247,7 @@ serve(async (req) => {
         
         return new Response(
           JSON.stringify(fallbackData),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
+          { headers: corsHeaders }
         )
       } catch (fallbackError) {
         return new Response(
@@ -198,7 +257,7 @@ serve(async (req) => {
           }),
           { 
             status: 500, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            headers: { ...corsHeaders }
           }
         )
       }
@@ -210,7 +269,7 @@ serve(async (req) => {
       JSON.stringify({ error: 'Internal server error', details: error.message }),
       { 
         status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders }
       }
     )
   }
