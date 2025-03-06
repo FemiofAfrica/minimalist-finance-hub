@@ -1,18 +1,18 @@
 
-import type { Currency } from "@/contexts/CurrencyContext";
-
-// Format number to the user's selected currency
-export const formatCurrency = (amount: number, currency: Currency) => {
-  return new Intl.NumberFormat('en', {
-    style: 'currency',
-    currency: currency.code,
-  }).format(amount);
-};
-
-// Legacy formatter for backward compatibility
+// Format number to Nigerian Naira
 export const formatNaira = (amount: number) => {
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',
     currency: 'NGN',
   }).format(amount);
+};
+
+// Format date to DD/MM/YYYY
+export const formatDate = (date: string | Date) => {
+  const d = new Date(date);
+  return d.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
 };
