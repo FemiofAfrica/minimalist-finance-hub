@@ -20,9 +20,9 @@ const ChartsSection = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
-      <Card className="lg:col-span-4 p-6">
-        <div className="flex items-center justify-between mb-6">
+    <div className="grid grid-cols-1 gap-6 lg:h-[600px]">
+      <Card className="p-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
           <h3 className="text-lg font-semibold">Revenue Overview</h3>
           <Select value={period} onValueChange={handlePeriodChange}>
             <SelectTrigger className="w-[180px]">
@@ -35,14 +35,16 @@ const ChartsSection = () => {
             </SelectContent>
           </Select>
         </div>
-        <RevenueChart period={period} />
+        <div className="h-[300px] w-full">
+          <RevenueChart period={period} />
+        </div>
       </Card>
 
-      <Card className="lg:col-span-2 p-6">
+      <Card className="p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold">Expenses by Category</h3>
         </div>
-        <div className="h-[300px] flex items-center justify-center">
+        <div className="h-[300px] w-full flex items-center justify-center">
           <ExpensesPieChart />
         </div>
       </Card>

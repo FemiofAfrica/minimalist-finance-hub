@@ -1,6 +1,7 @@
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import { Toaster } from '@/components/ui/toaster';
 import Login from '@/pages/Login';
 import Index from '@/pages/Index';
@@ -25,8 +26,9 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
+      <CurrencyProvider>
+        <Router>
+          <Routes>
           <Route path="/login" element={<Login />} />
           <Route
             path="/"
@@ -45,9 +47,10 @@ function App() {
             }
           />
           <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Router>
-      <Toaster />
+          </Routes>
+        </Router>
+        <Toaster />
+      </CurrencyProvider>
     </AuthProvider>
   );
 }

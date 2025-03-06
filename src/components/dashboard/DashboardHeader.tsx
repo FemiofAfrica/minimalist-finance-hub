@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
+import { CurrencySelector } from "@/components/CurrencySelector";
 
 interface DashboardHeaderProps {
   userEmail?: string | null;
@@ -37,6 +38,7 @@ const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50 text-left">Dashboard</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 text-left">Welcome back, {userEmail}</p>
       </div>
+      <CurrencySelector />
       <Button variant="outline" onClick={handleSignOut}>
         <LogOut className="h-4 w-4 mr-2" />
         Sign Out

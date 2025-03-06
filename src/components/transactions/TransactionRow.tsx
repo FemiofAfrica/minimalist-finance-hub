@@ -156,38 +156,40 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
 
   return (
     <>
-      <TableRow key={transaction.transaction_id}>
-        <TableCell className="font-medium">
-          <div className="flex items-center space-x-2">
-            {transaction.category_type === "EXPENSE" ? (
-              <ArrowDownRight className="w-4 h-4 text-red-500" />
-            ) : (
-              <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-            )}
-            <span>{transaction.description}</span>
+      <TableRow key={transaction.transaction_id} className="border-b border-muted hover:bg-muted/20 transition-colors">
+        <TableCell className="font-medium py-3">
+          <div className="flex items-center space-x-3">
+            <div className={`flex items-center justify-center w-6 h-6 rounded-full ${transaction.category_type === "EXPENSE" ? "bg-red-100" : "bg-emerald-100"} shrink-0`}>
+              {transaction.category_type === "EXPENSE" ? (
+                <ArrowDownRight className="w-4 h-4 text-red-500" />
+              ) : (
+                <ArrowUpRight className="w-4 h-4 text-emerald-500" />
+              )}
+            </div>
+            <span className="truncate">{transaction.description}</span>
           </div>
         </TableCell>
-        <TableCell>{transaction.category_name || 'Uncategorized'}</TableCell>
-        <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
-        <TableCell className="text-right">
+        <TableCell className="whitespace-nowrap py-3 text-left pl-4">{transaction.category_name || 'Uncategorized'}</TableCell>
+        <TableCell className="whitespace-nowrap py-3">{new Date(transaction.date).toLocaleDateString()}</TableCell>
+        <TableCell className="whitespace-nowrap py-3">
           <span
             className={
               transaction.category_type === "EXPENSE"
-                ? "text-red-500"
-                : "text-emerald-500"
+                ? "text-red-500 font-medium"
+                : "text-emerald-500 font-medium"
             }
           >
             {transaction.category_type === "EXPENSE" ? "-" : "+"}
             {formatNaira(transaction.amount)}
           </span>
         </TableCell>
-        <TableCell className="text-right">
-          <div className="flex justify-end space-x-2">
-            <Button variant="ghost" size="icon" onClick={() => setEditDialogOpen(true)}>
+        <TableCell className="py-3">
+          <div className="flex space-x-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditDialogOpen(true)}>
               <Pencil className="h-4 w-4" />
               <span className="sr-only">Edit</span>
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => setDeleteDialogOpen(true)}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteDialogOpen(true)}>
               <Trash2 className="h-4 w-4 text-red-500" />
               <span className="sr-only">Delete</span>
             </Button>
