@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchSubscriptions, deleteSubscription, convertSubscriptionToTransaction, createSubscription, updateSubscription } from '@/services/subscriptionService';
 import { Subscription, SubscriptionFrequency } from '@/types/subscription';
 import DashboardSidebar from '@/components/DashboardSidebar';
+import { formatNaira } from '@/utils/formatters';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,8 +16,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { CalendarIcon, PlusCircle, Trash2, Edit, CheckCircle, AlertCircle } from 'lucide-react';
+import { CalendarIcon, PlusCircle, Trash2, Edit, CheckCircle, AlertCircle, CreditCard, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { TransactionAutocomplete } from '@/components/ui/transaction-autocomplete';
 
 const SubscriptionsPage: React.FC = () => {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -25,11 +27,46 @@ const SubscriptionsPage: React.FC = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState<boolean>(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState<boolean>(false);
   const [isConfirmPaymentDialogOpen, setIsConfirmPaymentDialogOpen] = useState<boolean>(false);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState<boolean>(false);
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
   const [activeTab, setActiveTab] = useState<string>('all');
   const { toast } = useToast();
   const navigate = useNavigate();
   
+  // Function to adjust billing date to next cycle if it's in the past
+  const adjustBillingDateIfNeeded = (billingDate: string, frequency: string): string => {
+    const today = new Date();
+    const nextBillingDate = new Date(billingDate);
+    
+    // If the billing date is in the past, calculate the next appropriate billing date
+    if (nextBillingDate < today) {
+      // Calculate how many cycles we need to add to get to a future date
+      while (nextBillingDate < today) {
+        switch (frequency) {
+          case 'MONTHLY':
+            nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+            break;
+          case 'QUARTERLY':
+            nextBillingDate.setMonth(nextBillingDate.getMonth() + 3);
+            break;
+          case 'ANNUALLY':
+            nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+            break;
+          case 'CUSTOM':
+            // For custom frequency, default to monthly
+            nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+            break;
+          default:
+            nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+        }
+      }
+      return nextBillingDate.toISOString().split('T')[0];
+    }
+    
+    // If the date is already in the future, return it as is
+    return billingDate;
+  };
+
   // Function to handle saving a new subscription
   const handleSaveSubscription = async () => {
     try {
@@ -52,19 +89,35 @@ const SubscriptionsPage: React.FC = () => {
         return;
       }
       
-      // Create the subscription
+      // Adjust the next billing date if it's in the past
+      const adjustedBillingDate = adjustBillingDateIfNeeded(
+        formData.next_billing_date,
+        formData.frequency
+      );
+      
+      // Create the subscription with adjusted billing date
       const newSubscription = await createSubscription({
         name: formData.name,
         description: formData.description,
         amount: formData.amount,
         frequency: formData.frequency as SubscriptionFrequency,
-        next_billing_date: formData.next_billing_date,
+        next_billing_date: adjustedBillingDate,
         category_name: formData.category_name,
         category_type: formData.category_type,
         is_active: formData.is_active,
         auto_renew: formData.auto_renew,
         reminder_days: formData.reminder_days,
         provider_id: formData.provider_id
+      });
+      
+      // Add the new subscription to the state
+      setSubscriptions([...subscriptions, newSubscription]);
+      
+      // Close the dialog and show success message
+      setIsAddDialogOpen(false);
+      toast({
+        title: "Success",
+        description: "Subscription added successfully",
       });
       
       // Add the new subscription to the state
@@ -110,14 +163,20 @@ const SubscriptionsPage: React.FC = () => {
         return;
       }
       
-      // Update the subscription
+      // Adjust the next billing date if it's in the past
+      const adjustedBillingDate = adjustBillingDateIfNeeded(
+        formData.next_billing_date,
+        formData.frequency
+      );
+      
+      // Update the subscription with adjusted billing date
       const updatedSubscription = await updateSubscription({
         subscription_id: selectedSubscription.subscription_id,
         name: formData.name,
         description: formData.description,
         amount: formData.amount,
         frequency: formData.frequency as SubscriptionFrequency,
-        next_billing_date: formData.next_billing_date,
+        next_billing_date: adjustedBillingDate,
         category_name: formData.category_name,
         category_type: formData.category_type,
         is_active: formData.is_active,
@@ -238,6 +297,43 @@ const SubscriptionsPage: React.FC = () => {
     setIsConfirmPaymentDialogOpen(true);
   };
 
+  const handleCancelSubscription = (subscription: Subscription) => {
+    setSelectedSubscription(subscription);
+    setIsCancelDialogOpen(true);
+  };
+
+  const confirmCancelSubscription = async () => {
+    if (!selectedSubscription) return;
+    
+    try {
+      setError(null); // Clear any previous errors
+      
+      const updatedSubscription = await updateSubscription({
+        subscription_id: selectedSubscription.subscription_id,
+        is_active: false
+      });
+      
+      // Update the subscription in the state
+      setSubscriptions(subscriptions.map(sub => 
+        sub.subscription_id === updatedSubscription.subscription_id ? updatedSubscription : sub
+      ));
+      
+      setIsCancelDialogOpen(false);
+      toast({
+        title: 'Subscription cancelled',
+        description: 'The subscription has been successfully cancelled.',
+      });
+    } catch (err) {
+      console.error('Error cancelling subscription:', err);
+      setError('Failed to cancel subscription. Please try again.'); // Set error state
+      toast({
+        title: 'Error',
+        description: 'Failed to cancel subscription.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const processPaymentConfirmation = async () => {
     if (!selectedSubscription) return;
     
@@ -355,6 +451,43 @@ const SubscriptionsPage: React.FC = () => {
     }
   };
 
+  // Get icon background and text color based on subscription name
+  const getSubscriptionIconColors = (name: string) => {
+    const lowerName = name.toLowerCase();
+    
+    if (lowerName.includes('netflix')) {
+      return {
+        bgClass: 'bg-red-100 dark:bg-red-900/20',
+        textClass: 'text-red-600 dark:text-red-400'
+      };
+    } else if (lowerName.includes('spotify')) {
+      return {
+        bgClass: 'bg-green-100 dark:bg-green-900/20',
+        textClass: 'text-green-600 dark:text-green-400'
+      };
+    } else if (lowerName.includes('youtube') || lowerName.includes('google')) {
+      return {
+        bgClass: 'bg-blue-100 dark:bg-blue-900/20',
+        textClass: 'text-blue-600 dark:text-blue-400'
+      };
+    } else if (lowerName.includes('apple')) {
+      return {
+        bgClass: 'bg-gray-100 dark:bg-gray-900/20',
+        textClass: 'text-gray-600 dark:text-gray-400'
+      };
+    } else if (lowerName.includes('amazon') || lowerName.includes('prime')) {
+      return {
+        bgClass: 'bg-amber-100 dark:bg-amber-900/20',
+        textClass: 'text-amber-600 dark:text-amber-400'
+      };
+    } else {
+      return {
+        bgClass: 'bg-violet-100 dark:bg-violet-900/20',
+        textClass: 'text-violet-600 dark:text-violet-400'
+      };
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen">
@@ -392,7 +525,7 @@ const SubscriptionsPage: React.FC = () => {
               <CardTitle className="text-sm font-medium">Total Monthly Cost</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${calculateMonthlyTotal().toFixed(2)}</div>
+              <div className="text-2xl font-bold">{formatNaira(calculateMonthlyTotal())}</div>
             </CardContent>
           </Card>
           
@@ -439,56 +572,102 @@ const SubscriptionsPage: React.FC = () => {
           Object.entries(subscriptionsByCategory).map(([category, subs]) => (
             <div key={category} className="mb-8">
               <h2 className="text-xl font-semibold mb-4">{category}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {subs.map(subscription => (
-                  <Card key={subscription.subscription_id} className={`overflow-hidden ${!subscription.is_active ? 'opacity-60' : ''}`}>
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <CardTitle>{subscription.name}</CardTitle>
-                        <div className="flex space-x-1">
-                          <Button variant="ghost" size="icon" onClick={() => handleEditSubscription(subscription)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteSubscription(subscription.subscription_id)}>
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </div>
-                      <CardDescription>{subscription.description}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-medium">${subscription.amount.toFixed(2)}</span>
-                        <Badge className={getFrequencyColor(subscription.frequency)}>
-                          {subscription.frequency.charAt(0) + subscription.frequency.slice(1).toLowerCase()}
-                        </Badge>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <span className="text-sm text-gray-500">Next payment:</span>
-                          <div className="flex items-center">
-                            <span className="text-sm font-medium">{formatDate(subscription.next_billing_date)}</span>
-                            {isDueSoon(subscription.next_billing_date) && (
-                              <Badge variant="outline" className="ml-2 bg-amber-50 text-amber-800 border-amber-200">
-                                Due soon
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {subs.map(subscription => {
+                  const { bgClass, textClass } = getSubscriptionIconColors(subscription.name);
+                  return (
+                    <Card 
+                      key={subscription.subscription_id} 
+                      className={`p-6 hover:shadow-lg transition-shadow duration-200 w-full ${!subscription.is_active ? 'opacity-60' : ''}`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          {/* Header with name and badges */}
+                          <div className="flex justify-between items-center mb-3">
+                            <p className="text-sm font-medium text-muted-foreground/80 truncate">{subscription.name}</p>
+                            <div className="flex gap-2 flex-shrink-0">
+                              {!subscription.is_active && (
+                                <Badge variant="outline" className="bg-red-50 text-red-800 border-red-200">
+                                  Cancelled
+                                </Badge>
+                              )}
+                              <Badge className={getFrequencyColor(subscription.frequency)}>
+                                {subscription.frequency.charAt(0) + subscription.frequency.slice(1).toLowerCase()}
                               </Badge>
+                            </div>
+                          </div>
+                          
+                          {/* Amount - centered */}
+                          <div className="text-center mb-3">
+                            <h3 className="text-2xl font-bold tracking-tight">
+                              {formatNaira(subscription.amount)}
+                            </h3>
+                          </div>
+                          
+                          {/* Payment date - consistent layout */}
+                          <div className="flex flex-col items-center mb-3">
+                            <div className="flex items-center justify-center w-full">
+                              <span className="text-sm text-muted-foreground">Next payment:</span>
+                              <span className="text-sm font-medium ml-1">{formatDate(subscription.next_billing_date)}</span>
+                              {isDueSoon(subscription.next_billing_date) && (
+                                <Badge variant="outline" className="ml-2 bg-amber-50 text-amber-800 border-amber-200 text-xs">
+                                  Due soon
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Description */}
+                          {subscription.description && (
+                            <p className="text-sm text-muted-foreground truncate text-center mb-3">{subscription.description}</p>
+                          )}
+                          
+                          {/* Action buttons */}
+                          <div className="flex justify-center space-x-2">
+                            {subscription.is_active && (
+                              <>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => handleConfirmPayment(subscription)}
+                                  className="text-xs"
+                                >
+                                  <CheckCircle className="mr-1 h-3 w-3" /> Confirm Payment
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => handleCancelSubscription(subscription)}
+                                  className="text-xs text-red-500 border-red-200 hover:bg-red-50"
+                                >
+                                  <XCircle className="mr-1 h-3 w-3" /> Cancel
+                                </Button>
+                              </>
+                            )}
+                            {!subscription.is_active && (
+                              <span className="text-xs text-muted-foreground italic">Subscription cancelled</span>
                             )}
                           </div>
                         </div>
-                        {subscription.is_active && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => handleConfirmPayment(subscription)}
-                            className="text-xs"
-                          >
-                            <CheckCircle className="mr-1 h-3 w-3" /> Confirm Payment
-                          </Button>
-                        )}
+                        
+                        {/* Icon and edit/delete buttons */}
+                        <div className="flex flex-col items-end space-y-2">
+                          <div className={`${bgClass} p-3 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm`}>
+                            <CreditCard className={`w-6 h-6 ${textClass}`} />
+                          </div>
+                          <div className="flex space-x-1">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditSubscription(subscription)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteSubscription(subscription.subscription_id)}>
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           ))
@@ -512,14 +691,29 @@ const SubscriptionsPage: React.FC = () => {
                 <Label htmlFor="name" className="text-right">
                   Name
                 </Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                  placeholder="Netflix, Spotify, etc."
-                />
+                <div className="col-span-3">
+                  <TransactionAutocomplete
+                    value={formData.name}
+                    onChange={(value) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        name: value
+                      }));
+                    }}
+                    onSelect={(transaction) => {
+                      // Auto-fill other fields based on the selected transaction
+                      setFormData(prev => ({
+                        ...prev,
+                        name: transaction.description,
+                        amount: transaction.amount,
+                        next_billing_date: transaction.date, // Use the transaction date instead of today's date
+                        category_name: transaction.category_name || 'Subscriptions',
+                        category_type: transaction.category_type || 'EXPENSE'
+                      }));
+                    }}
+                    placeholder="Netflix, Spotify, etc."
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="description" className="text-right">
@@ -687,14 +881,29 @@ const SubscriptionsPage: React.FC = () => {
                 {/* Same form fields as Add Dialog */}
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="name" className="text-right">Name</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                    placeholder="Netflix, Spotify, etc."
-                  />
+                  <div className="col-span-3">
+                    <TransactionAutocomplete
+                      value={formData.name}
+                      onChange={(value) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          name: value
+                        }));
+                      }}
+                      onSelect={(transaction) => {
+                        // Auto-fill other fields based on the selected transaction
+                        setFormData(prev => ({
+                          ...prev,
+                          name: transaction.description,
+                          amount: transaction.amount,
+                          next_billing_date: transaction.date, // Use the transaction date instead of today's date
+                          category_name: transaction.category_name || 'Subscriptions',
+                          category_type: transaction.category_type || 'EXPENSE'
+                        }));
+                      }}
+                      placeholder="Netflix, Spotify, etc."
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="description" className="text-right">Description</Label>
@@ -851,7 +1060,7 @@ const SubscriptionsPage: React.FC = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="font-medium">Amount:</span>
-                    <span>${selectedSubscription.amount.toFixed(2)}</span>
+                    <span>{formatNaira(selectedSubscription.amount)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-medium">Due Date:</span>
@@ -863,6 +1072,52 @@ const SubscriptionsPage: React.FC = () => {
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsConfirmPaymentDialogOpen(false)}>Cancel</Button>
               <Button onClick={processPaymentConfirmation}>Confirm Payment</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Cancel Subscription Dialog */}
+        <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Cancel Subscription</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to cancel this subscription?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              {selectedSubscription && (
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span className="font-medium">Subscription:</span>
+                    <span>{selectedSubscription.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Amount:</span>
+                    <span>{formatNaira(selectedSubscription.amount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Frequency:</span>
+                    <span>{selectedSubscription.frequency.charAt(0) + selectedSubscription.frequency.slice(1).toLowerCase()}</span>
+                  </div>
+                </div>
+              )}
+              {error && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <div className="flex items-center text-red-700">
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    <p className="text-sm">{error}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)}>
+                Keep Subscription
+              </Button>
+              <Button variant="destructive" onClick={confirmCancelSubscription}>
+                Cancel Subscription
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
