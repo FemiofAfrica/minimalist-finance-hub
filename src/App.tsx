@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/toaster';
 import Login from '@/pages/Login';
 import Index from '@/pages/Index';
 import Transactions from '@/pages/Transactions';
+import Subscriptions from '@/pages/Subscriptions';
 import NotFound from '@/pages/NotFound';
 import './App.css';
 
@@ -43,6 +44,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Transactions />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/subscriptions"
+            element={
+              <PrivateRoute>
+                <Subscriptions />
               </PrivateRoute>
             }
           />
