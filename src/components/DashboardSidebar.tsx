@@ -49,20 +49,21 @@ export default function DashboardSidebar() {
               Transactions
             </Button>
           </Link>
+          <Link to="/subscriptions">
+            <Button
+              variant={location.pathname === "/subscriptions" ? "secondary" : "ghost"}
+              className="w-full justify-start gap-3 px-4"
+            >
+              <PieChart className="h-4 w-4" />
+              Subscriptions
+            </Button>
+          </Link>
           <Button variant="ghost" className="w-full justify-start gap-3 px-4">
             <PieChart className="h-4 w-4" />
             Reports
             <ChevronDown className="ml-auto h-4 w-4" />
           </Button>
           <Separator className="my-4" />
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start gap-3 px-4 text-red-500 hover:text-red-600 hover:bg-red-50"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-4 w-4" />
-            Logout
-          </Button>
         </nav>
       </div>
     </>

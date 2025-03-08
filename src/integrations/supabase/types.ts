@@ -290,6 +290,136 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          subscription_id: string
+          name: string
+          description: string | null
+          amount: number
+          frequency: string
+          next_billing_date: string
+          category_id: string | null
+          category_name: string | null
+          category_type: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+          user_id: string | null
+          auto_renew: boolean
+          reminder_days: number
+          provider_id: string | null
+        }
+        Insert: {
+          subscription_id?: string
+          name: string
+          description?: string | null
+          amount: number
+          frequency: string
+          next_billing_date: string
+          category_id?: string | null
+          category_name?: string | null
+          category_type?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id?: string | null
+          auto_renew?: boolean
+          reminder_days?: number
+          provider_id?: string | null
+        }
+        Update: {
+          subscription_id?: string
+          name?: string
+          description?: string | null
+          amount?: number
+          frequency?: string
+          next_billing_date?: string
+          category_id?: string | null
+          category_name?: string | null
+          category_type?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id?: string | null
+          auto_renew?: boolean
+          reminder_days?: number
+          provider_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["category_id"]
+          },
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "subscriptions_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_providers"
+            referencedColumns: ["provider_id"]
+          }
+        ]
+      }
+      subscription_providers: {
+        Row: {
+          provider_id: string
+          name: string
+          category_id: string | null
+          category_name: string | null
+          logo_url: string | null
+          website: string | null
+          is_popular: boolean
+          created_at: string
+          created_by_user_id: string | null
+        }
+        Insert: {
+          provider_id?: string
+          name: string
+          category_id?: string | null
+          category_name?: string | null
+          logo_url?: string | null
+          website?: string | null
+          is_popular?: boolean
+          created_at?: string
+          created_by_user_id?: string | null
+        }
+        Update: {
+          provider_id?: string
+          name?: string
+          category_id?: string | null
+          category_name?: string | null
+          logo_url?: string | null
+          website?: string | null
+          is_popular?: boolean
+          created_at?: string
+          created_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_providers_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["category_id"]
+          },
+          {
+            foreignKeyName: "subscription_providers_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

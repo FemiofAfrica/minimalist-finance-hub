@@ -1,0 +1,24 @@
+{
+
+  "compilerOptions": {
+
+    "lib": [
+      "deno.ns",
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable"
+    ],
+    "types": [
+      "deno"
+    ],
+    "allowJs": true,
+    "strict": true
+  },
+  "imports": {
+    "std/": "https://deno.land/std@0.201.0/"
+  },
+  "tasks": {
+
+    "test": "deno test --allow-env --allow-net"
+  }
+}

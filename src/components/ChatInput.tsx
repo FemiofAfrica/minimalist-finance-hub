@@ -159,6 +159,12 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
         placeholder="Describe your transaction... (e.g., 'Spent ₦5000 on groceries yesterday')"
         disabled={isProcessing}
         className="flex-1"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit(e);
+          }
+        }}
       />
       <Button type="submit" size="icon" disabled={isProcessing}>
         <Send className="h-4 w-4" />
