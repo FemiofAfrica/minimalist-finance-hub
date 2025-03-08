@@ -139,9 +139,19 @@ export const updateSubscription = async (subscription: Partial<Subscription> & {
   try {
     console.log("Updating subscription:", subscription);
     
+    // Only send necessary fields to update
+    const updateData = {
+      is_active: subscription.is_active,
+      amount: subscription.amount,
+      frequency: subscription.frequency,
+      next_billing_date: subscription.next_billing_date,
+      description: subscription.description,
+      name: subscription.name
+    };
+    
     const { data, error } = await supabase
       .from('subscriptions')
-      .update(subscription)
+      .update(updateData)
       .eq('subscription_id', subscription.subscription_id)
       .select()
       .single();
