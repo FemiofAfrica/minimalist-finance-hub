@@ -1,12 +1,29 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AccountsList from "@/components/accounts/AccountsList";
 import CardsList from "@/components/cards/CardsList";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const AccountsAndCards = () => {
   const [activeTab, setActiveTab] = useState("accounts");
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to view accounts and cards",
+        variant: "destructive",
+      });
+      navigate("/login");
+    }
+  }, [user, navigate, toast]);
 
   return (
     <DashboardLayout>

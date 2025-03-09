@@ -1,14 +1,16 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
 import { Card } from "@/types/card";
 
 export const fetchCards = async (): Promise<Card[]> => {
   try {
     console.log("Fetching cards...");
+    const userId = await getCurrentUserId();
     
     const { data, error } = await supabase
       .from('cards')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -25,9 +27,18 @@ export const fetchCards = async (): Promise<Card[]> => {
 
 export const createCard = async (card: Omit<Card, 'card_id'>): Promise<Card> => {
   try {
+    const userId = await getCurrentUserId();
+    
+    const cardWithUserId = {
+      ...card,
+      user_id: userId
+    };
+    
+    console.log("Creating card with user_id:", cardWithUserId);
+    
     const { data, error } = await supabase
       .from('cards')
-      .insert(card)
+      .insert(cardWithUserId)
       .select()
       .single();
 
@@ -103,10 +114,13 @@ export const getCardById = async (cardId: string): Promise<Card | null> => {
 
 export const getCardsByAccount = async (accountId: string): Promise<Card[]> => {
   try {
+    const userId = await getCurrentUserId();
+    
     const { data, error } = await supabase
       .from('cards')
       .select('*')
       .eq('account_id', accountId)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) {
