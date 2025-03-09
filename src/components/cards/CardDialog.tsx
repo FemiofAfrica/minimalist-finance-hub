@@ -267,7 +267,7 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
               Linked Account
             </Label>
             <Select 
-              value={formData.account_id || ''} 
+              value={formData.account_id || ''}
               onValueChange={(value) => handleChange('account_id', value || undefined)}
               disabled={!!accountId}
             >
@@ -275,7 +275,7 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
                 <SelectValue placeholder="Select linked account (optional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {accounts.map(account => (
                   <SelectItem key={account.account_id} value={account.account_id}>
                     {account.account_name}
