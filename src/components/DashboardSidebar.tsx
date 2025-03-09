@@ -1,98 +1,140 @@
 
-import { Home, ChevronDown, PieChart, LogOut, Menu, ArrowRight, CreditCard } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { 
+  LayoutDashboard, 
+  LineChart, 
+  CreditCard as CreditCardIcon, 
+  Settings, 
+  LogOut, 
+  BookOpenText,
+  Wallet
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useNavigate, Link, useLocation } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useIsMobile } from "@/hooks/use-mobile";
-import AddTransactionDialog from "@/components/AddTransactionDialog";
+import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useAuth } from "@/contexts/AuthContext";
+import { useMobile } from "@/hooks/use-mobile";
 
-export default function DashboardSidebar() {
-  const navigate = useNavigate();
-  const isMobile = useIsMobile();
+const links = [
+  { 
+    href: "/", 
+    label: "Dashboard", 
+    icon: <LayoutDashboard className="mr-2 h-4 w-4" />
+  },
+  { 
+    href: "/transactions", 
+    label: "Transactions", 
+    icon: <LineChart className="mr-2 h-4 w-4" />
+  },
+  { 
+    href: "/subscriptions", 
+    label: "Subscriptions", 
+    icon: <CreditCardIcon className="mr-2 h-4 w-4" />
+  },
+  { 
+    href: "/accounts", 
+    label: "Accounts & Cards", 
+    icon: <Wallet className="mr-2 h-4 w-4" />
+  },
+  { 
+    href: "/reports", 
+    label: "Reports", 
+    icon: <BookOpenText className="mr-2 h-4 w-4" />
+  },
+  { 
+    href: "/settings", 
+    label: "Settings", 
+    icon: <Settings className="mr-2 h-4 w-4" />
+  }
+];
+
+export function DashboardSidebar() {
   const location = useLocation();
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/login");
-  };
-
-  const sidebarContent = (
-    <>
-      <div className="flex h-14 items-center px-4">
-        <Link to="/" className="flex items-center text-lg font-bold">
-          FinTrack <ArrowRight className="ml-2 h-4 w-4" />
-        </Link>
-      </div>
-      <div className="space-y-4 py-2">
-        <div className="px-4">
-          <AddTransactionDialog />
+  const { signOut } = useAuth();
+  const { isMobile } = useMobile();
+  
+  const navigation = (
+    <div className="flex h-full flex-col">
+      <div className="flex-1">
+        <div className="p-6">
+          <Link to="/" className="flex items-center gap-2">
+            <Wallet className="h-6 w-6" />
+            <span className="text-xl font-semibold">Finance Tracker</span>
+          </Link>
         </div>
-        <nav className="space-y-1 px-2">
-          <Link to="/">
-            <Button
-              variant={location.pathname === "/" ? "secondary" : "ghost"}
-              className="w-full justify-start gap-3 px-4"
-            >
-              <Home className="h-4 w-4" />
-              Dashboard
-            </Button>
-          </Link>
-          <Link to="/transactions">
-            <Button
-              variant={location.pathname === "/transactions" ? "secondary" : "ghost"}
-              className="w-full justify-start gap-3 px-4"
-            >
-              <CreditCard className="h-4 w-4" />
-              Transactions
-            </Button>
-          </Link>
-          <Link to="/subscriptions">
-            <Button
-              variant={location.pathname === "/subscriptions" ? "secondary" : "ghost"}
-              className="w-full justify-start gap-3 px-4"
-            >
-              <PieChart className="h-4 w-4" />
-              Subscriptions
-            </Button>
-          </Link>
-          <Button variant="ghost" className="w-full justify-start gap-3 px-4">
-            <PieChart className="h-4 w-4" />
-            Reports
-            <ChevronDown className="ml-auto h-4 w-4" />
-          </Button>
-          <Separator className="my-4" />
-        </nav>
+        <ScrollArea className="flex-1 px-3">
+          <nav className="flex flex-col gap-1">
+            {links.map((link) => (
+              <Button
+                key={link.href}
+                variant={location.pathname === link.href ? "secondary" : "ghost"}
+                className="justify-start"
+                asChild
+              >
+                <Link to={link.href}>
+                  {link.icon}
+                  {link.label}
+                </Link>
+              </Button>
+            ))}
+          </nav>
+        </ScrollArea>
       </div>
-    </>
+      <div className="border-t border-border p-3">
+        <Button className="w-full justify-start" variant="ghost" onClick={signOut} size="sm">
+          <LogOut className="mr-2 h-4 w-4" />
+          Logout
+        </Button>
+      </div>
+    </div>
   );
-
+  
   if (isMobile) {
     return (
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="absolute left-4 top-4 lg:hidden">
-            <Menu className="h-6 w-6" />
+          <Button size="sm" variant="outline">
+            Menu
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-60 p-0">
-          <ScrollArea className="h-full">
-            {sidebarContent}
+        <SheetContent side="left" className="p-0">
+          <SheetHeader className="p-6 text-left">
+            <SheetTitle>Finance Tracker</SheetTitle>
+          </SheetHeader>
+          <Separator />
+          <ScrollArea className="h-[calc(100vh-10rem)]">
+            <nav className="flex flex-col gap-1 p-4">
+              {links.map((link) => (
+                <Button
+                  key={link.href}
+                  variant={location.pathname === link.href ? "secondary" : "ghost"}
+                  className="justify-start"
+                  asChild
+                >
+                  <Link to={link.href}>
+                    {link.icon}
+                    {link.label}
+                  </Link>
+                </Button>
+              ))}
+            </nav>
           </ScrollArea>
+          <Separator />
+          <div className="p-4">
+            <Button className="w-full justify-start" variant="ghost" onClick={signOut} size="sm">
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </SheetContent>
       </Sheet>
     );
   }
-
+  
   return (
-    <div className="hidden border-r bg-background lg:block">
-      <div className="w-60">
-        <ScrollArea className="h-screen">
-          {sidebarContent}
-        </ScrollArea>
-      </div>
+    <div className="hidden border-r bg-background w-64 md:flex flex-col">
+      {navigation}
     </div>
   );
 }
