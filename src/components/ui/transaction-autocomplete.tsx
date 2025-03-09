@@ -1,11 +1,11 @@
+
 import React, { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import { searchTransactionsByDescription } from '@/services/searchService';
 import { Transaction } from '@/types/transaction';
 import { Input } from '@/components/ui/input';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
+import { formatNaira } from '@/utils/formatters';
 
 interface TransactionAutocompleteProps {
   onSelect: (transaction: Transaction) => void;
@@ -91,7 +91,7 @@ export function TransactionAutocomplete({
         onKeyDown={handleKeyDown}
         onFocus={() => setOpen(true)}
         placeholder={placeholder}
-        className={cn("w-full", className)}
+        className={className}
         autoComplete="off"
       />
       {loading && (
@@ -116,9 +116,21 @@ export function TransactionAutocomplete({
                     >
                       <div>
                         <p>{transaction.description}</p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(transaction.date).toLocaleDateString()} - {transaction.amount.toFixed(2)}
-                        </p>
+                        <div className="flex flex-col text-xs text-gray-500">
+                          <span>
+                            {new Date(transaction.date).toLocaleDateString()} - {formatNaira(transaction.amount)}
+                          </span>
+                          {transaction.account_id && (
+                            <span className="text-blue-500">
+                              Account: {transaction.account_id}
+                            </span>
+                          )}
+                          {transaction.card_id && (
+                            <span className="text-purple-500">
+                              Card: {transaction.card_id}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       {inputValue === transaction.description && (
                         <Check className="h-4 w-4 text-green-500" />

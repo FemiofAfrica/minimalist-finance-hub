@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchSubscriptions, deleteSubscription, convertSubscriptionToTransaction, createSubscription, updateSubscription } from '@/services/subscriptionService';
 import { Subscription, SubscriptionFrequency } from '@/types/subscription';
-import DashboardSidebar from '@/components/DashboardSidebar';
+import { DashboardSidebar } from '@/components/DashboardSidebar';
 import { formatNaira } from '@/utils/formatters';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,14 +33,11 @@ const SubscriptionsPage: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // Function to adjust billing date to next cycle if it's in the past
   const adjustBillingDateIfNeeded = (billingDate: string, frequency: string): string => {
     const today = new Date();
     const nextBillingDate = new Date(billingDate);
     
-    // If the billing date is in the past, calculate the next appropriate billing date
     if (nextBillingDate < today) {
-      // Calculate how many cycles we need to add to get to a future date
       while (nextBillingDate < today) {
         switch (frequency) {
           case 'MONTHLY':
@@ -53,7 +50,6 @@ const SubscriptionsPage: React.FC = () => {
             nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
             break;
           case 'CUSTOM':
-            // For custom frequency, default to monthly
             nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
             break;
           default:
@@ -63,14 +59,11 @@ const SubscriptionsPage: React.FC = () => {
       return nextBillingDate.toISOString().split('T')[0];
     }
     
-    // If the date is already in the future, return it as is
     return billingDate;
   };
 
-  // Function to handle saving a new subscription
   const handleSaveSubscription = async () => {
     try {
-      // Validate form data
       if (!formData.name) {
         toast({
           title: "Error",
@@ -89,13 +82,11 @@ const SubscriptionsPage: React.FC = () => {
         return;
       }
       
-      // Adjust the next billing date if it's in the past
       const adjustedBillingDate = adjustBillingDateIfNeeded(
         formData.next_billing_date,
         formData.frequency
       );
       
-      // Create the subscription with adjusted billing date
       const newSubscription = await createSubscription({
         name: formData.name,
         description: formData.description,
@@ -110,20 +101,8 @@ const SubscriptionsPage: React.FC = () => {
         provider_id: formData.provider_id
       });
       
-      // Add the new subscription to the state
       setSubscriptions([...subscriptions, newSubscription]);
       
-      // Close the dialog and show success message
-      setIsAddDialogOpen(false);
-      toast({
-        title: "Success",
-        description: "Subscription added successfully",
-      });
-      
-      // Add the new subscription to the state
-      setSubscriptions([...subscriptions, newSubscription]);
-      
-      // Close the dialog and show success message
       setIsAddDialogOpen(false);
       toast({
         title: "Success",
@@ -138,13 +117,11 @@ const SubscriptionsPage: React.FC = () => {
       });
     }
   };
-  
-  // Function to handle updating an existing subscription
+
   const handleUpdateSubscription = async () => {
     if (!selectedSubscription) return;
     
     try {
-      // Validate form data
       if (!formData.name) {
         toast({
           title: "Error",
@@ -163,13 +140,11 @@ const SubscriptionsPage: React.FC = () => {
         return;
       }
       
-      // Adjust the next billing date if it's in the past
       const adjustedBillingDate = adjustBillingDateIfNeeded(
         formData.next_billing_date,
         formData.frequency
       );
       
-      // Update the subscription with adjusted billing date
       const updatedSubscription = await updateSubscription({
         subscription_id: selectedSubscription.subscription_id,
         name: formData.name,
@@ -185,12 +160,10 @@ const SubscriptionsPage: React.FC = () => {
         provider_id: formData.provider_id
       });
       
-      // Update the subscription in the state
       setSubscriptions(subscriptions.map(sub => 
         sub.subscription_id === updatedSubscription.subscription_id ? updatedSubscription : sub
       ));
       
-      // Close the dialog and show success message
       setIsEditDialogOpen(false);
       toast({
         title: "Success",
@@ -206,7 +179,6 @@ const SubscriptionsPage: React.FC = () => {
     }
   };
 
-  // Form state for adding/editing subscriptions
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -306,14 +278,13 @@ const SubscriptionsPage: React.FC = () => {
     if (!selectedSubscription) return;
     
     try {
-      setError(null); // Clear any previous errors
+      setError(null);
       
       const updatedSubscription = await updateSubscription({
         subscription_id: selectedSubscription.subscription_id,
         is_active: false
       });
       
-      // Update the subscription in the state
       setSubscriptions(subscriptions.map(sub => 
         sub.subscription_id === updatedSubscription.subscription_id ? updatedSubscription : sub
       ));
@@ -325,7 +296,7 @@ const SubscriptionsPage: React.FC = () => {
       });
     } catch (err) {
       console.error('Error cancelling subscription:', err);
-      setError('Failed to cancel subscription. Please try again.'); // Set error state
+      setError('Failed to cancel subscription. Please try again.');
       toast({
         title: 'Error',
         description: 'Failed to cancel subscription.',
@@ -344,7 +315,7 @@ const SubscriptionsPage: React.FC = () => {
         description: 'The subscription payment has been recorded and the next billing date updated.',
       });
       setIsConfirmPaymentDialogOpen(false);
-      loadSubscriptions(); // Reload to get updated next_billing_date
+      loadSubscriptions();
     } catch (err) {
       toast({
         title: 'Error',
@@ -392,7 +363,6 @@ const SubscriptionsPage: React.FC = () => {
       ? subscriptions.filter(sub => sub.is_active) 
       : subscriptions.filter(sub => !sub.is_active);
 
-  // Group subscriptions by category
   const subscriptionsByCategory = filteredSubscriptions.reduce((acc, subscription) => {
     const category = subscription.category_name || 'Uncategorized';
     if (!acc[category]) {
@@ -402,14 +372,12 @@ const SubscriptionsPage: React.FC = () => {
     return acc;
   }, {} as Record<string, Subscription[]>);
 
-  // Calculate total monthly cost
   const calculateMonthlyTotal = () => {
     return subscriptions
       .filter(sub => sub.is_active)
       .reduce((total, sub) => {
         let monthlyAmount = sub.amount;
         
-        // Convert to monthly equivalent
         if (sub.frequency === 'QUARTERLY') {
           monthlyAmount = sub.amount / 3;
         } else if (sub.frequency === 'ANNUALLY') {
@@ -420,13 +388,11 @@ const SubscriptionsPage: React.FC = () => {
       }, 0);
   };
 
-  // Format date for display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return format(date, 'PPP');
   };
 
-  // Check if a subscription is due soon (within the next 7 days)
   const isDueSoon = (dateString: string) => {
     const today = new Date();
     const dueDate = new Date(dateString);
@@ -435,7 +401,6 @@ const SubscriptionsPage: React.FC = () => {
     return diffDays >= 0 && diffDays <= 7;
   };
 
-  // Get appropriate badge color based on frequency
   const getFrequencyColor = (frequency: string) => {
     switch (frequency) {
       case 'MONTHLY':
@@ -451,7 +416,6 @@ const SubscriptionsPage: React.FC = () => {
     }
   };
 
-  // Get icon background and text color based on subscription name
   const getSubscriptionIconColors = (name: string) => {
     const lowerName = name.toLowerCase();
     
@@ -582,7 +546,6 @@ const SubscriptionsPage: React.FC = () => {
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
-                          {/* Header with name and badges */}
                           <div className="flex justify-between items-center mb-3">
                             <p className="text-sm font-medium text-muted-foreground/80 truncate">{subscription.name}</p>
                             <div className="flex gap-2 flex-shrink-0">
@@ -597,14 +560,12 @@ const SubscriptionsPage: React.FC = () => {
                             </div>
                           </div>
                           
-                          {/* Amount - centered */}
                           <div className="text-center mb-3">
                             <h3 className="text-2xl font-bold tracking-tight">
                               {formatNaira(subscription.amount)}
                             </h3>
                           </div>
                           
-                          {/* Payment date - consistent layout */}
                           <div className="flex flex-col items-center mb-3">
                             <div className="flex items-center justify-center w-full">
                               <span className="text-sm text-muted-foreground">Next payment:</span>
@@ -617,12 +578,10 @@ const SubscriptionsPage: React.FC = () => {
                             </div>
                           </div>
                           
-                          {/* Description */}
                           {subscription.description && (
                             <p className="text-sm text-muted-foreground truncate text-center mb-3">{subscription.description}</p>
                           )}
                           
-                          {/* Action buttons */}
                           <div className="flex justify-center space-x-2">
                             {subscription.is_active && (
                               <>
@@ -650,7 +609,6 @@ const SubscriptionsPage: React.FC = () => {
                           </div>
                         </div>
                         
-                        {/* Icon and edit/delete buttons */}
                         <div className="flex flex-col items-end space-y-2">
                           <div className={`${bgClass} p-3 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm`}>
                             <CreditCard className={`w-6 h-6 ${textClass}`} />
@@ -673,7 +631,6 @@ const SubscriptionsPage: React.FC = () => {
           ))
         )}
         
-        {/* Add Subscription Dialog */}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
@@ -686,201 +643,11 @@ const SubscriptionsPage: React.FC = () => {
               e.preventDefault();
               handleSaveSubscription();
             }}>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">
-                  Name
-                </Label>
-                <div className="col-span-3">
-                  <TransactionAutocomplete
-                    value={formData.name}
-                    onChange={(value) => {
-                      setFormData(prev => ({
-                        ...prev,
-                        name: value
-                      }));
-                    }}
-                    onSelect={(transaction) => {
-                      // Auto-fill other fields based on the selected transaction
-                      setFormData(prev => ({
-                        ...prev,
-                        name: transaction.description,
-                        amount: transaction.amount,
-                        next_billing_date: transaction.date, // Use the transaction date instead of today's date
-                        category_name: transaction.category_name || 'Subscriptions',
-                        category_type: transaction.category_type || 'EXPENSE'
-                      }));
-                    }}
-                    placeholder="Netflix, Spotify, etc."
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="description" className="text-right">
-                  Description
-                </Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                  placeholder="Optional description"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="amount" className="text-right">
-                  Amount
-                </Label>
-                <Input
-                  id="amount"
-                  name="amount"
-                  type="number"
-                  value={formData.amount}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                  placeholder="0.00"
-                  step="0.01"
-                  min="0"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="frequency" className="text-right">
-                  Frequency
-                </Label>
-                <Select
-                  value={formData.frequency}
-                  onValueChange={(value) => handleSelectChange('frequency', value)}
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select frequency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="MONTHLY">Monthly</SelectItem>
-                    <SelectItem value="QUARTERLY">Quarterly</SelectItem>
-                    <SelectItem value="ANNUALLY">Annually</SelectItem>
-                    <SelectItem value="CUSTOM">Custom</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="next_billing_date" className="text-right">
-                  Next Billing
-                </Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className="col-span-3 justify-start text-left font-normal"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.next_billing_date ? (
-                        format(new Date(formData.next_billing_date), "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={formData.next_billing_date ? new Date(formData.next_billing_date) : undefined}
-                      onSelect={handleDateChange}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="category" className="text-right">
-                  Category
-                </Label>
-                <Input
-                  id="category_name"
-                  name="category_name"
-                  value={formData.category_name}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                  placeholder="Subscriptions"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="text-right">
-                  <Label htmlFor="is_active">Active</Label>
-                </div>
-                <div className="flex items-center space-x-2 col-span-3">
-                  <input
-                    type="checkbox"
-                    id="is_active"
-                    checked={formData.is_active}
-                    onChange={(e) => handleCheckboxChange('is_active', e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <Label htmlFor="is_active" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    This subscription is currently active
-                  </Label>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="text-right">
-                  <Label htmlFor="auto_renew">Auto-renew</Label>
-                </div>
-                <div className="flex items-center space-x-2 col-span-3">
-                  <input
-                    type="checkbox"
-                    id="auto_renew"
-                    checked={formData.auto_renew}
-                    onChange={(e) => handleCheckboxChange('auto_renew', e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <Label htmlFor="auto_renew" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    Automatically renew this subscription
-                  </Label>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="reminder_days" className="text-right">
-                  Remind me
-                </Label>
-                <div className="col-span-3 flex items-center gap-2">
-                  <Input
-                    id="reminder_days"
-                    name="reminder_days"
-                    type="number"
-                    value={formData.reminder_days}
-                    onChange={handleInputChange}
-                    className="w-20"
-                    min="0"
-                    max="30"
-                  />
-                  <span>days before renewal</span>
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit">Save Subscription</Button>
-            </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-        
-        {/* Edit Subscription Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Edit Subscription</DialogTitle>
-              <DialogDescription>
-                Update your subscription details.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              handleUpdateSubscription();
-            }}>
               <div className="grid gap-4 py-4">
-                {/* Same form fields as Add Dialog */}
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">Name</Label>
+                  <Label htmlFor="name" className="text-right">
+                    Name
+                  </Label>
                   <div className="col-span-3">
                     <TransactionAutocomplete
                       value={formData.name}
@@ -891,12 +658,11 @@ const SubscriptionsPage: React.FC = () => {
                         }));
                       }}
                       onSelect={(transaction) => {
-                        // Auto-fill other fields based on the selected transaction
                         setFormData(prev => ({
                           ...prev,
                           name: transaction.description,
                           amount: transaction.amount,
-                          next_billing_date: transaction.date, // Use the transaction date instead of today's date
+                          next_billing_date: transaction.date,
                           category_name: transaction.category_name || 'Subscriptions',
                           category_type: transaction.category_type || 'EXPENSE'
                         }));
@@ -906,7 +672,9 @@ const SubscriptionsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="description" className="text-right">Description</Label>
+                  <Label htmlFor="description" className="text-right">
+                    Description
+                  </Label>
                   <Textarea
                     id="description"
                     name="description"
@@ -917,7 +685,9 @@ const SubscriptionsPage: React.FC = () => {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="amount" className="text-right">Amount</Label>
+                  <Label htmlFor="amount" className="text-right">
+                    Amount
+                  </Label>
                   <Input
                     id="amount"
                     name="amount"
@@ -931,7 +701,9 @@ const SubscriptionsPage: React.FC = () => {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="frequency" className="text-right">Frequency</Label>
+                  <Label htmlFor="frequency" className="text-right">
+                    Frequency
+                  </Label>
                   <Select
                     value={formData.frequency}
                     onValueChange={(value) => handleSelectChange('frequency', value)}
@@ -948,7 +720,9 @@ const SubscriptionsPage: React.FC = () => {
                   </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="next_billing_date" className="text-right">Next Billing</Label>
+                  <Label htmlFor="next_billing_date" className="text-right">
+                    Next Billing
+                  </Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -974,7 +748,9 @@ const SubscriptionsPage: React.FC = () => {
                   </Popover>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="category" className="text-right">Category</Label>
+                  <Label htmlFor="category" className="text-right">
+                    Category
+                  </Label>
                   <Input
                     id="category_name"
                     name="category_name"
@@ -1019,7 +795,198 @@ const SubscriptionsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="reminder_days" className="text-right">Remind me</Label>
+                  <Label htmlFor="reminder_days" className="text-right">
+                    Remind me
+                  </Label>
+                  <div className="col-span-3 flex items-center gap-2">
+                    <Input
+                      id="reminder_days"
+                      name="reminder_days"
+                      type="number"
+                      value={formData.reminder_days}
+                      onChange={handleInputChange}
+                      className="w-20"
+                      min="0"
+                      max="30"
+                    />
+                    <span>days before renewal</span>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit">Save Subscription</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+        
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Edit Subscription</DialogTitle>
+              <DialogDescription>
+                Update your subscription details.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handleUpdateSubscription();
+            }}>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">
+                    Name
+                  </Label>
+                  <div className="col-span-3">
+                    <TransactionAutocomplete
+                      value={formData.name}
+                      onChange={(value) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          name: value
+                        }));
+                      }}
+                      onSelect={(transaction) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          name: transaction.description,
+                          amount: transaction.amount,
+                          next_billing_date: transaction.date,
+                          category_name: transaction.category_name || 'Subscriptions',
+                          category_type: transaction.category_type || 'EXPENSE'
+                        }));
+                      }}
+                      placeholder="Netflix, Spotify, etc."
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="description" className="text-right">
+                    Description
+                  </Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    className="col-span-3"
+                    placeholder="Optional description"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="amount" className="text-right">
+                    Amount
+                  </Label>
+                  <Input
+                    id="amount"
+                    name="amount"
+                    type="number"
+                    value={formData.amount}
+                    onChange={handleInputChange}
+                    className="col-span-3"
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="frequency" className="text-right">
+                    Frequency
+                  </Label>
+                  <Select
+                    value={formData.frequency}
+                    onValueChange={(value) => handleSelectChange('frequency', value)}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select frequency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MONTHLY">Monthly</SelectItem>
+                      <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                      <SelectItem value="ANNUALLY">Annually</SelectItem>
+                      <SelectItem value="CUSTOM">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="next_billing_date" className="text-right">
+                    Next Billing
+                  </Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className="col-span-3 justify-start text-left font-normal"
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formData.next_billing_date ? (
+                          format(new Date(formData.next_billing_date), "PPP")
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={formData.next_billing_date ? new Date(formData.next_billing_date) : undefined}
+                        onSelect={handleDateChange}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="category" className="text-right">
+                    Category
+                  </Label>
+                  <Input
+                    id="category_name"
+                    name="category_name"
+                    value={formData.category_name}
+                    onChange={handleInputChange}
+                    className="col-span-3"
+                    placeholder="Subscriptions"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="text-right">
+                    <Label htmlFor="is_active">Active</Label>
+                  </div>
+                  <div className="flex items-center space-x-2 col-span-3">
+                    <input
+                      type="checkbox"
+                      id="is_active"
+                      checked={formData.is_active}
+                      onChange={(e) => handleCheckboxChange('is_active', e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <Label htmlFor="is_active" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      This subscription is currently active
+                    </Label>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <div className="text-right">
+                    <Label htmlFor="auto_renew">Auto-renew</Label>
+                  </div>
+                  <div className="flex items-center space-x-2 col-span-3">
+                    <input
+                      type="checkbox"
+                      id="auto_renew"
+                      checked={formData.auto_renew}
+                      onChange={(e) => handleCheckboxChange('auto_renew', e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <Label htmlFor="auto_renew" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Automatically renew this subscription
+                    </Label>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="reminder_days" className="text-right">
+                    Remind me
+                  </Label>
                   <div className="col-span-3 flex items-center gap-2">
                     <Input
                       id="reminder_days"
@@ -1042,78 +1009,77 @@ const SubscriptionsPage: React.FC = () => {
           </DialogContent>
         </Dialog>
         
-        {/* Confirm Payment Dialog */}
         <Dialog open={isConfirmPaymentDialogOpen} onOpenChange={setIsConfirmPaymentDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Confirm Payment</DialogTitle>
               <DialogDescription>
-                Confirm that you've paid this subscription. This will record a transaction and update the next billing date.
+                This will record a payment for this subscription and update the next billing date.
               </DialogDescription>
             </DialogHeader>
             <div className="py-4">
               {selectedSubscription && (
-                <div className="space-y-4">
-                  <div className="flex justify-between">
+                <>
+                  <div className="flex justify-between mb-2">
                     <span className="font-medium">Subscription:</span>
                     <span>{selectedSubscription.name}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between mb-2">
                     <span className="font-medium">Amount:</span>
                     <span>{formatNaira(selectedSubscription.amount)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-medium">Due Date:</span>
+                  <div className="flex justify-between mb-2">
+                    <span className="font-medium">Due date:</span>
                     <span>{formatDate(selectedSubscription.next_billing_date)}</span>
                   </div>
-                </div>
+                </>
               )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsConfirmPaymentDialogOpen(false)}>Cancel</Button>
-              <Button onClick={processPaymentConfirmation}>Confirm Payment</Button>
+              <Button variant="outline" onClick={() => setIsConfirmPaymentDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={processPaymentConfirmation}>
+                Confirm Payment
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        {/* Cancel Subscription Dialog */}
+        
         <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Cancel Subscription</DialogTitle>
               <DialogDescription>
-                Are you sure you want to cancel this subscription?
+                Are you sure you want to cancel this subscription? This will mark it as inactive.
               </DialogDescription>
             </DialogHeader>
             <div className="py-4">
               {selectedSubscription && (
-                <div className="space-y-4">
-                  <div className="flex justify-between">
+                <>
+                  <div className="flex justify-between mb-2">
                     <span className="font-medium">Subscription:</span>
                     <span>{selectedSubscription.name}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between mb-2">
                     <span className="font-medium">Amount:</span>
                     <span>{formatNaira(selectedSubscription.amount)}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between mb-2">
                     <span className="font-medium">Frequency:</span>
                     <span>{selectedSubscription.frequency.charAt(0) + selectedSubscription.frequency.slice(1).toLowerCase()}</span>
                   </div>
-                </div>
+                </>
               )}
               {error && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                  <div className="flex items-center text-red-700">
-                    <AlertCircle className="h-4 w-4 mr-2" />
-                    <p className="text-sm">{error}</p>
-                  </div>
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-4">
+                  {error}
                 </div>
               )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)}>
-                Keep Subscription
+                Go Back
               </Button>
               <Button variant="destructive" onClick={confirmCancelSubscription}>
                 Cancel Subscription
