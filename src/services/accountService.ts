@@ -1,15 +1,16 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
 import { Account } from "@/types/account";
-import { useToast } from "@/hooks/use-toast";
 
 export const fetchAccounts = async (): Promise<Account[]> => {
   try {
     console.log("Fetching accounts...");
+    const userId = await getCurrentUserId();
     
     const { data, error } = await supabase
       .from('accounts')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -26,9 +27,18 @@ export const fetchAccounts = async (): Promise<Account[]> => {
 
 export const createAccount = async (account: Omit<Account, 'account_id'>): Promise<Account> => {
   try {
+    const userId = await getCurrentUserId();
+    
+    const accountWithUserId = {
+      ...account,
+      user_id: userId
+    };
+    
+    console.log("Creating account with user_id:", accountWithUserId);
+    
     const { data, error } = await supabase
       .from('accounts')
-      .insert(account)
+      .insert(accountWithUserId)
       .select()
       .single();
 
