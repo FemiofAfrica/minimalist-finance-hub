@@ -21,7 +21,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardType } from "@/types/card";
 import { createCard, updateCard, deleteCard } from "@/services/cardService";
-import { fetchAccounts } from "@/services/accountService";
+import { fetchAccounts, getAccountById } from "@/services/accountService";
 import { Account } from "@/types/account";
 
 interface CardDialogProps {
@@ -120,6 +120,33 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
       ...prev,
       [field]: numValue
     }));
+  };
+
+  const handleAccountChange = async (accountId: string) => {
+    // If "none" is selected, just update the form data without auto-populating
+    if (accountId === "none") {
+      handleChange('account_id', undefined);
+      return;
+    }
+    
+    // Update account_id in form data
+    handleChange('account_id', accountId);
+    
+    // Fetch the account details to get the current balance
+    try {
+      const account = await getAccountById(accountId);
+      if (account) {
+        // Auto-populate the current balance from the linked account
+        handleChange('current_balance', account.current_balance);
+        
+        toast({
+          title: "Balance Updated",
+          description: "Card balance has been updated from the linked account.",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching account details:", error);
+    }
   };
 
   const handleAddTag = () => {
@@ -267,8 +294,8 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
               Linked Account
             </Label>
             <Select 
-              value={formData.account_id || ''}
-              onValueChange={(value) => handleChange('account_id', value || undefined)}
+              value={formData.account_id || 'none'}
+              onValueChange={(value) => handleAccountChange(value)}
               disabled={!!accountId}
             >
               <SelectTrigger className="col-span-3">
