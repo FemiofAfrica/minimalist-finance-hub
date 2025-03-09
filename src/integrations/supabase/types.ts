@@ -9,6 +9,48 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      accounts: {
+        Row: {
+          account_id: string
+          account_name: string
+          account_number: string | null
+          account_type: string
+          created_at: string | null
+          current_balance: number | null
+          custom_tags: string[] | null
+          institution: string | null
+          is_active: boolean | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          account_id?: string
+          account_name: string
+          account_number?: string | null
+          account_type: string
+          created_at?: string | null
+          current_balance?: number | null
+          custom_tags?: string[] | null
+          institution?: string | null
+          is_active?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          account_id?: string
+          account_name?: string
+          account_number?: string | null
+          account_type?: string
+          created_at?: string | null
+          current_balance?: number | null
+          custom_tags?: string[] | null
+          institution?: string | null
+          is_active?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       budgets: {
         Row: {
           budget_id: string
@@ -54,21 +96,86 @@ export type Database = {
           },
         ]
       }
+      cards: {
+        Row: {
+          account_id: string | null
+          card_id: string
+          card_name: string
+          card_number: string | null
+          card_type: string
+          created_at: string | null
+          credit_limit: number | null
+          current_balance: number | null
+          custom_tags: string[] | null
+          expiry_date: string | null
+          is_active: boolean | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          card_id?: string
+          card_name: string
+          card_number?: string | null
+          card_type: string
+          created_at?: string | null
+          credit_limit?: number | null
+          current_balance?: number | null
+          custom_tags?: string[] | null
+          expiry_date?: string | null
+          is_active?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          card_id?: string
+          card_name?: string
+          card_number?: string | null
+          card_type?: string
+          created_at?: string | null
+          credit_limit?: number | null
+          current_balance?: number | null
+          custom_tags?: string[] | null
+          expiry_date?: string | null
+          is_active?: boolean | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cards_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           category_id: string
           category_name: string
           category_type: string
+          color: string | null
+          icon: string | null
+          user_id: string | null
         }
         Insert: {
           category_id?: string
           category_name: string
           category_type: string
+          color?: string | null
+          icon?: string | null
+          user_id?: string | null
         }
         Update: {
           category_id?: string
           category_name?: string
           category_type?: string
+          color?: string | null
+          icon?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -206,9 +313,127 @@ export type Database = {
           },
         ]
       }
-      transactions: {
+      subscription_providers: {
+        Row: {
+          category_id: string | null
+          category_name: string | null
+          created_at: string
+          created_by_user_id: string | null
+          is_popular: boolean
+          logo_url: string | null
+          name: string
+          provider_id: string
+          website: string | null
+        }
+        Insert: {
+          category_id?: string | null
+          category_name?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          is_popular?: boolean
+          logo_url?: string | null
+          name: string
+          provider_id?: string
+          website?: string | null
+        }
+        Update: {
+          category_id?: string | null
+          category_name?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          is_popular?: boolean
+          logo_url?: string | null
+          name?: string
+          provider_id?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_providers_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["category_id"]
+          },
+        ]
+      }
+      subscriptions: {
         Row: {
           amount: number
+          auto_renew: boolean
+          category_id: string | null
+          category_name: string | null
+          category_type: string | null
+          created_at: string
+          description: string | null
+          frequency: string
+          is_active: boolean
+          name: string
+          next_billing_date: string
+          provider_id: string | null
+          reminder_days: number
+          subscription_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          auto_renew?: boolean
+          category_id?: string | null
+          category_name?: string | null
+          category_type?: string | null
+          created_at?: string
+          description?: string | null
+          frequency: string
+          is_active?: boolean
+          name: string
+          next_billing_date: string
+          provider_id?: string | null
+          reminder_days?: number
+          subscription_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          auto_renew?: boolean
+          category_id?: string | null
+          category_name?: string | null
+          category_type?: string | null
+          created_at?: string
+          description?: string | null
+          frequency?: string
+          is_active?: boolean
+          name?: string
+          next_billing_date?: string
+          provider_id?: string | null
+          reminder_days?: number
+          subscription_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["category_id"]
+          },
+          {
+            foreignKeyName: "subscriptions_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_providers"
+            referencedColumns: ["provider_id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          account_id: string | null
+          amount: number
+          card_id: string | null
           category_id: string | null
           category_name: string | null
           category_type: string | null
@@ -217,11 +442,14 @@ export type Database = {
           description: string
           source: string | null
           transaction_id: string
+          transaction_type: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          account_id?: string | null
           amount: number
+          card_id?: string | null
           category_id?: string | null
           category_name?: string | null
           category_type?: string | null
@@ -230,11 +458,14 @@ export type Database = {
           description: string
           source?: string | null
           transaction_id?: string
+          transaction_type?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          account_id?: string | null
           amount?: number
+          card_id?: string | null
           category_id?: string | null
           category_name?: string | null
           category_type?: string | null
@@ -243,10 +474,25 @@ export type Database = {
           description?: string
           source?: string | null
           transaction_id?: string
+          transaction_type?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "transactions_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "cards"
+            referencedColumns: ["card_id"]
+          },
           {
             foreignKeyName: "transactions_category_fkey"
             columns: ["category_id"]
@@ -289,136 +535,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      }
-      subscriptions: {
-        Row: {
-          subscription_id: string
-          name: string
-          description: string | null
-          amount: number
-          frequency: string
-          next_billing_date: string
-          category_id: string | null
-          category_name: string | null
-          category_type: string | null
-          is_active: boolean
-          created_at: string
-          updated_at: string
-          user_id: string | null
-          auto_renew: boolean
-          reminder_days: number
-          provider_id: string | null
-        }
-        Insert: {
-          subscription_id?: string
-          name: string
-          description?: string | null
-          amount: number
-          frequency: string
-          next_billing_date: string
-          category_id?: string | null
-          category_name?: string | null
-          category_type?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-          user_id?: string | null
-          auto_renew?: boolean
-          reminder_days?: number
-          provider_id?: string | null
-        }
-        Update: {
-          subscription_id?: string
-          name?: string
-          description?: string | null
-          amount?: number
-          frequency?: string
-          next_billing_date?: string
-          category_id?: string | null
-          category_name?: string | null
-          category_type?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-          user_id?: string | null
-          auto_renew?: boolean
-          reminder_days?: number
-          provider_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "subscriptions_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["category_id"]
-          },
-          {
-            foreignKeyName: "subscriptions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "subscriptions_provider_id_fkey"
-            columns: ["provider_id"]
-            isOneToOne: false
-            referencedRelation: "subscription_providers"
-            referencedColumns: ["provider_id"]
-          }
-        ]
-      }
-      subscription_providers: {
-        Row: {
-          provider_id: string
-          name: string
-          category_id: string | null
-          category_name: string | null
-          logo_url: string | null
-          website: string | null
-          is_popular: boolean
-          created_at: string
-          created_by_user_id: string | null
-        }
-        Insert: {
-          provider_id?: string
-          name: string
-          category_id?: string | null
-          category_name?: string | null
-          logo_url?: string | null
-          website?: string | null
-          is_popular?: boolean
-          created_at?: string
-          created_by_user_id?: string | null
-        }
-        Update: {
-          provider_id?: string
-          name?: string
-          category_id?: string | null
-          category_name?: string | null
-          logo_url?: string | null
-          website?: string | null
-          is_popular?: boolean
-          created_at?: string
-          created_by_user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "subscription_providers_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["category_id"]
-          },
-          {
-            foreignKeyName: "subscription_providers_created_by_user_id_fkey"
-            columns: ["created_by_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["user_id"]
-          }
-        ]
       }
     }
     Views: {
