@@ -1,5 +1,5 @@
 
-export type CardType = "CREDIT" | "DEBIT" | "PREPAID" | "OTHER";
+export type CardType = "CREDIT" | "DEBIT" | "PREPAID" | "OTHER" | string;
 
 export interface Card {
   card_id: string;

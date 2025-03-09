@@ -48,7 +48,7 @@ const RevenueChart = ({ period }: RevenueChartProps) => {
         const dailyBalances = new Map<string, number>();
         let runningBalance = 0;
 
-        transactions?.forEach((transaction: Transaction) => {
+        transactions?.forEach((transaction: any) => {
           const date = format(new Date(transaction.date), 'MMM d');
           const amount = Number(transaction.amount);
           

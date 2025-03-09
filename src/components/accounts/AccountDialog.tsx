@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { 
   Dialog, 
@@ -21,7 +20,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Account, AccountType } from "@/types/account";
 import { createAccount, updateAccount, deleteAccount } from "@/services/accountService";
-import { AccountBalanceRounded } from "lucide-react";
+import { Wallet } from "lucide-react";
 
 interface AccountDialogProps {
   isOpen: boolean;
@@ -121,14 +120,12 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
     setSubmitting(true);
     try {
       if (account) {
-        // Update existing account
         await updateAccount(account.account_id, formData);
         toast({
           title: "Success",
           description: "Account updated successfully",
         });
       } else {
-        // Create new account
         await createAccount(formData as Omit<Account, 'account_id'>);
         toast({
           title: "Success",

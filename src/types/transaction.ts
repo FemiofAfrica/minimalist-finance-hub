@@ -8,7 +8,8 @@ export type TransactionFlowType =
   "CARD_TO_CASH" | 
   "CARD_TO_EXTERNAL" | 
   "CASH_TO_EXTERNAL" | 
-  "ACCOUNT_TO_EXTERNAL";
+  "ACCOUNT_TO_EXTERNAL" |
+  string; // Adding string to make it compatible with database responses
 
 export interface Transaction {
   transaction_id: string;
@@ -26,4 +27,7 @@ export interface Transaction {
   account_id?: string | null;
   card_id?: string | null;
   transaction_type?: TransactionFlowType | null;
+  // Add these fields to handle data from searchService
+  account_name?: string;
+  card_name?: string;
 }

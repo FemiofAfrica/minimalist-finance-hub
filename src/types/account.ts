@@ -1,5 +1,5 @@
 
-export type AccountType = "SAVINGS" | "CHECKING" | "INVESTMENTS" | "DEBT_SERVICING" | "OTHER";
+export type AccountType = "SAVINGS" | "CHECKING" | "INVESTMENTS" | "DEBT_SERVICING" | "OTHER" | string;
 
 export interface Account {
   account_id: string;
