@@ -1,4 +1,3 @@
-
 import { Link, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, 
@@ -14,7 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
-import { useMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const links = [
   { 
@@ -52,7 +51,7 @@ const links = [
 export function DashboardSidebar() {
   const location = useLocation();
   const { signOut } = useAuth();
-  const { isMobile } = useMobile();
+  const isMobile = useIsMobile();
   
   const navigation = (
     <div className="flex h-full flex-col">
