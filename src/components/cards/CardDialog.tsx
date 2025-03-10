@@ -23,6 +23,7 @@ import { Card, CardType } from "@/types/card";
 import { createCard, updateCard, deleteCard } from "@/services/cardService";
 import { fetchAccounts, getAccountById } from "@/services/accountService";
 import { Account } from "@/types/account";
+import { BankSelector } from "@/components/BankSelector";
 
 interface CardDialogProps {
   isOpen: boolean;
@@ -32,7 +33,7 @@ interface CardDialogProps {
 }
 
 const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
-  const [formData, setFormData] = useState<Partial<Card>>({
+  const [formData, setFormData] = useState<Partial<Card> & { bank?: string }>({    
     card_name: '',
     card_type: 'DEBIT',
     card_number: '',
@@ -193,16 +194,19 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
     
     setSubmitting(true);
     try {
+      // Remove the bank field from formData as it's not in the database schema
+      const { bank, ...cardData } = formData;
+      
       if (card) {
         // Update existing card
-        await updateCard(card.card_id, formData);
+        await updateCard(card.card_id, cardData);
         toast({
           title: "Success",
           description: "Card updated successfully",
         });
       } else {
         // Create new card
-        await createCard(formData as Omit<Card, 'card_id'>);
+        await createCard(cardData as Omit<Card, 'card_id'>);
         toast({
           title: "Success",
           description: "Card created successfully",
@@ -293,23 +297,46 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
             <Label htmlFor="linked_account" className="text-right">
               Linked Account
             </Label>
-            <Select 
-              value={formData.account_id || 'none'}
-              onValueChange={(value) => handleAccountChange(value)}
-              disabled={!!accountId}
-            >
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select linked account (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {accounts.map(account => (
-                  <SelectItem key={account.account_id} value={account.account_id}>
-                    {account.account_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="col-span-3">
+              <Select 
+                value={formData.account_id || 'none'}
+                onValueChange={(value) => handleAccountChange(value)}
+                disabled={!!accountId}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select linked account (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {accounts.map(account => (
+                    <SelectItem key={account.account_id} value={account.account_id}>
+                      {account.account_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formData.account_id && (
+                <p className="text-xs text-muted-foreground mt-1 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 mr-1">
+                    <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+                  </svg>
+                  This card is linked to an account and will affect its balance
+                </p>
+              )}
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="bank" className="text-right">
+              Bank
+            </Label>
+            <div className="col-span-3">
+              <BankSelector
+                value={formData.bank || ''}
+                onChange={(value) => setFormData(prev => ({ ...prev, bank: value }))}
+                placeholder="Select issuing bank..."
+              />
+            </div>
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
