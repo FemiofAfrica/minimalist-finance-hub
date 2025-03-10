@@ -213,7 +213,7 @@ const AddTransactionDialog = () => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="type">Type</Label>
-            <Select
+            <Select 
               value={formData.type}
               onValueChange={(value) => handleChange('type', value)}
             >
@@ -236,50 +236,12 @@ const AddTransactionDialog = () => {
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Salary">Salary</SelectItem>
-                <SelectItem value="Freelance">Freelance</SelectItem>
-                <SelectItem value="Entertainment">Entertainment</SelectItem>
-                <SelectItem value="Food">Food</SelectItem>
-                <SelectItem value="Utilities">Utilities</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="account">Account</Label>
-            <Select
-              value={formData.account_id}
-              onValueChange={(value) => handleChange('account_id', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select account (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">None</SelectItem>
-                {accounts.map(account => (
-                  <SelectItem key={account.account_id} value={account.account_id}>
-                    {account.account_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="card">Card</Label>
-            <Select
-              value={formData.card_id}
-              onValueChange={(value) => handleChange('card_id', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select card (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">None</SelectItem>
-                {cards.map(card => (
-                  <SelectItem key={card.card_id} value={card.card_id}>
-                    {card.card_name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="salary">Salary</SelectItem>
+                <SelectItem value="freelance">Freelance</SelectItem>
+                <SelectItem value="entertainment">Entertainment</SelectItem>
+                <SelectItem value="food">Food</SelectItem>
+                <SelectItem value="utilities">Utilities</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -293,14 +255,58 @@ const AddTransactionDialog = () => {
               required
             />
           </div>
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Adding..." : "Add Transaction"}
-            </Button>
+          
+          {/* Account and Card Selection */}
+          <div className="pt-2 border-t border-gray-200">
+            <h4 className="text-sm font-medium mb-2">Link to Account or Card</h4>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="account">Account</Label>
+                <Select
+                  value={formData.account_id}
+                  onValueChange={(value) => handleChange('account_id', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select account (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {accounts.map(account => (
+                      <SelectItem key={account.account_id} value={account.account_id}>
+                        {account.account_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="card">Card</Label>
+                <Select
+                  value={formData.card_id}
+                  onValueChange={(value) => handleChange('card_id', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select card (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {cards.map(card => (
+                      <SelectItem key={card.card_id} value={card.card_id}>
+                        {card.card_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
+          
+          <DialogFooter>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Adding...' : 'Add Transaction'}
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

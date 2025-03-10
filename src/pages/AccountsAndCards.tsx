@@ -27,7 +27,7 @@ const AccountsAndCards = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-8 container mx-auto pb-8">
+      <div className="flex flex-col gap-8 container mx-auto px-4 pb-8 max-w-7xl">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold">Accounts & Cards</h1>
           <p className="text-muted-foreground">
