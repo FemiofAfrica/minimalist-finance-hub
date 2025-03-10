@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Account, AccountType } from "@/types/account";
 import { createAccount, updateAccount, deleteAccount } from "@/services/accountService";
 import { Wallet } from "lucide-react";
+import { BankSelector } from "@/components/BankSelector";
 
 interface AccountDialogProps {
   isOpen: boolean;
@@ -218,13 +219,13 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
             <Label htmlFor="institution" className="text-right">
               Institution
             </Label>
-            <Input
-              id="institution"
-              value={formData.institution}
-              onChange={(e) => handleChange('institution', e.target.value)}
-              className="col-span-3"
-              placeholder="e.g., First Bank, GTBank"
-            />
+            <div className="col-span-3">
+              <BankSelector
+                value={formData.institution || ''}
+                onChange={(value) => handleChange('institution', value)}
+                placeholder="Select your bank..."
+              />
+            </div>
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
