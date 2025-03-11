@@ -56,6 +56,8 @@ function App() {
               </PrivateRoute>
             }
           />
+          {/* Accounts & Cards functionality temporarily hidden from public access */}
+          {/* 
           <Route
             path="/accounts"
             element={
@@ -63,7 +65,8 @@ function App() {
                 <AccountsAndCards />
               </PrivateRoute>
             }
-          />
+          /> 
+          */}
           <Route path="*" element={<NotFound />} />
           </Routes>
         </Router>

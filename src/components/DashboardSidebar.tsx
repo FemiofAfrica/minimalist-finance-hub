@@ -31,11 +31,13 @@ const links = [
     label: "Subscriptions", 
     icon: <CreditCardIcon className="mr-2 h-4 w-4" />
   },
+  /* Accounts & Cards functionality temporarily hidden from public access
   { 
     href: "/accounts", 
     label: "Accounts & Cards", 
     icon: <Wallet className="mr-2 h-4 w-4" />
   },
+  */
   { 
     href: "/reports", 
     label: "Reports", 
