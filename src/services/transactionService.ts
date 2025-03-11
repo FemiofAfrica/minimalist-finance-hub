@@ -7,9 +7,11 @@ export const fetchTransactions = async (): Promise<Transaction[]> => {
     console.log("Fetching transactions...");
     
     // Step 1: Fetch all transactions
+    // Sort by created_at to include time information, falling back to date if created_at is not available
     const { data: transactionsData, error: transactionsError } = await supabase
       .from('transactions')
       .select('*')
+      .order('created_at', { ascending: false })
       .order('date', { ascending: false });
 
     if (transactionsError) {
@@ -72,6 +74,7 @@ export const fetchTransactionsByAccount = async (accountId: string): Promise<Tra
       .from('transactions')
       .select('*, categories:category_id(category_name, category_type)')
       .eq('account_id', accountId)
+      .order('created_at', { ascending: false })
       .order('date', { ascending: false });
 
     if (error) {
@@ -92,6 +95,7 @@ export const fetchTransactionsByCard = async (cardId: string): Promise<Transacti
       .from('transactions')
       .select('*, categories:category_id(category_name, category_type)')
       .eq('card_id', cardId)
+      .order('created_at', { ascending: false })
       .order('date', { ascending: false });
 
     if (error) {
