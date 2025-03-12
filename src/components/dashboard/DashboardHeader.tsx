@@ -1,9 +1,6 @@
 
-import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from 'react-router-dom';
-import { useToast } from "@/hooks/use-toast";
 import { CurrencySelector } from "@/components/CurrencySelector";
 
 interface DashboardHeaderProps {
@@ -12,26 +9,7 @@ interface DashboardHeaderProps {
 
 const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
   const { signOut } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
   
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigate('/login');
-      toast({
-        title: "Signed out",
-        description: "You have been successfully signed out."
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to sign out",
-        variant: "destructive"
-      });
-    }
-  };
-
   return (
     <header className="flex items-center justify-start gap-4">
       <div className="flex-1">
@@ -39,10 +17,6 @@ const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
         <p className="text-sm text-slate-500 dark:text-slate-400 text-left">Welcome back, {userEmail}</p>
       </div>
       <CurrencySelector />
-      <Button variant="outline" onClick={handleSignOut}>
-        <LogOut className="h-4 w-4 mr-2" />
-        Sign Out
-      </Button>
     </header>
   );
 };
