@@ -2,6 +2,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import { Toaster } from '@/components/ui/toaster';
 import Login from '@/pages/Login';
 import Index from '@/pages/Index';
@@ -30,56 +31,58 @@ function App() {
   return (
     <AuthProvider>
       <CurrencyProvider>
-        <Router>
-          <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/"
-            element={
-              <PrivateRoute>
-                <Index />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/transactions"
-            element={
-              <PrivateRoute>
-                <Transactions />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/subscriptions"
-            element={
-              <PrivateRoute>
-                <Subscriptions />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/budgeting"
-            element={
-              <PrivateRoute>
-                <Budgeting />
-              </PrivateRoute>
-            }
-          />
-          {/* Accounts & Cards functionality temporarily hidden from public access */}
-          {/* 
-          <Route
-            path="/accounts"
-            element={
-              <PrivateRoute>
-                <AccountsAndCards />
-              </PrivateRoute>
-            }
-          /> 
-          */}
-          <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Router>
-        <Toaster />
+        <ThemeProvider>
+          <Router>
+            <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/"
+              element={
+                <PrivateRoute>
+                  <Index />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/transactions"
+              element={
+                <PrivateRoute>
+                  <Transactions />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/subscriptions"
+              element={
+                <PrivateRoute>
+                  <Subscriptions />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/budgeting"
+              element={
+                <PrivateRoute>
+                  <Budgeting />
+                </PrivateRoute>
+              }
+            />
+            {/* Accounts & Cards functionality temporarily hidden from public access */}
+            {/* 
+            <Route
+              path="/accounts"
+              element={
+                <PrivateRoute>
+                  <AccountsAndCards />
+                </PrivateRoute>
+              }
+            /> 
+            */}
+            <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Router>
+          <Toaster />
+        </ThemeProvider>
       </CurrencyProvider>
     </AuthProvider>
   );
