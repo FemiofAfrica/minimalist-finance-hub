@@ -6,7 +6,8 @@ import {
   Settings, 
   LogOut, 
   BookOpenText,
-  Wallet
+  Wallet,
+  PiggyBank
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -38,6 +39,11 @@ const links = [
     icon: <Wallet className="mr-2 h-4 w-4" />
   },
   */
+  { 
+    href: "/budgeting", 
+    label: "Budgeting", 
+    icon: <PiggyBank className="mr-2 h-4 w-4" />
+  },
   { 
     href: "/reports", 
     label: "Reports", 

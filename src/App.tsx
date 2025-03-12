@@ -8,6 +8,7 @@ import Index from '@/pages/Index';
 import Transactions from '@/pages/Transactions';
 import Subscriptions from '@/pages/Subscriptions';
 import AccountsAndCards from '@/pages/AccountsAndCards';
+import Budgeting from '@/pages/Budgeting';
 import NotFound from '@/pages/NotFound';
 import './App.css';
 
@@ -53,6 +54,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Subscriptions />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/budgeting"
+            element={
+              <PrivateRoute>
+                <Budgeting />
               </PrivateRoute>
             }
           />
