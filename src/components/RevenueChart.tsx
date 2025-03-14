@@ -136,9 +136,13 @@ const RevenueChart = ({ period }: RevenueChartProps) => {
         <Line
           type="monotone"
           dataKey="balance"
-          stroke="#2563eb"
+          stroke="hsl(151, 55%, 41.5%)"
           strokeWidth={2}
           dot={false}
+          activeDot={{
+            r: 4,
+            style: { fill: "hsl(151, 55%, 41.5%)", strokeWidth: 0 }
+          }}
         />
       </LineChart>
     </ResponsiveContainer>

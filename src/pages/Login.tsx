@@ -24,9 +24,10 @@ const Login = () => {
           title: "Account created!",
           description: "Please check your email to verify your account.",
         });
+        navigate('/dashboard');
       } else {
         await signIn(email, password);
-        navigate('/');
+        navigate('/dashboard');
         toast({
           title: "Welcome back!",
           description: "You have successfully logged in.",
@@ -42,13 +43,27 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-neutral-950 p-4">
-      <div className="w-full max-w-md space-y-8 bg-white dark:bg-neutral-900 p-8 rounded-lg shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-lg shadow-lg border border-border">
+        <div className="flex justify-center">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-10 h-10 text-primary"
+          >
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+          </svg>
+        </div>
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">
+          <h2 className="text-3xl font-bold text-foreground">
             {isSignUp ? 'Create an account' : 'Welcome back'}
           </h2>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-sm text-muted-foreground">
             {isSignUp
               ? 'Sign up to start managing your finances'
               : 'Please sign in to your account'}
@@ -83,7 +98,7 @@ const Login = () => {
             </div>
           </div>
 
-          <Button type="submit" className="w-full">
+          <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
             {isSignUp ? 'Sign Up' : 'Sign In'}
           </Button>
 
@@ -91,7 +106,7 @@ const Login = () => {
             <button
               type="button"
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400"
+              className="text-sm text-primary hover:text-primary/90 hover:underline"
             >
               {isSignUp
                 ? 'Already have an account? Sign in'

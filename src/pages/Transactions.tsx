@@ -113,99 +113,59 @@ const Transactions = () => {
   
   return (
     <PageLayout>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Transactions</h1>
-        <p className="text-muted-foreground">Manage and review all your financial transactions.</p>
+      <div className="flex flex-col gap-4 mb-10">
+        <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">Transactions</h1>
+        <p className="text-lg text-slate-600 dark:text-slate-400">Manage and review all your financial transactions.</p>
       </div>
       
-      <div className="grid gap-6 md:grid-cols-3 mb-8">
-        <Card>
+      <div className="grid gap-6 md:grid-cols-3 mb-10">
+        <Card className="border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Income</CardTitle>
+            <CardTitle className="text-base font-semibold text-slate-700 dark:text-slate-300">Total Income</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center">
-              <ArrowUpRight className="w-5 h-5 mr-2 text-emerald-500" />
-              <div className="text-2xl font-bold">{formatNaira(totalIncome)}</div>
+            <div className="flex items-center justify-between">
+              <div className="text-2xl font-bold text-slate-900 dark:text-white">{formatNaira(totalIncome)}</div>
+              <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg">
+                <ArrowUpRight className="h-4 w-4" />
+              </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Expenses</CardTitle>
+            <CardTitle className="text-base font-semibold text-slate-700 dark:text-slate-300">Total Expenses</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center">
-              <ArrowDownRight className="w-5 h-5 mr-2 text-red-500" />
-              <div className="text-2xl font-bold">{formatNaira(totalExpense)}</div>
+            <div className="flex items-center justify-between">
+              <div className="text-2xl font-bold text-slate-900 dark:text-white">{formatNaira(totalExpense)}</div>
+              <div className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg">
+                <ArrowDownRight className="h-4 w-4" />
+              </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-300">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Net Balance</CardTitle>
+            <CardTitle className="text-base font-semibold text-slate-700 dark:text-slate-300">Net Balance</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center">
-              <DollarSign className="w-5 h-5 mr-2 text-primary" />
-              <div className="text-2xl font-bold">{formatNaira(totalIncome - totalExpense)}</div>
+            <div className="flex items-center justify-between">
+              <div className="text-2xl font-bold text-slate-900 dark:text-white">{formatNaira(totalIncome - totalExpense)}</div>
+              <div className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg">
+                <DollarSign className="h-4 w-4" />
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
       
-      <div className="mb-8">
-        <h2 className="text-xl font-bold mb-4">All Transactions</h2>
+      <div className="mb-10">
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white mb-6">All Transactions</h2>
         <TransactionsTable />
       </div>
-      
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Calendar className="w-5 h-5 mr-2" />
-            Recent Transactions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-4">Loading transactions...</div>
-          ) : recentTransactions.length > 0 ? (
-            <div className="space-y-4">
-              {recentTransactions.map((transaction) => (
-                <div key={transaction.transaction_id} className="flex items-center justify-between pb-4 border-b">
-                  <div className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${
-                      transaction.category_type === "EXPENSE" ? "bg-red-100" : "bg-emerald-100"
-                    }`}>
-                      {transaction.category_type === "EXPENSE" ? (
-                        <ArrowDownRight className="w-4 h-4 text-red-500" />
-                      ) : (
-                        <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="font-medium">{transaction.description}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {new Date(transaction.date).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </div>
-                  <span className={transaction.category_type === "EXPENSE" ? "text-red-500" : "text-emerald-500"}>
-                    {transaction.category_type === "EXPENSE" ? "-" : "+"}
-                    {formatNaira(transaction.amount)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-4 text-gray-500">
-              No recent transactions found.
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </PageLayout>
   );
 };

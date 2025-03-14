@@ -11,6 +11,7 @@ import Subscriptions from '@/pages/Subscriptions';
 import AccountsAndCards from '@/pages/AccountsAndCards';
 import Budgeting from '@/pages/Budgeting';
 import NotFound from '@/pages/NotFound';
+import LandingPage from '@/pages/LandingPage';
 import './App.css';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -35,8 +36,9 @@ function App() {
           <Router>
             <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/" element={<LandingPage />} />
             <Route
-              path="/"
+              path="/dashboard"
               element={
                 <PrivateRoute>
                   <Index />
