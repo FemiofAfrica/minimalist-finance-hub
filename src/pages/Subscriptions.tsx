@@ -456,7 +456,7 @@ const SubscriptionsPage: React.FC = () => {
     return (
       <PageLayout>
         <div className="flex-1 p-8">
-          <h1 className="text-2xl font-bold mb-6">Subscriptions</h1>
+          <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">Subscriptions</h1>
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
           </div>

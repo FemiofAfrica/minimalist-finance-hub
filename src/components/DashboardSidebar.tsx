@@ -21,7 +21,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 const links = [
   { 
-    href: "/", 
+    href: "/dashboard", 
     label: "Dashboard", 
     icon: <LayoutDashboard className="mr-2 h-4 w-4" />
   },
@@ -69,9 +69,9 @@ export function DashboardSidebar() {
     <div className="flex h-full flex-col">
       <div className="flex-1">
         <div className="p-6">
-          <Link to="/" className="flex items-center gap-2">
-            <Wallet className="h-6 w-6" />
-            <span className="text-xl font-semibold">Finance Tracker</span>
+          <Link to="/dashboard" className="flex items-center gap-2">
+            <Wallet className="h-7 w-7 text-emerald-500 dark:text-emerald-400" />
+            <span className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">MoneyWise</span>
           </Link>
         </div>
         <ScrollArea className="flex-1 px-6">
@@ -131,7 +131,7 @@ export function DashboardSidebar() {
         </SheetTrigger>
         <SheetContent side="left" className="p-0">
           <SheetHeader className="p-6 text-left">
-            <SheetTitle>Finance Tracker</SheetTitle>
+            <SheetTitle className="text-2xl tracking-tight">MoneyWise</SheetTitle>
           </SheetHeader>
           <Separator />
           <ScrollArea className="h-[calc(100vh-10rem)]">

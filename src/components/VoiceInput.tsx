@@ -57,7 +57,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
           console.log('Speech SDK loaded successfully');
           setSdkReady(true);
           
-          // Extremely lenient validation for Azure key format
+          // Improved validation for Azure key format
           // Azure Speech Service keys can have various formats including:
           // - 32-character hex strings
           // - Base64-encoded strings with special characters
@@ -67,7 +67,9 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
             AZURE_SPEECH_KEY.length >= 10 && 
             // Only check for whitespace and a few obviously invalid characters
             // Allow most special characters that could be part of valid keys
-            !/\s/.test(AZURE_SPEECH_KEY);
+            !/\s/.test(AZURE_SPEECH_KEY) &&
+            // Convert to lowercase for consistent validation
+            AZURE_SPEECH_KEY.toLowerCase() === AZURE_SPEECH_KEY;
           
           setAzureKeyValid(isValidKey);
           
@@ -130,7 +132,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
     };
   }, []);
 
-  // Enhanced network connectivity check with multiple endpoints
+  // Optimized network connectivity check with faster timeouts and parallel requests
   const checkNetworkConnectivity = async (): Promise<boolean> => {
     // First check navigator.onLine
     const isOnline = typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean' 
@@ -153,99 +155,99 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
       `https://www.cloudflare.com/favicon.ico?nocache=${Date.now()}`
     ];
     
-    // Try each URL in sequence until one succeeds
-    for (const testUrl of testUrls) {
-      try {
-        const response = await fetch(testUrl, { 
+    // Try all URLs in parallel with a race condition
+    // This is faster than sequential requests
+    try {
+      // Create an array of fetch promises with shorter timeouts
+      const fetchPromises = testUrls.map(testUrl => {
+        return fetch(testUrl, { 
           method: 'HEAD',
           mode: 'no-cors', // Important for cross-origin requests
           cache: 'no-store',
           credentials: 'omit', // Don't send cookies
-          // Short timeout to avoid hanging
-          signal: AbortSignal.timeout(2000)
+          // Shorter timeout to avoid hanging
+          signal: AbortSignal.timeout(1500)
+        })
+        .then(() => {
+          console.log(`Network connectivity test successful with ${testUrl}`);
+          return true;
+        })
+        .catch(error => {
+          console.warn(`Network connectivity test failed for ${testUrl}:`, error);
+          return Promise.reject(error);
         });
-        
-        console.log(`Network connectivity test successful with ${testUrl}`);
-        return true;
-      } catch (error) {
-        console.warn(`Network connectivity test failed for ${testUrl}:`, error);
-        // Continue to the next URL
-      }
+      });
+      
+      // Use Promise.any to return as soon as any request succeeds
+      // This is more efficient than waiting for all to fail
+      await Promise.any(fetchPromises);
+      return true;
+    } catch (error) {
+      // If all promises were rejected, we're likely offline
+      console.error('All network connectivity tests failed');
+      return false;
     }
-    
-    // If all tests failed, we're likely offline
-    console.error('All network connectivity tests failed');
-    return false;
   };
   
-  // Check specifically for speech recognition service connectivity
+  // Optimized speech recognition service connectivity check
   const checkSpeechServiceConnectivity = async (): Promise<boolean> => {
-    // First check general connectivity
+    // First check general connectivity with a shorter timeout
     const hasGeneralConnectivity = await checkNetworkConnectivity();
     if (!hasGeneralConnectivity) {
       return false;
     }
     
-    // For Azure Speech service, we can try to ping a Microsoft endpoint
-    // This doesn't guarantee the speech service is available but is a better check
+    // For Azure Speech service, we'll try multiple approaches in parallel
     try {
-      // Use a more reliable endpoint for testing connectivity
-      // The favicon.ico endpoint returns 404 but that's actually fine for connectivity testing
-      // We just need to know if we can reach the Azure service domain
-      const testUrl = `https://${AZURE_SPEECH_REGION}.api.cognitive.microsoft.com/favicon.ico?nocache=${Date.now()}`;
+      // Define the base URL for Azure Speech service
+      const baseUrl = `https://${AZURE_SPEECH_REGION}.api.cognitive.microsoft.com`;
       
-      try {
-        // First try with no-cors mode which is more permissive but doesn't give us response details
-        const response = await fetch(testUrl, { 
+      // Create an array of different test approaches
+      const testApproaches = [
+        // Approach 1: no-cors HEAD request to favicon
+        fetch(`${baseUrl}/favicon.ico?nocache=${Date.now()}`, { 
           method: 'HEAD',
           mode: 'no-cors',
           cache: 'no-store',
           credentials: 'omit',
-          signal: AbortSignal.timeout(3000)
-        });
-        
-        // If we get here, the request didn't throw an error, which means we reached the server
-        // Even if we get a 404, that's actually fine - it means we reached the server
-        console.log('Speech service connectivity test successful (no-cors mode)');
-        return true;
-      } catch (fetchError) {
-        // The no-cors request failed, but this could be due to CORS issues rather than connectivity
-        // Let's try a different approach with cors mode and handle the 404 explicitly
-        console.warn('First connectivity test attempt failed, trying alternative approach:', fetchError);
-        
-        try {
-          // Try a regular fetch that will give us more response details
-          const corsResponse = await fetch(testUrl, {
-            method: 'HEAD',
-            cache: 'no-store',
-            credentials: 'omit',
-            signal: AbortSignal.timeout(3000)
-          });
-          
-          // For the favicon.ico endpoint, a 404 is expected and means the server is reachable
-          // Any response (even an error status) means we successfully contacted the server
-          console.log('Speech service connectivity test successful with status:', corsResponse.status);
+          signal: AbortSignal.timeout(2000)
+        }).then(() => {
+          console.log('Speech service connectivity test successful (no-cors mode)');
           return true;
-        } catch (corsError) {
-          // Try one more approach - sometimes the HEAD method is blocked but GET works
-          try {
-            const getResponse = await fetch(`https://${AZURE_SPEECH_REGION}.api.cognitive.microsoft.com/sts/v1.0/issueToken?nocache=${Date.now()}`, {
-              method: 'GET',
-              cache: 'no-store',
-              credentials: 'omit',
-              // We expect this to fail with 401 Unauthorized, but that means the server is reachable
-              signal: AbortSignal.timeout(3000)
-            });
-            
-            // If we get here with any status code, the server is reachable
-            console.log('Speech service connectivity test successful with token endpoint, status:', getResponse.status);
-            return true;
-          } catch (getError) {
-            // All three attempts failed, rethrow to be caught by outer catch
-            console.error('All connectivity test attempts failed:', getError);
-            throw getError;
-          }
-        }
+        }),
+        
+        // Approach 2: regular HEAD request to favicon
+        fetch(`${baseUrl}/favicon.ico?nocache=${Date.now()}`, {
+          method: 'HEAD',
+          cache: 'no-store',
+          credentials: 'omit',
+          signal: AbortSignal.timeout(2000)
+        }).then(response => {
+          console.log('Speech service connectivity test successful with status:', response.status);
+          return true;
+        }),
+        
+        // Approach 3: GET request to token endpoint
+        fetch(`${baseUrl}/sts/v1.0/issueToken?nocache=${Date.now()}`, {
+          method: 'GET',
+          cache: 'no-store',
+          credentials: 'omit',
+          signal: AbortSignal.timeout(2000)
+        }).then(response => {
+          console.log('Speech service connectivity test successful with token endpoint, status:', response.status);
+          return true;
+        })
+      ];
+      
+      // Use Promise.any to return as soon as any approach succeeds
+      try {
+        await Promise.any(testApproaches.map(p => p.catch(e => Promise.reject(e))));
+        return true;
+      } catch (aggregateError) {
+        // All approaches failed
+        console.error('All speech service connectivity test approaches failed');
+        // Fall back to general connectivity result
+        return hasGeneralConnectivity;
       }
     } catch (error) {
       console.warn('Speech service connectivity test failed:', error);

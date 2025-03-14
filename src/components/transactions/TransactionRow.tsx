@@ -156,41 +156,45 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
 
   return (
     <>
-      <TableRow key={transaction.transaction_id} className="border-b border-muted hover:bg-muted/20 transition-colors">
-        <TableCell className="font-medium py-3">
+      <TableRow key={transaction.transaction_id} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200">
+        <TableCell className="font-medium py-4">
           <div className="flex items-center space-x-3">
-            <div className={`flex items-center justify-center w-6 h-6 rounded-full ${transaction.category_type === "EXPENSE" ? "bg-red-100" : "bg-emerald-100"} shrink-0`}>
+            <div className={`flex items-center justify-center w-9 h-9 rounded-full ${transaction.category_type === "EXPENSE" ? "bg-red-100 dark:bg-red-900/20" : "bg-emerald-100 dark:bg-emerald-900/20"} shrink-0 shadow-sm transition-transform duration-200 hover:scale-110`}>
               {transaction.category_type === "EXPENSE" ? (
-                <ArrowDownRight className="w-4 h-4 text-red-500" />
+                <ArrowDownRight className="w-5 h-5 text-red-500 dark:text-red-400" />
               ) : (
-                <ArrowUpRight className="w-4 h-4 text-emerald-500" />
+                <ArrowUpRight className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
               )}
             </div>
-            <span className="truncate">{transaction.description}</span>
+            <span className="truncate font-medium text-slate-800 dark:text-slate-200">{transaction.description}</span>
           </div>
         </TableCell>
-        <TableCell className="whitespace-nowrap py-3 text-left pl-4">{transaction.category_name || 'Uncategorized'}</TableCell>
-        <TableCell className="whitespace-nowrap py-3">{formatDate(transaction.date)}</TableCell>
-        <TableCell className="whitespace-nowrap py-3">
+        <TableCell className="whitespace-nowrap py-4 text-left pl-4">
+          <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 shadow-sm border border-slate-200/50 dark:border-slate-700/50">
+            {transaction.category_name || 'Uncategorized'}
+          </span>
+        </TableCell>
+        <TableCell className="whitespace-nowrap py-4 text-slate-600 dark:text-slate-400 font-medium">{formatDate(transaction.date)}</TableCell>
+        <TableCell className="whitespace-nowrap py-4">
           <span
             className={
               transaction.category_type === "EXPENSE"
-                ? "text-red-500 font-medium"
-                : "text-emerald-500 font-medium"
+                ? "text-red-500 dark:text-red-400 font-semibold"
+                : "text-emerald-500 dark:text-emerald-400 font-semibold"
             }
           >
             {transaction.category_type === "EXPENSE" ? "-" : "+"}
             {formatNaira(transaction.amount)}
           </span>
         </TableCell>
-        <TableCell className="py-3">
-          <div className="flex space-x-1">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditDialogOpen(true)}>
-              <Pencil className="h-4 w-4" />
+        <TableCell className="py-4">
+          <div className="flex space-x-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors duration-200" onClick={() => setEditDialogOpen(true)}>
+              <Pencil className="h-4 w-4 text-slate-600 dark:text-slate-400" />
               <span className="sr-only">Edit</span>
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteDialogOpen(true)}>
-              <Trash2 className="h-4 w-4 text-red-500" />
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors duration-200" onClick={() => setDeleteDialogOpen(true)}>
+              <Trash2 className="h-4 w-4 text-red-500 dark:text-red-400" />
               <span className="sr-only">Delete</span>
             </Button>
           </div>
@@ -211,12 +215,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
               <Input
                 id="description"
                 value={editedTransaction.description}
-                onChange={(e) => 
-                  setEditedTransaction({
-                    ...editedTransaction,
-                    description: e.target.value,
-                  })
-                }
+                onChange={(e) => setEditedTransaction({...editedTransaction, description: e.target.value})}
                 className="col-span-3"
               />
             </div>
@@ -228,61 +227,41 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                 id="amount"
                 type="number"
                 value={editedTransaction.amount}
-                onChange={(e) => 
-                  setEditedTransaction({
-                    ...editedTransaction,
-                    amount: parseFloat(e.target.value) || 0,
-                  })
-                }
+                onChange={(e) => setEditedTransaction({...editedTransaction, amount: parseFloat(e.target.value)})}
                 className="col-span-3"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="category_type" className="text-right">
+              <Label htmlFor="category" className="text-right">
+                Category
+              </Label>
+              <Input
+                id="category"
+                value={editedTransaction.category_name}
+                onChange={(e) => setEditedTransaction({...editedTransaction, category_name: e.target.value})}
+                className="col-span-3"
+                list="categories"
+              />
+              <datalist id="categories">
+                {categories.map((category) => (
+                  <option key={category.category_id} value={category.category_name} />
+                ))}
+              </datalist>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="type" className="text-right">
                 Type
               </Label>
               <Select
                 value={editedTransaction.category_type}
-                onValueChange={(value) =>
-                  setEditedTransaction({
-                    ...editedTransaction,
-                    category_type: value,
-                  })
-                }
+                onValueChange={(value) => setEditedTransaction({...editedTransaction, category_type: value})}
               >
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select transaction type" />
+                  <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="EXPENSE">Expense</SelectItem>
                   <SelectItem value="INCOME">Income</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="category_name" className="text-right">
-                Category
-              </Label>
-              <Select
-                value={editedTransaction.category_name}
-                onValueChange={(value) =>
-                  setEditedTransaction({
-                    ...editedTransaction,
-                    category_name: value,
-                  })
-                }
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select or enter category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories
-                    .filter(cat => cat.category_type === editedTransaction.category_type)
-                    .map(category => (
-                      <SelectItem key={category.category_id} value={category.category_name}>
-                        {category.category_name}
-                      </SelectItem>
-                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -294,46 +273,38 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                 id="date"
                 type="date"
                 value={editedTransaction.date}
-                onChange={(e) => 
-                  setEditedTransaction({
-                    ...editedTransaction,
-                    date: e.target.value,
-                  })
-                }
+                onChange={(e) => setEditedTransaction({...editedTransaction, date: e.target.value})}
                 className="col-span-3"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleEditSubmit} disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Save changes"}
+              {isSubmitting ? 'Saving...' : 'Save changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Transaction Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogTitle>Delete Transaction</DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <p>Are you sure you want to delete this transaction? This action cannot be undone.</p>
+            <div className="mt-4 p-4 border rounded-md bg-slate-50 dark:bg-slate-900">
+              <p><strong>Description:</strong> {transaction.description}</p>
+              <p><strong>Amount:</strong> {formatNaira(transaction.amount)}</p>
+              <p><strong>Date:</strong> {formatDate(transaction.date)}</p>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleDelete} 
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Deleting..." : "Delete"}
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={isSubmitting}>
+              {isSubmitting ? 'Deleting...' : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>

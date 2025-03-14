@@ -2,9 +2,22 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Transaction } from "@/types/transaction";
 
-export const fetchTransactions = async (): Promise<Transaction[]> => {
+export const fetchTransactions = async (signal?: AbortSignal): Promise<Transaction[]> => {
+  // Check if the request has been aborted before starting
+  if (signal?.aborted) {
+    console.log("Request was aborted before starting");
+    // Return empty array instead of throwing error for aborted requests
+    return [];
+  }
+
   try {
     console.log("Fetching transactions...");
+    
+    // Check if Supabase client is properly initialized
+    if (!supabase) {
+      console.error("Supabase client is not initialized");
+      return [];
+    }
     
     // Step 1: Fetch all transactions
     // Sort by created_at to include time information, falling back to date if created_at is not available
@@ -12,16 +25,40 @@ export const fetchTransactions = async (): Promise<Transaction[]> => {
       .from('transactions')
       .select('*')
       .order('created_at', { ascending: false })
-      .order('date', { ascending: false });
+      .order('date', { ascending: false })
+      .abortSignal(signal);
+
+    // Check if the request was aborted during the fetch
+    if (signal?.aborted) {
+      console.log("Request was aborted during fetch");
+      // Return empty array instead of throwing error for aborted requests
+      return [];
+    }
 
     if (transactionsError) {
       console.error('Error fetching transactions:', transactionsError);
-      throw transactionsError;
+      throw new Error(transactionsError.message);
     }
 
-    console.log("Transactions data from Supabase:", transactionsData);
+    if (!transactionsData) {
+      console.error("No transactions data received from Supabase");
+      throw new Error("Failed to fetch transactions data");
+    }
 
-    if (!transactionsData || transactionsData.length === 0) {
+    console.log("Transactions data from Supabase - count:", transactionsData.length);
+    if (transactionsData.length > 0) {
+      // Log a sample transaction to help with debugging
+      const sampleTransaction = transactionsData[0];
+      console.log("Sample transaction:", {
+        id: sampleTransaction.transaction_id,
+        description: sampleTransaction.description,
+        amount: sampleTransaction.amount,
+        date: sampleTransaction.date,
+        created_at: sampleTransaction.created_at,
+        category_id: sampleTransaction.category_id,
+        category_type: sampleTransaction.category_type
+      });
+    } else {
       console.log("No transactions found in database");
       return [];
     }
@@ -33,14 +70,26 @@ export const fetchTransactions = async (): Promise<Transaction[]> => {
     
     let categoriesMap = new Map();
     
-    if (categoryIds.length > 0) {
+    if (categoryIds.length > 0 && !signal?.aborted) {
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
         .select('*')
-        .in('category_id', categoryIds);
+        .in('category_id', categoryIds)
+        .abortSignal(signal); // Add abort signal to categories fetch as well
+      
+      // Check if the request was aborted during categories fetch
+      if (signal?.aborted) {
+        console.log("Request was aborted during categories fetch");
+        // Return what we have so far instead of throwing error
+        return transactionsData.map(transaction => ({
+          ...transaction,
+          category_name: transaction.category_name || 'Uncategorized'
+        }));
+      }
       
       if (categoriesError) {
         console.error('Error fetching categories:', categoriesError);
+        // Continue with what we have instead of failing completely
       } else if (categoriesData) {
         console.log("Categories data from Supabase:", categoriesData);
         // Create a map of category_id to category object for faster lookups
@@ -54,17 +103,62 @@ export const fetchTransactions = async (): Promise<Transaction[]> => {
     const enrichedTransactions = transactionsData.map(transaction => {
       const category = transaction.category_id ? categoriesMap.get(transaction.category_id) : null;
       
+      // Ensure date is properly formatted - this is the critical part that needs fixing
+      let formattedDate = transaction.date;
+      if (formattedDate) {
+        try {
+          // Make sure we have a valid date string in ISO format
+          // This helps standardize the date format for consistent filtering
+          if (typeof formattedDate === 'string') {
+            // First, ensure we're working with just the date part (YYYY-MM-DD)
+            // This handles both ISO strings and date-only strings
+            const dateStr = formattedDate.split('T')[0];
+            // Create a date object at noon to avoid timezone issues
+            const dateObj = new Date(`${dateStr}T12:00:00Z`);
+            
+            if (!isNaN(dateObj.getTime())) {
+              // Store the full ISO string to preserve time information
+              formattedDate = dateObj.toISOString();
+            }
+          } else if (formattedDate instanceof Date) {
+            if (!isNaN(formattedDate.getTime())) {
+              formattedDate = formattedDate.toISOString();
+            }
+          } else {
+            // Handle other types (like timestamps)
+            const dateObj = new Date(formattedDate);
+            if (!isNaN(dateObj.getTime())) {
+              formattedDate = dateObj.toISOString();
+            }
+          }
+        } catch (error) {
+          console.warn(`Error formatting date for transaction ${transaction.transaction_id}:`, error);
+          // Keep the original date value if formatting fails
+        }
+      }
+      
       return {
         ...transaction,
+        date: formattedDate,
         category_name: category ? category.category_name : (transaction.category_name || 'Uncategorized')
       } as Transaction;
     });
     
-    console.log("Processed transactions:", enrichedTransactions);
+    console.log("Processed transactions count:", enrichedTransactions.length);
+    // If we have no transactions, log a more specific message to help with debugging
+    if (enrichedTransactions.length === 0) {
+      console.log("No transactions found after processing. This could be due to filtering or no data in the database.");
+    }
     return enrichedTransactions;
   } catch (error) {
+    // Handle abort errors gracefully
+    if (error instanceof Error && (error.name === 'AbortError' || error.message === 'Request aborted')) {
+      console.log("Fetch aborted:", error.message);
+      return []; // Return empty array for aborted requests instead of throwing
+    }
+    
     console.error("Error in fetchTransactions:", error);
-    throw error;
+    throw error; // Only rethrow non-abort errors to be handled by the component
   }
 };
 
@@ -232,6 +326,23 @@ export const updateTransaction = async (
     return data;
   } catch (error) {
     console.error("Error in updateTransaction:", error);
+    throw error;
+  }
+};
+
+export const deleteTransaction = async (transactionId: string): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('transaction_id', transactionId);
+
+    if (error) {
+      console.error('Error deleting transaction:', error);
+      throw error;
+    }
+  } catch (error) {
+    console.error("Error in deleteTransaction:", error);
     throw error;
   }
 };

@@ -13,8 +13,8 @@ const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
   return (
     <header className="flex items-center justify-start gap-4">
       <div className="flex-1">
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50 text-left">Dashboard</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 text-left">Welcome back, {userEmail}</p>
+        <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">Dashboard</h1>
+        <p className="text-lg text-slate-700 dark:text-slate-300 text-left">Welcome back, {userEmail}</p>
       </div>
       <CurrencySelector />
     </header>
