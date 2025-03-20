@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import logger from "@/utils/logger";
 import { format } from "date-fns";
 
 export type RevenueChartData = {
@@ -12,7 +13,7 @@ export type TimePeriod = "7days" | "30days" | "90days";
 // Function to get data for the revenue chart filtered by time period
 export const fetchRevenueData = async (period: TimePeriod): Promise<RevenueChartData[]> => {
   try {
-    console.log(`Fetching revenue data for period: ${period}`);
+    logger.info(`Fetching revenue data for period: ${period}`);
     
     // Calculate the start date based on the selected period
     const now = new Date();
@@ -41,7 +42,7 @@ export const fetchRevenueData = async (period: TimePeriod): Promise<RevenueChart
       throw error;
     }
     
-    console.log(`Retrieved ${data?.length || 0} transactions for the period`);
+    logger.info(`Retrieved ${data?.length || 0} transactions for the period`);
     
     // Process data to create daily or monthly aggregates based on period
     const aggregatedData: Record<string, number> = {};
@@ -72,7 +73,7 @@ export const fetchRevenueData = async (period: TimePeriod): Promise<RevenueChart
       revenue: aggregatedData[date]
     }));
     
-    console.log('Processed revenue chart data:', chartData);
+    logger.debug('Processed revenue chart data:', chartData);
     
     return chartData;
   } catch (error) {

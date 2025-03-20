@@ -4,6 +4,21 @@
     "lib": ["ES2023"],
     "module": "ESNext",
     "skipLibCheck": true,
+    "types": [
+      "@types/babel__core",
+      "@types/babel__generator",
+      "@types/babel__template",
+      "@types/babel__traverse",
+      "@types/d3-array",
+      "@types/d3-color",
+      "@types/d3-ease",
+      "@types/d3-interpolate",
+      "@types/d3-path",
+      "@types/d3-scale",
+      "@types/d3-shape",
+      "@types/d3-time",
+      "@types/d3-timer"
+    ],
 
     /* Bundler mode */
     "moduleResolution": "bundler",

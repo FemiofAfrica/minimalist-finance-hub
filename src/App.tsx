@@ -30,10 +30,10 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   return (
-    <AuthProvider>
-      <CurrencyProvider>
-        <ThemeProvider>
-          <Router>
+    <Router>
+      <AuthProvider>
+        <CurrencyProvider>
+          <ThemeProvider>
             <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<LandingPage />} />
@@ -61,6 +61,8 @@ function App() {
                 </PrivateRoute>
               }
             />
+            {/* Budgeting functionality temporarily hidden from public access */}
+            {/* 
             <Route
               path="/budgeting"
               element={
@@ -69,6 +71,7 @@ function App() {
                 </PrivateRoute>
               }
             />
+            */}
             {/* Accounts & Cards functionality temporarily hidden from public access */}
             {/* 
             <Route
@@ -82,11 +85,11 @@ function App() {
             */}
             <Route path="*" element={<NotFound />} />
             </Routes>
-          </Router>
+          </ThemeProvider>
           <Toaster />
-        </ThemeProvider>
-      </CurrencyProvider>
-    </AuthProvider>
+        </CurrencyProvider>
+      </AuthProvider>
+    </Router>
   );
 }
 

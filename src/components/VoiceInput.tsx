@@ -4,7 +4,29 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
 // Azure Speech SDK
-let SpeechSDK: any;
+// Using a more specific type for the Speech SDK
+interface SpeechSDKType {
+  SpeechConfig: any;
+  AudioConfig: any;
+  SpeechRecognizer: any;
+  ResultReason: {
+    RecognizedSpeech: number;
+    NoMatch: number;
+    Canceled: number;
+  };
+  Diagnostics: {
+    enableTelemetry: (enabled: boolean) => void;
+    setLoggingLevel: (level: number) => void;
+  } | typeof Diagnostics; // Allow both direct functions or the Diagnostics namespace
+  LogLevel: {
+    Debug: number;
+    Info: number;
+    Warning: number;
+    Error: number;
+  };
+}
+
+let SpeechSDK: SpeechSDKType;
 
 interface VoiceInputProps {
   onTextCaptured: (text: string) => void;
@@ -18,7 +40,21 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
   const [useBrowserFallback, setUseBrowserFallback] = useState(false);
   const [azureKeyValid, setAzureKeyValid] = useState(false);
   const [networkConnected, setNetworkConnected] = useState(true);
-  const recognizerRef = useRef<any>(null);
+  // Define a type for the recognizer
+interface SpeechRecognizerType {
+  recognizeOnceAsync: (successCallback: (result: RecognitionResult) => void, errorCallback: (error: Error) => void) => void;
+  close: () => void;
+  stopContinuousRecognitionAsync?: () => void;
+  abort?: () => void;
+}
+
+// Define a type for the recognition result
+interface RecognitionResult {
+  reason: string;
+  text: string;
+}
+
+const recognizerRef = useRef<SpeechRecognizerType | null>(null);
   const { toast } = useToast();
 
   // Azure Speech API key - This should be moved to environment variables in production
@@ -58,18 +94,17 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
           setSdkReady(true);
           
           // Improved validation for Azure key format
-          // Azure Speech Service keys can have various formats including:
-          // - 32-character hex strings
-          // - Base64-encoded strings with special characters
-          // - JWT-like formats with periods as separators
+          // Azure Speech Service keys are typically 32-character strings
+          // They should NOT contain special characters or be excessively long
           const isValidKey = AZURE_SPEECH_KEY && 
-            // Check for minimum reasonable length (some valid keys can be shorter)
-            AZURE_SPEECH_KEY.length >= 10 && 
-            // Only check for whitespace and a few obviously invalid characters
-            // Allow most special characters that could be part of valid keys
+            // Check for reasonable length (Azure keys are typically 32 chars)
+            AZURE_SPEECH_KEY.length >= 10 && AZURE_SPEECH_KEY.length <= 100 &&
+            // Allow alphanumeric characters and dashes
+            /^[a-zA-Z0-9-]+$/.test(AZURE_SPEECH_KEY) &&
+            // No spaces allowed
             !/\s/.test(AZURE_SPEECH_KEY) &&
-            // Convert to lowercase for consistent validation
-            AZURE_SPEECH_KEY.toLowerCase() === AZURE_SPEECH_KEY;
+            // Reject placeholder keys (all zeros)
+            !/^0+$/.test(AZURE_SPEECH_KEY);
           
           setAzureKeyValid(isValidKey);
           
@@ -77,6 +112,12 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
             console.warn('Azure Speech key appears to be invalid or missing');
             console.warn('Key validation failed. Key length:', AZURE_SPEECH_KEY?.length);
             setUseBrowserFallback(true);
+            
+            // Show a toast notification to inform the user about the fallback
+            toast({
+              title: 'Using Browser Speech Recognition',
+              description: 'Azure Speech key is invalid or missing. Using browser speech recognition instead.',
+            });
           }
         } catch (sdkError) {
           console.error('Failed to load Speech SDK module:', sdkError);
@@ -223,8 +264,9 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
           credentials: 'omit',
           signal: AbortSignal.timeout(2000)
         }).then(response => {
-          console.log('Speech service connectivity test successful with status:', response.status);
-          return true;
+          console.log('Speech service connectivity test with status:', response.status);
+          // Only consider 2xx and 3xx responses as successful
+          return response.ok || (response.status >= 200 && response.status < 400);
         }),
         
         // Approach 3: GET request to token endpoint
@@ -234,20 +276,35 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
           credentials: 'omit',
           signal: AbortSignal.timeout(2000)
         }).then(response => {
-          console.log('Speech service connectivity test successful with token endpoint, status:', response.status);
-          return true;
+          console.log('Speech service connectivity test with token endpoint, status:', response.status);
+          // Only consider 2xx and 3xx responses as successful
+          return response.ok || (response.status >= 200 && response.status < 400);
         })
       ];
       
       // Use Promise.any to return as soon as any approach succeeds
       try {
-        await Promise.any(testApproaches.map(p => p.catch(e => Promise.reject(e))));
+        const results = await Promise.allSettled(testApproaches);
+        // Check if any of the responses were successful
+        const hasSuccessfulResponse = results.some(result => 
+          result.status === 'fulfilled' && (
+            // For no-cors requests, result.value will be true (not a Response object)
+            result.value === true ||
+            // For regular requests, check for 200 status
+(result.value && typeof result.value === 'object' && 'status' in result.value && (result.value as { status: number }).status === 200)
+          )
+        );
+        
+        if (!hasSuccessfulResponse) {
+          console.error('All speech service connectivity tests failed with non-200 responses');
+          return false;
+        }
         return true;
       } catch (aggregateError) {
         // All approaches failed
         console.error('All speech service connectivity test approaches failed');
-        // Fall back to general connectivity result
-        return hasGeneralConnectivity;
+        // Don't fall back to general connectivity - if Azure endpoints are unreachable, the service won't work
+        return false;
       }
     } catch (error) {
       console.warn('Speech service connectivity test failed:', error);
@@ -257,10 +314,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
     }
   };
 
-  // Simplified online check for synchronous contexts
-  const checkOnlineStatus = (): boolean => {
-    return networkConnected;
-  };
+  // We're using the networkConnected state directly instead of a separate function
 
   const startAzureSpeechRecognition = async () => {
     // Perform a more thorough connectivity check specifically for speech services
@@ -313,9 +367,16 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
     console.log('Azure Speech key validation passed')
 
     try {
-      // Create speech config
+      // Create speech config with detailed logging
       const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(AZURE_SPEECH_KEY, AZURE_SPEECH_REGION);
       speechConfig.speechRecognitionLanguage = 'en-US';
+      
+      // Enable detailed logging for troubleshooting
+      if (SpeechSDK.Diagnostics) {
+        SpeechSDK.Diagnostics.enableTelemetry(true);
+        SpeechSDK.Diagnostics.setLoggingLevel(SpeechSDK.LogLevel.Debug);
+        console.log('Enhanced logging enabled for Azure Speech SDK');
+      }
 
       // Create audio config
       const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
@@ -401,12 +462,12 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
       };
       
       // Set up speech activity detection events
-      recognizer.recognized = (s, e) => {
+      recognizer.recognized = () => {
         console.log('Speech recognized, resetting silence timer');
         resetSilenceTimer();
       };
       
-      recognizer.recognizing = (s, e) => {
+      recognizer.recognizing = () => {
         console.log('Speech being recognized, marking as speaking');
         isSpeaking = true;
         // Clear any existing silence timer when speech is being recognized
@@ -416,7 +477,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
         }
       };
       
-      recognizer.speechEndDetected = (s, e) => {
+      recognizer.speechEndDetected = () => {
         console.log('Speech ended, starting silence timer');
         // Only start the silence timer if we've detected speech
         if (isSpeaking) {
@@ -426,7 +487,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
       
       // Start recognition
       recognizer.recognizeOnceAsync(
-        (result: any) => {
+        (result: RecognitionResult) => {
           clearTimeout(recognitionTimeout);
           // Clear silence timer when we get a result
           if (silenceTimer) {
@@ -434,7 +495,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
             silenceTimer = null;
           }
           
-          if (result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
+          if (result.reason === "RecognizedSpeech" || result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
             const recognizedText = result.text;
             if (recognizedText.trim()) {
               onTextCaptured(recognizedText);
@@ -458,7 +519,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
             recognizerRef.current = null;
           }
         },
-        (error: any) => {
+        (error: Error) => {
           clearTimeout(recognitionTimeout);
           console.error('Azure Speech recognition error:', error);
           
@@ -522,9 +583,10 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
     const SpeechRecognition = (window.SpeechRecognition || window.webkitSpeechRecognition) as typeof window.SpeechRecognition;
     
     if (!SpeechRecognition) {
+      console.error('Browser speech recognition is not supported');
       toast({
-        title: 'Not Supported',
-        description: 'Speech recognition is not supported in this browser.',
+        title: 'Speech Recognition Not Supported',
+        description: 'Speech recognition is not supported in this browser. Please try using a different browser like Chrome.',
         variant: 'destructive',
       });
       setIsListening(false);
@@ -540,7 +602,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
       console.error('Microphone permission error:', error);
       toast({
         title: 'Microphone Access Denied',
-        description: 'Please allow microphone access to use speech recognition.',
+        description: 'Please allow microphone access in your browser settings to use speech recognition. You may need to refresh the page after granting permission.',
         variant: 'destructive',
       });
       setIsListening(false);
@@ -553,6 +615,33 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
       recognition.lang = 'en-US';
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
+      
+      // Create an adapter that implements SpeechRecognizerType interface
+      const recognizerAdapter: SpeechRecognizerType = {
+        recognizeOnceAsync: (successCallback, errorCallback) => {
+          // Set up event handlers to map to the callback style
+          recognition.onresult = (event) => {
+            const result = {
+              reason: 'RecognizedSpeech',
+              text: event.results[0][0].transcript
+            };
+            successCallback(result);
+          };
+          recognition.onerror = (event) => {
+            errorCallback(new Error(event.error));
+          };
+          recognition.start();
+        },
+        close: () => {
+          recognition.abort();
+        },
+        abort: () => {
+          recognition.abort();
+        }
+      };
+      
+      // Store the adapter in the ref
+      recognizerRef.current = recognizerAdapter;
       
       // Add timeout to prevent hanging if network is unavailable
       const recognitionTimeout = setTimeout(() => {
@@ -592,8 +681,22 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
           silenceTimer = setTimeout(() => {
             console.log('Auto-submitting after 3 seconds of silence');
             try {
-              // Store the current recognition object in ref to ensure we can access it later
-              recognizerRef.current = recognition;
+              // Create an adapter that implements SpeechRecognizerType interface
+              const recognizerAdapter: SpeechRecognizerType = {
+                recognizeOnceAsync: (successCallback, errorCallback) => {
+                  // This is just a placeholder since we're stopping recognition
+                  // The actual recognition is already happening
+                },
+                close: () => {
+                  recognition.abort();
+                },
+                abort: () => {
+                  recognition.abort();
+                }
+              };
+              
+              // Store the adapter in the ref
+              recognizerRef.current = recognizerAdapter;
               
               // Create a flag to track if we've already processed a result
               let resultProcessed = false;
@@ -804,14 +907,16 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
       setIsListening(true);
       toast({
         title: 'Listening...',
-        description: 'Speak now to describe your transaction.',
+        description: useBrowserFallback ? 'Using browser speech recognition. Speak now.' : 'Speak now to describe your transaction.',
       });
 
       try {
-        // Determine which recognition method to use
-        // If SDK failed to load or key is invalid, use browser fallback
-        if (useBrowserFallback || !sdkReady || !azureKeyValid) {
-          console.log('Using browser speech recognition');
+        // Check if we should use browser fallback
+        const shouldUseFallback = useBrowserFallback || !sdkReady || !azureKeyValid;
+        
+        // Always try browser recognition first if Azure key is invalid
+        if (shouldUseFallback) {
+          console.log('Using browser speech recognition (Azure key invalid or SDK not ready)');
           startBrowserSpeechRecognition();
         } else {
           console.log('Attempting to use Azure speech recognition');
@@ -823,7 +928,16 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
           } else {
             // Log the Azure Speech key validity and region for debugging
             console.log(`Azure Speech configuration: Region=${AZURE_SPEECH_REGION}, Key valid=${azureKeyValid}`);
-            startAzureSpeechRecognition();
+            
+            // Check if we can connect to Azure Speech service before attempting to use it
+            const isSpeechServiceAvailable = await checkSpeechServiceConnectivity();
+            if (!isSpeechServiceAvailable) {
+              console.warn('Azure Speech service connectivity check failed, falling back to browser recognition');
+              setUseBrowserFallback(true);
+              startBrowserSpeechRecognition();
+            } else {
+              startAzureSpeechRecognition();
+            }
           }
         }
       } catch (error) {
