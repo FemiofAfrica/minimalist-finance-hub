@@ -225,7 +225,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
           ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Describe your transaction... (e.g., 'Spent ₦5000 on groceries yesterday')"
+          placeholder="Speak or type in your transaction... (e.g., 'Spent ₦5000 on groceries yesterday')"
           disabled={isProcessing}
           className={`flex-1 ${isPreviewMode ? 'border-blue-500 pr-16' : ''}`}
           onKeyDown={(e) => {
