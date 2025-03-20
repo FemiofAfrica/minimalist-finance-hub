@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import logger from "@/utils/logger";
 
 /**
  * Fetches all unique dates that have transactions in the database
@@ -18,7 +19,7 @@ export const fetchAvailableTransactionDates = async (): Promise<Date[]> => {
     }
 
     if (!data || data.length === 0) {
-      console.log('No transaction dates found');
+      logger.info('No transaction dates found');
       return [];
     }
 
@@ -38,7 +39,7 @@ export const fetchAvailableTransactionDates = async (): Promise<Date[]> => {
       return new Date(`${dateStr}T12:00:00`);
     });
 
-    console.log(`Found ${availableDates.length} unique transaction dates`);
+    logger.info(`Found ${availableDates.length} unique transaction dates`);
     return availableDates;
   } catch (error) {
     console.error('Error in fetchAvailableTransactionDates:', error);

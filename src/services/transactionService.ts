@@ -1,21 +1,22 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { Transaction } from "@/types/transaction";
+import logger from "@/utils/logger";
 
 export const fetchTransactions = async (signal?: AbortSignal): Promise<Transaction[]> => {
   // Check if the request has been aborted before starting
   if (signal?.aborted) {
-    console.log("Request was aborted before starting");
+    logger.debug("Request was aborted before starting");
     // Return empty array instead of throwing error for aborted requests
     return [];
   }
 
   try {
-    console.log("Fetching transactions...");
+    logger.info("Fetching transactions...");
     
     // Check if Supabase client is properly initialized
     if (!supabase) {
-      console.error("Supabase client is not initialized");
+      logger.error("Supabase client is not initialized");
       return [];
     }
     
@@ -26,30 +27,30 @@ export const fetchTransactions = async (signal?: AbortSignal): Promise<Transacti
       .select('*')
       .order('created_at', { ascending: false })
       .order('date', { ascending: false })
-      .abortSignal(signal);
+      .abortSignal(signal as AbortSignal);
 
     // Check if the request was aborted during the fetch
     if (signal?.aborted) {
-      console.log("Request was aborted during fetch");
+      logger.debug("Request was aborted during fetch");
       // Return empty array instead of throwing error for aborted requests
       return [];
     }
 
     if (transactionsError) {
-      console.error('Error fetching transactions:', transactionsError);
+      logger.error('Error fetching transactions:', transactionsError);
       throw new Error(transactionsError.message);
     }
 
     if (!transactionsData) {
-      console.error("No transactions data received from Supabase");
+      logger.error("No transactions data received from Supabase");
       throw new Error("Failed to fetch transactions data");
     }
 
-    console.log("Transactions data from Supabase - count:", transactionsData.length);
+    logger.info("Transactions data from Supabase - count:", transactionsData.length);
     if (transactionsData.length > 0) {
       // Log a sample transaction to help with debugging
       const sampleTransaction = transactionsData[0];
-      console.log("Sample transaction:", {
+      logger.debug("Sample transaction:", {
         id: sampleTransaction.transaction_id,
         description: sampleTransaction.description,
         amount: sampleTransaction.amount,
@@ -59,7 +60,7 @@ export const fetchTransactions = async (signal?: AbortSignal): Promise<Transacti
         category_type: sampleTransaction.category_type
       });
     } else {
-      console.log("No transactions found in database");
+      logger.info("No transactions found in database");
       return [];
     }
 
@@ -75,23 +76,23 @@ export const fetchTransactions = async (signal?: AbortSignal): Promise<Transacti
         .from('categories')
         .select('*')
         .in('category_id', categoryIds)
-        .abortSignal(signal); // Add abort signal to categories fetch as well
+        .abortSignal(signal as AbortSignal); // Add abort signal to categories fetch as well
       
       // Check if the request was aborted during categories fetch
       if (signal?.aborted) {
-        console.log("Request was aborted during categories fetch");
+        logger.debug("Request was aborted during categories fetch");
         // Return what we have so far instead of throwing error
         return transactionsData.map(transaction => ({
           ...transaction,
           category_name: transaction.category_name || 'Uncategorized'
-        }));
+        })) as Transaction[];
       }
       
       if (categoriesError) {
-        console.error('Error fetching categories:', categoriesError);
+        logger.error('Error fetching categories:', categoriesError);
         // Continue with what we have instead of failing completely
       } else if (categoriesData) {
-        console.log("Categories data from Supabase:", categoriesData);
+        logger.debug("Categories data from Supabase:", categoriesData);
         // Create a map of category_id to category object for faster lookups
         categoriesData.forEach(category => {
           categoriesMap.set(category.category_id, category);
@@ -120,19 +121,21 @@ export const fetchTransactions = async (signal?: AbortSignal): Promise<Transacti
               // Store the full ISO string to preserve time information
               formattedDate = dateObj.toISOString();
             }
-          } else if (formattedDate instanceof Date) {
-            if (!isNaN(formattedDate.getTime())) {
-              formattedDate = formattedDate.toISOString();
+          } else if (typeof formattedDate === 'object' && formattedDate !== null && 'getTime' in formattedDate) {
+            // Handle Date objects
+            const dateObj = formattedDate as Date;
+            if (!isNaN(dateObj.getTime())) {
+              formattedDate = dateObj.toISOString();
             }
           } else {
             // Handle other types (like timestamps)
-            const dateObj = new Date(formattedDate);
+            const dateObj = new Date(String(formattedDate));
             if (!isNaN(dateObj.getTime())) {
               formattedDate = dateObj.toISOString();
             }
           }
         } catch (error) {
-          console.warn(`Error formatting date for transaction ${transaction.transaction_id}:`, error);
+          logger.warn(`Error formatting date for transaction ${transaction.transaction_id}:`, error);
           // Keep the original date value if formatting fails
         }
       }
@@ -144,20 +147,20 @@ export const fetchTransactions = async (signal?: AbortSignal): Promise<Transacti
       } as Transaction;
     });
     
-    console.log("Processed transactions count:", enrichedTransactions.length);
+    logger.info("Processed transactions count:", enrichedTransactions.length);
     // If we have no transactions, log a more specific message to help with debugging
     if (enrichedTransactions.length === 0) {
-      console.log("No transactions found after processing. This could be due to filtering or no data in the database.");
+      logger.info("No transactions found after processing. This could be due to filtering or no data in the database.");
     }
     return enrichedTransactions;
   } catch (error) {
     // Handle abort errors gracefully
     if (error instanceof Error && (error.name === 'AbortError' || error.message === 'Request aborted')) {
-      console.log("Fetch aborted:", error.message);
+      logger.debug("Fetch aborted:", error.message);
       return []; // Return empty array for aborted requests instead of throwing
     }
     
-    console.error("Error in fetchTransactions:", error);
+    logger.error("Error in fetchTransactions:", error);
     throw error; // Only rethrow non-abort errors to be handled by the component
   }
 };
@@ -172,13 +175,13 @@ export const fetchTransactionsByAccount = async (accountId: string): Promise<Tra
       .order('date', { ascending: false });
 
     if (error) {
-      console.error('Error fetching transactions by account:', error);
+      logger.error('Error fetching transactions by account:', error);
       throw error;
     }
 
-    return data || [];
+    return (data || []) as Transaction[];
   } catch (error) {
-    console.error("Error in fetchTransactionsByAccount:", error);
+    logger.error("Error in fetchTransactionsByAccount:", error);
     throw error;
   }
 };
@@ -193,13 +196,13 @@ export const fetchTransactionsByCard = async (cardId: string): Promise<Transacti
       .order('date', { ascending: false });
 
     if (error) {
-      console.error('Error fetching transactions by card:', error);
+      logger.error('Error fetching transactions by card:', error);
       throw error;
     }
 
-    return data || [];
+    return (data || []) as Transaction[];
   } catch (error) {
-    console.error("Error in fetchTransactionsByCard:", error);
+    logger.error("Error in fetchTransactionsByCard:", error);
     throw error;
   }
 };
@@ -218,7 +221,7 @@ export const createTransaction = async (transaction: Omit<Transaction, 'transact
         .maybeSingle();
 
       if (categoryError) {
-        console.error('Category lookup error:', categoryError);
+        logger.error('Category lookup error:', categoryError);
         throw categoryError;
       }
 
@@ -236,7 +239,7 @@ export const createTransaction = async (transaction: Omit<Transaction, 'transact
           .single();
 
         if (insertCategoryError) {
-          console.error('Category creation error:', insertCategoryError);
+          logger.error('Category creation error:', insertCategoryError);
           throw insertCategoryError;
         }
 
@@ -254,13 +257,13 @@ export const createTransaction = async (transaction: Omit<Transaction, 'transact
       .single();
 
     if (error) {
-      console.error('Error creating transaction:', error);
+      logger.error('Error creating transaction:', error);
       throw error;
     }
 
     return data;
   } catch (error) {
-    console.error("Error in createTransaction:", error);
+    logger.error("Error in createTransaction:", error);
     throw error;
   }
 };
@@ -282,7 +285,7 @@ export const updateTransaction = async (
         .maybeSingle();
 
       if (categoryError) {
-        console.error('Category lookup error:', categoryError);
+        logger.error('Category lookup error:', categoryError);
         throw categoryError;
       }
 
@@ -300,7 +303,7 @@ export const updateTransaction = async (
           .single();
 
         if (insertCategoryError) {
-          console.error('Category creation error:', insertCategoryError);
+          logger.error('Category creation error:', insertCategoryError);
           throw insertCategoryError;
         }
 
@@ -319,13 +322,13 @@ export const updateTransaction = async (
       .single();
 
     if (error) {
-      console.error('Error updating transaction:', error);
+      logger.error('Error updating transaction:', error);
       throw error;
     }
 
     return data;
   } catch (error) {
-    console.error("Error in updateTransaction:", error);
+    logger.error("Error in updateTransaction:", error);
     throw error;
   }
 };
@@ -338,11 +341,11 @@ export const deleteTransaction = async (transactionId: string): Promise<void> =>
       .eq('transaction_id', transactionId);
 
     if (error) {
-      console.error('Error deleting transaction:', error);
+      logger.error('Error deleting transaction:', error);
       throw error;
     }
   } catch (error) {
-    console.error("Error in deleteTransaction:", error);
+    logger.error("Error in deleteTransaction:", error);
     throw error;
   }
 };

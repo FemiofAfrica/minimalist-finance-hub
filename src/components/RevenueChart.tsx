@@ -48,7 +48,7 @@ const RevenueChart = ({ period }: RevenueChartProps) => {
         const dailyBalances = new Map<string, number>();
         let runningBalance = 0;
 
-        transactions?.forEach((transaction: any) => {
+        transactions?.forEach((transaction: Transaction) => {
           const date = format(new Date(transaction.date), 'MMM d');
           const amount = Number(transaction.amount);
           
@@ -113,7 +113,7 @@ const RevenueChart = ({ period }: RevenueChartProps) => {
           tickFormatter={(value) => formatCurrency(value, currentCurrency)}
         />
         <Tooltip
-          content={({ active, payload }) => {
+          content={({ active, payload }: { active?: boolean; payload?: Array<{ value: string | number }> }) => {
             if (active && payload && payload.length) {
               return (
                 <div className="rounded-lg border bg-background p-2 shadow-sm">

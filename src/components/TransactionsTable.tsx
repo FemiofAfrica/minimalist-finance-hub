@@ -13,6 +13,7 @@ import { DatePeriodPicker } from "@/components/ui/date-period-picker";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
+import logger from "@/utils/logger";
 
 interface TransactionsTableProps {
   limit?: number; // Optional limit for dashboard view
@@ -35,10 +36,10 @@ const TransactionsTable = ({ limit }: TransactionsTableProps) => {
   // Function to apply filters to transactions
   const applyFilters = useCallback((data: Transaction[]) => {
     let filteredData = [...data];
-    console.log("Total transactions before filtering:", filteredData.length);
+    logger.debug("Total transactions before filtering:", filteredData.length);
     
     if (dateRange?.from && dateRange?.to) {
-      console.log("Applying date range filter:", {
+      logger.debug("Applying date range filter:", {
         from: dateRange.from.toISOString(),
         to: dateRange.to.toISOString()
       });
@@ -53,7 +54,7 @@ const TransactionsTable = ({ limit }: TransactionsTableProps) => {
       filteredData = filteredData.filter(transaction => {
         // Ensure we have a valid date string
         if (!transaction.date) {
-          console.warn("Transaction missing date:", transaction);
+          logger.warn("Transaction missing date:", transaction);
           return false;
         }
         
@@ -74,7 +75,7 @@ const TransactionsTable = ({ limit }: TransactionsTableProps) => {
           
           // Check if the date is valid
           if (isNaN(transactionDate.getTime())) {
-            console.warn(`Invalid date found: ${transaction.date}`);
+            logger.warn(`Invalid date found: ${transaction.date}`);
             return false;
           }
           
@@ -83,7 +84,7 @@ const TransactionsTable = ({ limit }: TransactionsTableProps) => {
           normalizedDate.setHours(0, 0, 0, 0);
           
           // Debug logging to help diagnose the issue
-          console.log("Comparing dates:", {
+          logger.debug("Comparing dates:", {
             transaction: transaction.description,
             transactionDate: normalizedDate.toISOString(),
             fromDate: fromDate.toISOString(),
@@ -93,21 +94,21 @@ const TransactionsTable = ({ limit }: TransactionsTableProps) => {
           
           return normalizedDate >= fromDate && normalizedDate <= toDate;
         } catch (error) {
-          console.error(`Error processing date: ${transaction.date}`, error);
+          logger.error(`Error processing date: ${transaction.date}`, error);
           return false;
         }
       });
       
-      console.log("Transactions after date filtering:", filteredData.length);
+      logger.debug("Transactions after date filtering:", filteredData.length);
     }
     
     if (selectedCategory) {
-      console.log("Applying category filter:", selectedCategory);
+      logger.debug("Applying category filter:", selectedCategory);
       filteredData = filteredData.filter(transaction => 
         transaction.category_id === selectedCategory || 
         transaction.category_name === selectedCategory
       );
-      console.log("Transactions after category filtering:", filteredData.length);
+      logger.debug("Transactions after category filtering:", filteredData.length);
     }
     
     return filteredData;
@@ -132,17 +133,17 @@ const TransactionsTable = ({ limit }: TransactionsTableProps) => {
       setLoading(true);
       setError(null);
       
-      console.log("Fetching transactions...");
+      logger.info("Fetching transactions...");
       const data = await fetchTransactions(abortController.signal);
       
       // Check if component is still mounted and request wasn't aborted
       if (!isMounted || abortController.signal.aborted) {
-        console.log('Component unmounted or request aborted during fetch');
+        logger.debug('Component unmounted or request aborted during fetch');
         return;
       }
       
-      console.log("Fetched transactions count:", data.length);
-      console.log("Sample transaction:", data.length > 0 ? data[0] : "No transactions");
+      logger.info("Fetched transactions count:", data.length);
+      logger.debug("Sample transaction:", data.length > 0 ? data[0] : "No transactions");
       
       // Apply filters to the fetched data
       const filteredData = applyFilters(data);
@@ -155,12 +156,12 @@ const TransactionsTable = ({ limit }: TransactionsTableProps) => {
       
       // Handle abort errors separately
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Fetch aborted');
+        logger.debug('Fetch aborted');
         return;
       }
       
       // Handle other errors
-      console.error('Error in fetchTransactions:', error);
+      logger.error('Error in fetchTransactions:', error);
       setError("Failed to fetch transactions. Please try again later.");
       setTransactions([]);
       
@@ -202,7 +203,7 @@ const TransactionsTable = ({ limit }: TransactionsTableProps) => {
     
     // Set up event listener for refresh events
     const handleRefresh = () => {
-      console.log("Refresh event triggered in TransactionsTable");
+      logger.debug("Refresh event triggered in TransactionsTable");
       if (isMounted) {
         fetchData();
       }
@@ -210,7 +211,7 @@ const TransactionsTable = ({ limit }: TransactionsTableProps) => {
 
     // Set up event listener for add transaction events from TransactionEmptyState
     const handleAddTransaction = () => {
-      console.log("Add transaction event triggered in TransactionsTable");
+      logger.debug("Add transaction event triggered in TransactionsTable");
       // Here you would typically open a dialog or modal to add a transaction
       // For now, we'll just trigger a refresh to ensure any new transactions are displayed
       if (isMounted) {

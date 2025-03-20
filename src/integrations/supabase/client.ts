@@ -51,10 +51,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Add connection health check function
 export const checkSupabaseConnection = async (): Promise<boolean> => {
   try {
-    // Simple health check query
-    const { error } = await supabase.from('health_check').select('count').maybeSingle();
-    // If we get a 404, that's fine - it means we reached Supabase but the table doesn't exist
-    return !error || error.code === '404';
+    // Simple health check query using an existing table with limit 0
+    // This verifies connection without retrieving actual data
+    const { error } = await supabase.from('users').select('user_id').limit(0);
+    return !error;
   } catch (e) {
     console.error('Supabase connection check failed:', e);
     return false;
@@ -88,5 +88,4 @@ export const getCurrentUserId = async (): Promise<string | null> => {
   }
 };
 
-// Export the function
-export { getCurrentUserId };
+// Function is already exported above
