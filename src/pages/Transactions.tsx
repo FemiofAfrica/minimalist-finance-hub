@@ -108,8 +108,6 @@ const Transactions = () => {
       document.removeEventListener('refresh', handleRefresh);
     };
   }, [toast]);
-
-  const recentTransactions = transactions.slice(0, 5);
   
   return (
     <PageLayout>
@@ -160,52 +158,6 @@ const Transactions = () => {
         <h2 className="text-xl font-bold mb-4">All Transactions</h2>
         <TransactionsTable />
       </div>
-      
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Calendar className="w-5 h-5 mr-2" />
-            Recent Transactions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-4">Loading transactions...</div>
-          ) : recentTransactions.length > 0 ? (
-            <div className="space-y-4">
-              {recentTransactions.map((transaction) => (
-                <div key={transaction.transaction_id} className="flex items-center justify-between pb-4 border-b">
-                  <div className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${
-                      transaction.category_type === "EXPENSE" ? "bg-red-100" : "bg-emerald-100"
-                    }`}>
-                      {transaction.category_type === "EXPENSE" ? (
-                        <ArrowDownRight className="w-4 h-4 text-red-500" />
-                      ) : (
-                        <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="font-medium">{transaction.description}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {new Date(transaction.date).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </div>
-                  <span className={transaction.category_type === "EXPENSE" ? "text-red-500" : "text-emerald-500"}>
-                    {transaction.category_type === "EXPENSE" ? "-" : "+"}
-                    {formatNaira(transaction.amount)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-4 text-gray-500">
-              No recent transactions found.
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </PageLayout>
   );
 };

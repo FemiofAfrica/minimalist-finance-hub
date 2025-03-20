@@ -42,11 +42,12 @@ const links = [
     icon: <Wallet className="mr-2 h-4 w-4" />
   },
   */
-  { 
-    href: "/budgeting", 
-    label: "Budgeting", 
-    icon: <PiggyBank className="mr-2 h-4 w-4" />
-  },
+  // Temporarily hidden for future deployment
+  // { 
+  //   href: "/budgeting", 
+  //   label: "Budgeting", 
+  //   icon: <PiggyBank className="mr-2 h-4 w-4" />
+  // },
   { 
     href: "/reports", 
     label: "Reports", 

@@ -59,6 +59,7 @@ function App() {
                 </PrivateRoute>
               }
             />
+            /* Budgeting functionality temporarily hidden from public access
             <Route
               path="/budgeting"
               element={
