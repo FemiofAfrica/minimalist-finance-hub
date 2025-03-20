@@ -24,7 +24,7 @@ const TransactionsSection = ({ onTransactionAdded }: TransactionsSectionProps) =
         </button>
       </div>
       <div className="flex-1 overflow-auto">
-        <TransactionsTable />
+        <TransactionsTable limit={10} />
       </div>
     </Card>
   );

@@ -2,17 +2,23 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Transaction } from "@/types/transaction";
 
-export const fetchTransactions = async (): Promise<Transaction[]> => {
+export const fetchTransactions = async (limit?: number): Promise<Transaction[]> => {
   try {
     console.log("Fetching transactions...");
     
     // Step 1: Fetch all transactions
     // Sort by created_at to include time information, falling back to date if created_at is not available
-    const { data: transactionsData, error: transactionsError } = await supabase
+    let query = supabase
       .from('transactions')
       .select('*')
       .order('created_at', { ascending: false })
       .order('date', { ascending: false });
+
+    if (limit) {
+      query = query.limit(limit);
+    }
+
+    const { data: transactionsData, error: transactionsError } = await query;
 
     if (transactionsError) {
       console.error('Error fetching transactions:', transactionsError);
