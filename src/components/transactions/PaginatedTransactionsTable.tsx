@@ -30,7 +30,7 @@ const PaginatedTransactionsTable = ({ limit: initialLimit }: PaginatedTransactio
         (transaction.category_name || "").toLowerCase().includes(searchQuery.toLowerCase())
       : true;
 
-    const matchesCategory = categoryFilter
+    const matchesCategory = categoryFilter && categoryFilter !== "all"
       ? (transaction.category_name || "").toLowerCase() === categoryFilter.toLowerCase()
       : true;
 
@@ -158,7 +158,7 @@ const PaginatedTransactionsTable = ({ limit: initialLimit }: PaginatedTransactio
 
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          Showing {Math.min(pageSize, filteredTransactions.length)} of {filteredTransactions.length} transactions
+          Showing {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filteredTransactions.length)} of {filteredTransactions.length} transactions
         </div>
         <div className="flex gap-2">
           <Button
