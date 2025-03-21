@@ -72,7 +72,7 @@ export function DashboardSidebar() {
         <div className="p-6">
           <Link to="/" className="flex items-center gap-2">
             <Wallet className="h-6 w-6" />
-            <span className="text-xl font-semibold">Finance Tracker</span>
+            <span className="text-xl font-semibold">SayFin</span>
           </Link>
         </div>
         <ScrollArea className="flex-1 px-6">
@@ -81,7 +81,7 @@ export function DashboardSidebar() {
               <Button
                 key={link.href}
                 variant={location.pathname === link.href ? "secondary" : "ghost"}
-                className="justify-start pl-2"
+                className="justify-start pl-2 hover:bg-primary hover:text-primary-foreground"
                 asChild
               >
                 <Link to={link.href}>
@@ -132,7 +132,7 @@ export function DashboardSidebar() {
         </SheetTrigger>
         <SheetContent side="left" className="p-0">
           <SheetHeader className="p-6 text-left">
-            <SheetTitle>Finance Tracker</SheetTitle>
+            <SheetTitle>SayFin</SheetTitle>
           </SheetHeader>
           <Separator />
           <ScrollArea className="h-[calc(100vh-10rem)]">
@@ -141,7 +141,7 @@ export function DashboardSidebar() {
                 <Button
                   key={link.href}
                   variant={location.pathname === link.href ? "secondary" : "ghost"}
-                  className="justify-start"
+                  className="justify-start hover:bg-primary hover:text-primary-foreground"
                   asChild
                 >
                   <Link to={link.href}>
