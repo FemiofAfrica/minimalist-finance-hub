@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import TransactionsTable from "@/components/TransactionsTable";
+import PaginatedTransactionsTable from "@/components/transactions/PaginatedTransactionsTable";
 import { ArrowDownRight, ArrowUpRight, Calendar, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -156,7 +156,7 @@ const Transactions = () => {
       
       <div className="mb-8">
         <h2 className="text-xl font-bold mb-4">All Transactions</h2>
-        <TransactionsTable />
+        <PaginatedTransactionsTable />
       </div>
     </PageLayout>
   );
