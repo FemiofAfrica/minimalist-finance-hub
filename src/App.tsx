@@ -10,6 +10,7 @@ import Transactions from '@/pages/Transactions';
 import Subscriptions from '@/pages/Subscriptions';
 import AccountsAndCards from '@/pages/AccountsAndCards';
 import Budgeting from '@/pages/Budgeting';
+import Reports from '@/pages/Reports';
 import NotFound from '@/pages/NotFound';
 import './App.css';
 
@@ -79,6 +80,14 @@ function App() {
               }
             /> 
             */}
+            <Route
+              path="/reports"
+              element={
+                <PrivateRoute>
+                  <Reports />
+                </PrivateRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
             </Routes>
           </Router>
