@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+  <style>
+    .hand { fill: none; stroke: currentColor; stroke-width: 15; stroke-linecap: round; stroke-linejoin: round; }
+    .coins { fill: currentColor; opacity: 0.9; }
+  </style>
+  <path class="hand" d="M100 300 C 120 280, 150 250, 180 240 C 200 235, 220 235, 240 240 L 300 260 C 320 270, 340 280, 360 280 C 380 280, 400 270, 420 250"/>
+  <g class="coins">
+    <circle cx="250" cy="200" r="40"/>
+    <circle cx="290" cy="180" r="40"/>
+    <circle cx="330" cy="160" r="40"/>
+    <circle cx="370" cy="140" r="40"/>
+  </g>
+</svg>

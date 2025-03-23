@@ -71,7 +71,7 @@ export function DashboardSidebar() {
       <div className="flex-1">
         <div className="p-6">
           <Link to="/" className="flex items-center gap-2">
-            <Wallet className="h-6 w-6" />
+            <img src="/assets/logo.svg" alt="SayFin Logo" className="h-6 w-6" />
             <span className="text-xl font-semibold">SayFin</span>
           </Link>
         </div>
