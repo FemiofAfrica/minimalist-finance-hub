@@ -677,6 +677,12 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
         clearTimeout(recognitionTimeout);
         console.error('Speech recognition error:', event.error, event.message);
         
+        // Add retry configuration at component level
+        const MAX_RETRIES = 3;
+        const BASE_DELAY = 1000; // 1 second
+        const MAX_DELAY = 8000; // 8 seconds
+        const [retryCount, setRetryCount] = useState(0);
+        
         // Provide more specific error messages based on error type
         let errorMessage = `Error: ${event.error}`;
         let errorTitle = 'Recognition Error';
@@ -693,16 +699,14 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
           const isConnected = await checkNetworkConnectivity();
           setNetworkConnected(isConnected);
           
-          if (isConnected) {
-            // If we're actually connected but still getting network errors,
-            // it might be a CORS issue or browser security policy
-            console.warn('Network appears connected but speech recognition reports network error');
-            errorMessage = 'Unable to connect to speech recognition service despite network being available. This may be due to browser security settings or network configuration.';
+          if (isConnected && retryCount < MAX_RETRIES) {
+            const delay = Math.min(BASE_DELAY * Math.pow(2, retryCount), MAX_DELAY);
+            console.warn(`Network appears connected but speech recognition reports network error. Retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+            errorMessage = `Unable to connect to speech recognition service. Retrying in ${Math.round(delay/1000)} seconds...`;
             
-            // Try restarting recognition after a short delay
             setTimeout(() => {
               if (isListening) {
-                console.log('Attempting to restart speech recognition after network error');
+                console.log(`Attempting retry ${retryCount + 1} after network error`);
                 try {
                   recognition.abort();
                   setTimeout(() => {
@@ -710,28 +714,38 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
                     newRecognition.lang = 'en-US';
                     newRecognition.interimResults = false;
                     newRecognition.maxAlternatives = 1;
-                    // Copy event handlers from the original recognition object
                     newRecognition.onresult = recognition.onresult;
                     newRecognition.onerror = recognition.onerror;
                     newRecognition.onend = recognition.onend;
                     newRecognition.start();
+                    setRetryCount(prev => prev + 1);
                   }, 500);
                 } catch (e) {
                   console.error('Failed to restart speech recognition:', e);
+                  setIsListening(false);
                 }
               }
-            }, 1000);
+            }, delay);
+          } else if (isConnected) {
+            errorMessage = 'Maximum retry attempts reached. Please try again later.';
+            setIsListening(false);
+            setRetryCount(0);
           }
-        } else if (event.error === 'not-allowed') {
-          errorMessage = 'Microphone access was denied. Please allow microphone access and try again.';
-        } else if (event.error === 'aborted') {
-          errorMessage = 'Speech recognition was aborted.';
-        } else if (event.error === 'audio-capture') {
-          errorMessage = 'No microphone was found or microphone is not working properly.';
-        } else if (event.error === 'no-speech') {
-          errorMessage = 'No speech was detected. Please try again.';
-        } else if (event.error === 'service-not-allowed') {
-          errorMessage = 'The speech recognition service is not allowed. This may be due to network restrictions.';
+        } else {
+          // Reset retry count for non-network errors
+          setRetryCount(0);
+          
+          if (event.error === 'not-allowed') {
+            errorMessage = 'Microphone access was denied. Please allow microphone access and try again.';
+          } else if (event.error === 'aborted') {
+            errorMessage = 'Speech recognition was aborted.';
+          } else if (event.error === 'audio-capture') {
+            errorMessage = 'No microphone was found or microphone is not working properly.';
+          } else if (event.error === 'no-speech') {
+            errorMessage = 'No speech was detected. Please try again.';
+          } else if (event.error === 'service-not-allowed') {
+            errorMessage = 'The speech recognition service is not allowed. This may be due to network restrictions.';
+          }
         }
         
         toast({
