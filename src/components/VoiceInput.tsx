@@ -3,8 +3,8 @@ import { Mic, MicOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
-// Azure Speech SDK
-let SpeechSDK: any;
+// Azure Speech SDK type
+type SpeechSDKType = any;
 
 interface VoiceInputProps {
   onTextCaptured: (text: string) => void;
@@ -19,82 +19,89 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
   const [azureKeyValid, setAzureKeyValid] = useState(false);
   const [networkConnected, setNetworkConnected] = useState(true);
   const recognizerRef = useRef<any>(null);
+  const speechSDKRef = useRef<SpeechSDKType | null>(null);
   const { toast } = useToast();
 
   // Azure Speech API key - This should be moved to environment variables in production
   const AZURE_SPEECH_KEY = import.meta.env.VITE_AZURE_SPEECH_KEY || '';
   const AZURE_SPEECH_REGION = import.meta.env.VITE_AZURE_SPEECH_REGION || 'eastus';
 
-  // Load Azure Speech SDK
-  useEffect(() => {
-    const loadSpeechSDK = async () => {
-      try {
-        setIsLoading(true);
-        
-        // First check network connectivity
-        const isConnected = await checkNetworkConnectivity();
-        setNetworkConnected(isConnected);
-        
-        if (!isConnected) {
-          console.warn('Network appears to be offline, will use browser fallback when connection is available');
-          setUseBrowserFallback(true);
-          return;
-        }
-        
-        // Dynamically import the Speech SDK with explicit error handling
-        try {
-          // Add a console log to track SDK loading attempt
-          console.log('Attempting to load Microsoft Cognitive Services Speech SDK...');
-          const speechModule = await import('microsoft-cognitiveservices-speech-sdk');
-          
-          // The SDK doesn't have a default export, so we use the module directly
-          if (!speechModule) {
-            throw new Error('Speech SDK module failed to load');
-          }
-          
-          // Assign to global variable and update state
-          SpeechSDK = speechModule;
-          console.log('Speech SDK loaded successfully');
-          setSdkReady(true);
-          
-          // Extremely lenient validation for Azure key format
-          // Azure Speech Service keys can have various formats including:
-          // - 32-character hex strings
-          // - Base64-encoded strings with special characters
-          // - JWT-like formats with periods as separators
-          const isValidKey = AZURE_SPEECH_KEY && 
-            // Check for minimum reasonable length (some valid keys can be shorter)
-            AZURE_SPEECH_KEY.length >= 10 && 
-            // Only check for whitespace and a few obviously invalid characters
-            // Allow most special characters that could be part of valid keys
-            !/\s/.test(AZURE_SPEECH_KEY);
-          
-          setAzureKeyValid(isValidKey);
-          
-          if (!isValidKey) {
-            console.warn('Azure Speech key appears to be invalid or missing');
-            console.warn('Key validation failed. Key length:', AZURE_SPEECH_KEY?.length);
-            setUseBrowserFallback(true);
-          }
-        } catch (sdkError) {
-          console.error('Failed to load Speech SDK module:', sdkError);
-          throw sdkError; // Re-throw to be caught by outer try/catch
-        }
-      } catch (error) {
-        console.error('Failed to load Azure Speech SDK:', error);
-        toast({
-          title: 'Speech Recognition Fallback',
-          description: 'Using browser speech recognition as fallback.',
-        });
+  // Load Azure Speech SDK only when needed
+  const loadSpeechSDK = async () => {
+    if (speechSDKRef.current) {
+      return speechSDKRef.current;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      // First check network connectivity
+      const isConnected = await checkNetworkConnectivity();
+      setNetworkConnected(isConnected);
+      
+      if (!isConnected) {
+        console.warn('Network appears to be offline, will use browser fallback when connection is available');
         setUseBrowserFallback(true);
-      } finally {
-        setIsLoading(false);
+        return null;
       }
-    };
+      
+      // Dynamically import the Speech SDK with explicit error handling
+      try {
+        // Add a console log to track SDK loading attempt
+        console.log('Attempting to load Microsoft Cognitive Services Speech SDK...');
+        const speechModule = await import('microsoft-cognitiveservices-speech-sdk');
+        
+        // The SDK doesn't have a default export, so we use the module directly
+        if (!speechModule) {
+          throw new Error('Speech SDK module failed to load');
+        }
+        
+        // Store in ref and update state
+        speechSDKRef.current = speechModule;
+        console.log('Speech SDK loaded successfully');
+        setSdkReady(true);
+        
+        // Extremely lenient validation for Azure key format
+        // Azure Speech Service keys can have various formats including:
+        // - 32-character hex strings
+        // - Base64-encoded strings with special characters
+        // - JWT-like formats with periods as separators
+        const isValidKey = AZURE_SPEECH_KEY && 
+          // Check for minimum reasonable length (some valid keys can be shorter)
+          AZURE_SPEECH_KEY.length >= 10 && 
+          // Only check for whitespace and a few obviously invalid characters
+          // Allow most special characters that could be part of valid keys
+          !/\s/.test(AZURE_SPEECH_KEY);
+        
+        setAzureKeyValid(isValidKey);
+        
+        if (!isValidKey) {
+          console.warn('Azure Speech key appears to be invalid or missing');
+          console.warn('Key validation failed. Key length:', AZURE_SPEECH_KEY?.length);
+          setUseBrowserFallback(true);
+          return null;
+        }
 
-    loadSpeechSDK();
+        return speechModule;
+      } catch (sdkError) {
+        console.error('Failed to load Speech SDK module:', sdkError);
+        throw sdkError; // Re-throw to be caught by outer try/catch
+      }
+    } catch (error) {
+      console.error('Failed to load Azure Speech SDK:', error);
+      toast({
+        title: 'Speech Recognition Fallback',
+        description: 'Using browser speech recognition as fallback.',
+      });
+      setUseBrowserFallback(true);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    // Set up network status listener
+  // Set up network status listener
+  useEffect(() => {
     const handleNetworkChange = () => {
       checkNetworkConnectivity().then(isConnected => {
         setNetworkConnected(isConnected);
@@ -280,8 +287,10 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
     // Log successful connectivity test
     console.log(`Successfully connected to Azure Speech service in region: ${AZURE_SPEECH_REGION}`);
     
-    // Double-check SDK is loaded and ready
-    if (!sdkReady || !SpeechSDK || typeof SpeechSDK.SpeechConfig === 'undefined') {
+    // Load the SDK if not already loaded
+    const SpeechSDK = await loadSpeechSDK();
+    
+    if (!SpeechSDK || !sdkReady) {
       console.error('Azure Speech SDK not ready or not properly initialized, falling back to browser recognition');
       toast({
         title: 'Speech SDK Not Ready',
@@ -828,7 +837,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
         } else {
           console.log('Attempting to use Azure speech recognition');
           // Double check SDK is properly loaded before attempting to use it
-          if (!SpeechSDK || typeof SpeechSDK.SpeechConfig === 'undefined') {
+          if (!speechSDKRef.current || typeof speechSDKRef.current.SpeechConfig === 'undefined') {
             console.warn('Azure Speech SDK not properly initialized, falling back to browser recognition');
             setUseBrowserFallback(true);
             startBrowserSpeechRecognition();
