@@ -11,6 +11,8 @@ import { useToast } from '@/components/ui/use-toast';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState('');
   const [recaptchaScore, setRecaptchaScore] = useState(0);
@@ -22,7 +24,7 @@ const Login = () => {
     e.preventDefault();
     try {
       if (isSignUp) {
-        await signUp(email, password);
+        await signUp(email, password, { firstName, lastName });
         toast({
           title: "Account created!",
           description: "Please check your email to verify your account.",
@@ -87,6 +89,34 @@ const Login = () => {
                 placeholder="Enter your password"
               />
             </div>
+            {isSignUp && (
+              <>
+                <div>
+                  <Label htmlFor="firstName" className="text-sm font-medium text-gray-200">First Name</Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                    className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
+                    placeholder="Enter your first name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lastName" className="text-sm font-medium text-gray-200">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                    className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
+                    placeholder="Enter your last name"
+                  />
+                </div>
+              </>
+            )}
             <ReCaptchaV3
               action="login"
               threshold={0.5}
