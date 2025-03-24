@@ -35,12 +35,15 @@ const Transactions = () => {
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpense, setTotalExpense] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isCalculating, setIsCalculating] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
+    let isMounted = true;
     const fetchTransactionsAndCalculateTotals = async () => {
+      if (isCalculating) return;
+      setIsCalculating(true);
       try {
-        console.log("Fetching transactions for calculations...");
         const { data, error } = await supabase
           .from('transactions')
           .select('*')
@@ -51,14 +54,12 @@ const Transactions = () => {
           throw error;
         }
 
-        console.log("Transactions data for calculations:", data);
+        if (!isMounted) return;
 
         if (!data || data.length === 0) {
-          console.log("No transactions found for calculations");
           setTransactions([]);
           setTotalIncome(0);
           setTotalExpense(0);
-          setLoading(false);
           return;
         }
 
@@ -80,9 +81,10 @@ const Transactions = () => {
           }
         });
 
-        console.log("Calculated totals:", { incomeTotal, expenseTotal });
-        setTotalIncome(incomeTotal);
-        setTotalExpense(expenseTotal);
+        if (isMounted) {
+          setTotalIncome(incomeTotal);
+          setTotalExpense(expenseTotal);
+        }
       } catch (error) {
         console.error('Error fetching transactions:', error);
         toast({
@@ -91,7 +93,10 @@ const Transactions = () => {
           variant: "destructive",
         });
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+          setIsCalculating(false);
+        }
       }
     };
 
@@ -105,6 +110,7 @@ const Transactions = () => {
 
     document.addEventListener('refresh', handleRefresh);
     return () => {
+      isMounted = false;
       document.removeEventListener('refresh', handleRefresh);
     };
   }, [toast]);
