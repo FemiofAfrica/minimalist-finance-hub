@@ -8,7 +8,7 @@ type AuthContextType = {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, metadata?: { firstName?: string; lastName?: string }) => Promise<void>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithTwitter: () => Promise<void>;
@@ -58,12 +58,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, metadata?: { firstName?: string; lastName?: string }) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/`
+        emailRedirectTo: `${window.location.origin}/`,
+        data: {
+          first_name: metadata?.firstName || '',
+          last_name: metadata?.lastName || '',
+          full_name: metadata ? `${metadata.firstName} ${metadata.lastName}`.trim() : '',
+          updated_at: new Date().toISOString()
+        }
       }
     });
     if (error) throw error;
