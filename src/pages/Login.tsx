@@ -1,5 +1,4 @@
 
-import { ReCaptchaV3 } from '@/components/auth/ReCaptchaV3';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,8 +13,6 @@ const Login = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [recaptchaToken, setRecaptchaToken] = useState('');
-  const [recaptchaScore, setRecaptchaScore] = useState(0);
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -117,29 +114,13 @@ const Login = () => {
                 </div>
               </>
             )}
-            <ReCaptchaV3
-              action="login"
-              threshold={0.5}
-              onVerify={(token, score) => {
-                setRecaptchaToken(token);
-                setRecaptchaScore(score);
-              }}
-              onError={(error) => {
-                toast({
-                  title: "Security Verification Failed",
-                  description: error.message,
-                  variant: "destructive",
-                });
-                setRecaptchaToken('');
-                setRecaptchaScore(0);
-              }}
-            />
+
           </div>
 
           <Button 
             type="submit" 
             className="w-full h-11 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent"
-            disabled={!recaptchaToken}
+
           >
             {isSignUp ? 'Sign Up' : 'Sign In'}
           </Button>

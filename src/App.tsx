@@ -13,6 +13,7 @@ import Subscriptions from '@/pages/Subscriptions';
 import AccountsAndCards from '@/pages/AccountsAndCards';
 import Budgeting from '@/pages/Budgeting';
 import Reports from '@/pages/Reports';
+import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
 import './App.css';
 
@@ -91,6 +92,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <Reports />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <PrivateRoute>
+                  <Settings />
                 </PrivateRoute>
               }
             />
