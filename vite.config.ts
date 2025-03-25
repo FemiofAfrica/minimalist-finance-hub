@@ -5,9 +5,22 @@ import path from "path";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "localhost",
+    host: true,
     port: 8080,
-    open: false
+    open: false,
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
+      port: 8080,
+      clientPort: 8080,
+      timeout: 30000,
+      overlay: false,
+      webSocketServer: {
+        options: {
+          perMessageDeflate: false
+        }
+      }
+    }
   },
   plugins: [react()],
   resolve: {
