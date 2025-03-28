@@ -6,13 +6,17 @@ import {
   Settings, 
   LogOut, 
   BookOpenText,
-  Wallet
+  Wallet,
+  PiggyBank,
+  Moon,
+  Sun
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const links = [
@@ -31,11 +35,19 @@ const links = [
     label: "Subscriptions", 
     icon: <CreditCardIcon className="mr-2 h-4 w-4" />
   },
+  /* Accounts & Cards functionality temporarily hidden from public access
   { 
     href: "/accounts", 
     label: "Accounts & Cards", 
     icon: <Wallet className="mr-2 h-4 w-4" />
   },
+  */
+  // Temporarily hidden for future deployment
+  // { 
+  //   href: "/budgeting", 
+  //   label: "Budgeting", 
+  //   icon: <PiggyBank className="mr-2 h-4 w-4" />
+  // },
   { 
     href: "/reports", 
     label: "Reports", 
@@ -51,6 +63,7 @@ const links = [
 export function DashboardSidebar() {
   const location = useLocation();
   const { signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
   
   const navigation = (
@@ -58,17 +71,17 @@ export function DashboardSidebar() {
       <div className="flex-1">
         <div className="p-6">
           <Link to="/" className="flex items-center gap-2">
-            <Wallet className="h-6 w-6" />
-            <span className="text-xl font-semibold">Finance Tracker</span>
+            <img src="/assets/logo.svg" alt="SayFin Logo" className="h-6 w-6" />
+            <span className="text-xl font-semibold">SayFin</span>
           </Link>
         </div>
-        <ScrollArea className="flex-1 px-3">
+        <ScrollArea className="flex-1 px-6">
           <nav className="flex flex-col gap-1">
             {links.map((link) => (
               <Button
                 key={link.href}
                 variant={location.pathname === link.href ? "secondary" : "ghost"}
-                className="justify-start"
+                className="justify-start pl-2 hover:bg-primary hover:text-primary-foreground"
                 asChild
               >
                 <Link to={link.href}>
@@ -81,10 +94,30 @@ export function DashboardSidebar() {
         </ScrollArea>
       </div>
       <div className="border-t border-border p-3">
-        <Button className="w-full justify-start" variant="ghost" onClick={signOut} size="sm">
-          <LogOut className="mr-2 h-4 w-4" />
-          Logout
-        </Button>
+        <div className="flex flex-col gap-2">
+          <Button 
+            className="w-full justify-start" 
+            variant="ghost" 
+            onClick={toggleTheme} 
+            size="sm"
+          >
+            {theme === "light" ? (
+              <>
+                <Moon className="mr-2 h-4 w-4" />
+                Dark Mode
+              </>
+            ) : (
+              <>
+                <Sun className="mr-2 h-4 w-4" />
+                Light Mode
+              </>
+            )}
+          </Button>
+          <Button className="w-full justify-start" variant="ghost" onClick={signOut} size="sm">
+            <LogOut className="mr-2 h-4 w-4" />
+            Logout
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -99,7 +132,7 @@ export function DashboardSidebar() {
         </SheetTrigger>
         <SheetContent side="left" className="p-0">
           <SheetHeader className="p-6 text-left">
-            <SheetTitle>Finance Tracker</SheetTitle>
+            <SheetTitle>SayFin</SheetTitle>
           </SheetHeader>
           <Separator />
           <ScrollArea className="h-[calc(100vh-10rem)]">
@@ -108,7 +141,7 @@ export function DashboardSidebar() {
                 <Button
                   key={link.href}
                   variant={location.pathname === link.href ? "secondary" : "ghost"}
-                  className="justify-start"
+                  className="justify-start hover:bg-primary hover:text-primary-foreground"
                   asChild
                 >
                   <Link to={link.href}>
@@ -121,10 +154,30 @@ export function DashboardSidebar() {
           </ScrollArea>
           <Separator />
           <div className="p-4">
-            <Button className="w-full justify-start" variant="ghost" onClick={signOut} size="sm">
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button 
+                className="w-full justify-start" 
+                variant="ghost" 
+                onClick={toggleTheme} 
+                size="sm"
+              >
+                {theme === "light" ? (
+                  <>
+                    <Moon className="mr-2 h-4 w-4" />
+                    Dark Mode
+                  </>
+                ) : (
+                  <>
+                    <Sun className="mr-2 h-4 w-4" />
+                    Light Mode
+                  </>
+                )}
+              </Button>
+              <Button className="w-full justify-start" variant="ghost" onClick={signOut} size="sm">
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            </div>
           </div>
         </SheetContent>
       </Sheet>
@@ -132,7 +185,7 @@ export function DashboardSidebar() {
   }
   
   return (
-    <div className="hidden border-r bg-background w-64 md:flex flex-col">
+    <div className="hidden border-r bg-background w-64 h-[calc(100vh-20px)] overflow-hidden md:flex flex-col fixed top-0 left-0">
       {navigation}
     </div>
   );

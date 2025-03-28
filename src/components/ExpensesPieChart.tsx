@@ -29,8 +29,8 @@ const ExpensesPieChart = () => {
       // Fetch transactions that are expenses from Supabase
       const { data, error } = await supabase
         .from('transactions')
-        .select('amount, category_name, category_type')
-        .eq('category_type', 'EXPENSE');
+        .select('amount, categories:category_id(name)')
+        .eq('type', 'expense');
         
       if (error) {
         console.error('Error fetching expense data:', error);
@@ -41,7 +41,7 @@ const ExpensesPieChart = () => {
       const categoryMap = new Map<string, number>();
       
       data?.forEach(transaction => {
-        const categoryName = transaction.category_name || 'Uncategorized';
+        const categoryName = transaction.categories?.name || 'Uncategorized';
         const amount = Number(transaction.amount);
         
         if (!isNaN(amount)) {

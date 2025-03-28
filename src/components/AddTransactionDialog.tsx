@@ -26,14 +26,23 @@ const AddTransactionDialog = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    description: string;
+    amount: string;
+    type: string;
+    category: string;
+    date: string;
+    account_id: string;
+    card_id: string;
+    transaction_type: TransactionFlowType;
+  }>({
     description: '',
     amount: '',
     type: 'expense',
-    category: '',
+    category: 'uncategorized',
     date: new Date().toISOString().split('T')[0],
-    account_id: '',
-    card_id: '',
+    account_id: 'none',
+    card_id: 'none',
     transaction_type: 'REGULAR' as TransactionFlowType
   });
   const { toast } = useToast();
@@ -115,7 +124,7 @@ const AddTransactionDialog = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.description || !formData.amount || !formData.date) {
+    if (!formData.description || !formData.amount || !formData.date || !formData.type) {
       toast({
         title: "Validation Error",
         description: "Please fill all required fields",
@@ -133,8 +142,8 @@ const AddTransactionDialog = () => {
         category_type: formData.type.toUpperCase(),
         category_name: formData.category || 'Uncategorized',
         date: new Date(formData.date).toISOString(),
-        account_id: formData.account_id || null,
-        card_id: formData.card_id || null,
+        account_id: formData.account_id === 'none' ? null : formData.account_id,
+        card_id: formData.card_id === 'none' ? null : formData.card_id,
         transaction_type: formData.transaction_type
       };
       
@@ -150,10 +159,10 @@ const AddTransactionDialog = () => {
         description: '',
         amount: '',
         type: 'expense',
-        category: '',
+        category: 'uncategorized',
         date: new Date().toISOString().split('T')[0],
-        account_id: '',
-        card_id: '',
+        account_id: 'none',
+        card_id: 'none',
         transaction_type: 'REGULAR'
       });
       
@@ -177,8 +186,8 @@ const AddTransactionDialog = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
-          Add Transaction
+        <Button className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors">
+          Add Manually
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
@@ -213,16 +222,13 @@ const AddTransactionDialog = () => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="type">Type</Label>
-            <Select 
-              value={formData.type}
-              onValueChange={(value) => handleChange('type', value)}
-            >
+            <Select name="type" value={formData.type} onValueChange={(value) => handleChange('type', value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="income">Income</SelectItem>
                 <SelectItem value="expense">Expense</SelectItem>
+                <SelectItem value="income">Income</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -236,6 +242,7 @@ const AddTransactionDialog = () => {
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="uncategorized">None</SelectItem>
                 <SelectItem value="salary">Salary</SelectItem>
                 <SelectItem value="freelance">Freelance</SelectItem>
                 <SelectItem value="entertainment">Entertainment</SelectItem>
@@ -262,16 +269,13 @@ const AddTransactionDialog = () => {
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="account">Account</Label>
-                <Select
-                  value={formData.account_id}
-                  onValueChange={(value) => handleChange('account_id', value)}
-                >
+                <Select name="account_id" value={formData.account_id} onValueChange={(value) => handleChange('account_id', value)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select account (optional)" />
+                    <SelectValue placeholder="Select account" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
-                    {accounts.map(account => (
+                    <SelectItem value="none">None</SelectItem>
+                    {accounts.map((account) => (
                       <SelectItem key={account.account_id} value={account.account_id}>
                         {account.account_name}
                       </SelectItem>
@@ -282,16 +286,13 @@ const AddTransactionDialog = () => {
               
               <div className="space-y-2">
                 <Label htmlFor="card">Card</Label>
-                <Select
-                  value={formData.card_id}
-                  onValueChange={(value) => handleChange('card_id', value)}
-                >
+                <Select name="card_id" value={formData.card_id} onValueChange={(value) => handleChange('card_id', value)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select card (optional)" />
+                    <SelectValue placeholder="Select card" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
-                    {cards.map(card => (
+                    <SelectItem value="none">None</SelectItem>
+                    {cards.map((card) => (
                       <SelectItem key={card.card_id} value={card.card_id}>
                         {card.card_name}
                       </SelectItem>

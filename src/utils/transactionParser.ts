@@ -153,6 +153,12 @@ export const parseTransaction = (text: string): ParsedTransaction => {
       }
     }
     
+    // Special case for good samaritan (gift)
+    if (text.toLowerCase().includes('good samaritan')) {
+      inferredCategory = "Gift";
+      description = "Gift from Good Samaritan"; // Also update the description to match the category
+    }
+    
     // Additional heuristics for income
     if (inferredCategory === "Income") {
       if (text.toLowerCase().includes('salary') || text.toLowerCase().includes('wage') || 
@@ -167,29 +173,41 @@ export const parseTransaction = (text: string): ParsedTransaction => {
   }
   
   // Parse date from text
+  // Use the current date as reference
   const now = new Date();
   now.setHours(0, 0, 0, 0); // Set to start of day
   let date = new Date(now);
   
   if (lowerText.includes('yesterday')) {
-    date = new Date(now.getTime() - 86400000); // Subtract one day in milliseconds
+    // Create a fresh date object for yesterday to avoid any reference issues
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
+    date = yesterday;
     console.log("Setting date to yesterday:", date.toISOString());
   } else if (lowerText.includes('today')) {
     // date is already set to today at start of day
     console.log("Setting date to today:", date.toISOString());
   } else if (lowerText.includes('last week')) {
-    date = new Date(now.getTime() - 7 * 86400000); // Subtract seven days
+    // Create a fresh date object for last week to avoid any reference issues
+    const lastWeek = new Date();
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    lastWeek.setHours(0, 0, 0, 0);
+    date = lastWeek;
     console.log("Setting date to last week:", date.toISOString());
   } else if (lowerText.includes('last month')) {
-    date = new Date(now);
-    date.setMonth(date.getMonth() - 1);
+    // Create a fresh date object for last month to avoid any reference issues
+    const lastMonth = new Date();
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    lastMonth.setHours(0, 0, 0, 0);
+    date = lastMonth;
     console.log("Setting date to last month:", date.toISOString());
   }
   
   return {
     description,
     amount,
-    category_type: isExpense ? "EXPENSE" : "INCOME",
+    category_type: isExpense ? "expense" : "income",
     category_name: inferredCategory,
     date: date.toISOString()
   };

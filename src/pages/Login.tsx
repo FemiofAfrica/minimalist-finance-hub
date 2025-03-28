@@ -10,6 +10,8 @@ import { useToast } from '@/components/ui/use-toast';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
@@ -19,7 +21,7 @@ const Login = () => {
     e.preventDefault();
     try {
       if (isSignUp) {
-        await signUp(email, password);
+        await signUp(email, password, { firstName, lastName });
         toast({
           title: "Account created!",
           description: "Please check your email to verify your account.",
@@ -42,48 +44,84 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-neutral-950 p-4">
-      <div className="w-full max-w-md space-y-8 bg-white dark:bg-neutral-900 p-8 rounded-lg shadow-lg">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-50">
-            {isSignUp ? 'Create an account' : 'Welcome back'}
+    <div className="min-h-screen flex items-center justify-center bg-[#004D40]">
+      <div className="w-full max-w-md space-y-6 px-8">
+        <div className="text-center space-y-2">
+          <div className="flex justify-center mb-6">
+            <img src="/assets/logo.svg" alt="Logo" className="h-12 w-12" />
+          </div>
+          <h2 className="text-2xl font-bold text-white">
+            {isSignUp ? 'Create an account' : 'Welcome Back!'}
           </h2>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-            {isSignUp
-              ? 'Sign up to start managing your finances'
-              : 'Please sign in to your account'}
+          <p className="text-gray-200">
+            Please enter your details to sign in to your account
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+
+
+        <form onSubmit={handleSubmit} className="space-y-4 bg-[#00695C] rounded-lg p-6">
           <div className="space-y-4">
             <div>
-              <Label htmlFor="email">Email address</Label>
+              <Label htmlFor="email" className="text-sm font-medium text-gray-200">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="mt-1"
+                className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
                 placeholder="Enter your email"
               />
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-sm font-medium text-gray-200">Password</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="mt-1"
+                className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
                 placeholder="Enter your password"
               />
             </div>
+            {isSignUp && (
+              <>
+                <div>
+                  <Label htmlFor="firstName" className="text-sm font-medium text-gray-200">First Name</Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                    className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
+                    placeholder="Enter your first name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lastName" className="text-sm font-medium text-gray-200">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                    className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
+                    placeholder="Enter your last name"
+                  />
+                </div>
+              </>
+            )}
+
           </div>
 
-          <Button type="submit" className="w-full">
+          <Button 
+            type="submit" 
+            className="w-full h-11 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent"
+
+          >
             {isSignUp ? 'Sign Up' : 'Sign In'}
           </Button>
 
@@ -91,7 +129,7 @@ const Login = () => {
             <button
               type="button"
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400"
+              className="text-sm text-gray-200 hover:text-white"
             >
               {isSignUp
                 ? 'Already have an account? Sign in'

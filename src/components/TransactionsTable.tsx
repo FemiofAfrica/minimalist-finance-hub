@@ -9,7 +9,11 @@ import TransactionEmptyState from "@/components/transactions/TransactionEmptySta
 import TransactionLoading from "@/components/transactions/TransactionLoading";
 import { fetchTransactions } from "@/services/transactionService";
 
-const TransactionsTable = () => {
+interface TransactionsTableProps {
+  limit?: number;
+}
+
+const TransactionsTable = ({ limit }: TransactionsTableProps) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -17,7 +21,7 @@ const TransactionsTable = () => {
   const loadTransactions = async () => {
     try {
       console.log("Fetching transactions...");
-      const data = await fetchTransactions();
+      const data = await fetchTransactions(limit);
       setTransactions(data);
     } catch (error) {
       toast({

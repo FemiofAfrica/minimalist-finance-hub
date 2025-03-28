@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchSubscriptions, deleteSubscription, convertSubscriptionToTransaction, createSubscription, updateSubscription } from '@/services/subscriptionService';
 import { Subscription, SubscriptionFrequency } from '@/types/subscription';
-import { DashboardSidebar } from '@/components/DashboardSidebar';
+import PageLayout from '@/components/dashboard/PageLayout';
 import { formatNaira } from '@/utils/formatters';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -454,21 +454,19 @@ const SubscriptionsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen">
-        <DashboardSidebar />
+      <PageLayout>
         <div className="flex-1 p-8">
           <h1 className="text-2xl font-bold mb-6">Subscriptions</h1>
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
           </div>
         </div>
-      </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="flex min-h-screen">
-      <DashboardSidebar />
+    <PageLayout>
       <div className="flex-1 p-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Subscriptions</h1>
@@ -1088,7 +1086,7 @@ const SubscriptionsPage: React.FC = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </div>
+    </PageLayout>
   );
 };
 

@@ -1,5 +1,5 @@
 // Define the Subscription types
-export type SubscriptionFrequency = "MONTHLY" | "QUARTERLY" | "ANNUALLY" | "CUSTOM";
+export type SubscriptionFrequency = "monthly" | "yearly" | "quarterly" | "weekly" | string;
 
 export interface Subscription {
   subscription_id: string;

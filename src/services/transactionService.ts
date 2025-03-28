@@ -1,16 +1,34 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { Transaction } from "@/types/transaction";
+import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/database.types";
+import { Category } from "@/types/category";
+import { Transaction, TransactionInput } from "@/types/transaction";
 
-export const fetchTransactions = async (): Promise<Transaction[]> => {
+// Define the type of the data returned by the supabase query
+type TransactionWithRelations = Database['public']['Tables']['transactions']['Row'] & {
+  accounts: Pick<Database['public']['Tables']['accounts']['Row'], 'name'> | null;
+  categories: Pick<Database['public']['Tables']['categories']['Row'], 'name' | 'type'> | null;
+};
+
+export const fetchTransactions = async (limit?: number): Promise<Transaction[]> => {
   try {
     console.log("Fetching transactions...");
+    const userId = await getCurrentUserId();
     
     // Step 1: Fetch all transactions
-    const { data: transactionsData, error: transactionsError } = await supabase
+    // Sort by created_at to include time information, falling back to date if created_at is not available
+    let query = supabase
       .from('transactions')
-      .select('*')
+      .select('*, accounts:account_id(name), categories:category_id(name)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
       .order('date', { ascending: false });
+
+    if (limit) {
+      query = query.limit(limit);
+    }
+
+    const { data: transactionsData, error: transactionsError } = await query as { data: TransactionWithRelations[] | null, error: any };
 
     if (transactionsError) {
       console.error('Error fetching transactions:', transactionsError);
@@ -50,12 +68,28 @@ export const fetchTransactions = async (): Promise<Transaction[]> => {
 
     // Step 3: Combine transaction data with category data
     const enrichedTransactions = transactionsData.map(transaction => {
-      const category = transaction.category_id ? categoriesMap.get(transaction.category_id) : null;
+      const category = transaction.categories;
+      const account = transaction.accounts;
       
-      return {
-        ...transaction,
-        category_name: category ? category.category_name : (transaction.category_name || 'Uncategorized')
-      } as Transaction;
+      const enrichedTransaction: Transaction = {
+        transaction_id: transaction.transaction_id,
+        user_id: transaction.user_id,
+        amount: transaction.amount,
+        currency: transaction.currency,
+        date: transaction.date,
+        created_at: transaction.created_at || null,
+        updated_at: transaction.updated_at || null,
+        description: transaction.description,
+        notes: transaction.notes,
+        name: transaction.name || transaction.description,
+        type: transaction.type,
+        account_id: transaction.account_id,
+        category_id: transaction.category_id,
+        category_name: category ? category.name : 'Uncategorized',
+        account_name: account ? account.name : null,
+        category_type: transaction.type ? transaction.type.toUpperCase() as "INCOME" | "EXPENSE" | "TRANSFER" : 'EXPENSE'
+      };
+      return enrichedTransaction;
     });
     
     console.log("Processed transactions:", enrichedTransactions);
@@ -68,18 +102,45 @@ export const fetchTransactions = async (): Promise<Transaction[]> => {
 
 export const fetchTransactionsByAccount = async (accountId: string): Promise<Transaction[]> => {
   try {
-    const { data, error } = await supabase
+    const { data: transactionsData, error } = await supabase
       .from('transactions')
-      .select('*, categories:category_id(category_name, category_type)')
+      .select('*, categories:category_id(name)')
       .eq('account_id', accountId)
-      .order('date', { ascending: false });
+      .order('created_at', { ascending: false })
+      .order('date', { ascending: false }) as { data: TransactionWithRelations[] | null, error: any };
 
     if (error) {
       console.error('Error fetching transactions by account:', error);
       throw error;
     }
 
-    return data || [];
+    if (!transactionsData || transactionsData.length === 0) {
+      return [];
+    }
+
+    const enrichedTransactions = transactionsData.map(transaction => {
+      const category = transaction.categories;
+      
+      const enrichedTransaction: Transaction = {
+        transaction_id: transaction.transaction_id,
+        user_id: transaction.user_id,
+        amount: transaction.amount,
+        currency: transaction.currency,
+        date: transaction.date,
+        created_at: transaction.created_at || null,
+        updated_at: transaction.updated_at || null,
+        description: transaction.description,
+        notes: transaction.notes,
+        type: transaction.type,
+        account_id: transaction.account_id,
+        category_id: transaction.category_id,
+        category_name: category ? category.name : 'Uncategorized',
+        category_type: transaction.type ? transaction.type.toUpperCase() as "INCOME" | "EXPENSE" | "TRANSFER" : 'EXPENSE'
+      };
+      return enrichedTransaction;
+    });
+
+    return enrichedTransactions;
   } catch (error) {
     console.error("Error in fetchTransactionsByAccount:", error);
     throw error;
@@ -88,36 +149,94 @@ export const fetchTransactionsByAccount = async (accountId: string): Promise<Tra
 
 export const fetchTransactionsByCard = async (cardId: string): Promise<Transaction[]> => {
   try {
-    const { data, error } = await supabase
+    console.log("Fetching transactions by card...");
+    
+    // Step 1: Fetch all transactions for this card
+    const { data: transactionsData, error: transactionsError } = await supabase
       .from('transactions')
-      .select('*, categories:category_id(category_name, category_type)')
+      .select('*, categories:category_id(name)')
       .eq('card_id', cardId)
-      .order('date', { ascending: false });
+      .order('created_at', { ascending: false })
+      .order('date', { ascending: false }) as { data: TransactionWithRelations[] | null, error: any };
 
-    if (error) {
-      console.error('Error fetching transactions by card:', error);
-      throw error;
+    if (transactionsError) {
+      console.error('Error fetching transactions by card:', transactionsError);
+      throw transactionsError;
     }
 
-    return data || [];
+    if (!transactionsData || transactionsData.length === 0) {
+      console.log("No transactions found for this card");
+      return [];
+    }
+
+    // Step 2: Extract all category IDs and fetch categories in a separate query
+    const categoryIds = transactionsData
+      .map(transaction => transaction.category_id)
+      .filter((id): id is string => id !== null && id !== undefined);
+    
+    let categoriesMap = new Map();
+    
+    if (categoryIds.length > 0) {
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+        .in('category_id', categoryIds);
+      
+      if (categoriesError) {
+        console.error('Error fetching categories:', categoriesError);
+      } else if (categoriesData) {
+        // Create a map of category_id to category object for faster lookups
+        categoriesData.forEach(category => {
+          categoriesMap.set(category.category_id, category);
+        });
+      }
+    }
+
+    // Step 3: Combine transaction data with category data
+    const enrichedTransactions = transactionsData.map(transaction => {
+      const category = transaction.categories;
+      
+      const enrichedTransaction: Transaction = {
+        transaction_id: transaction.transaction_id,
+        user_id: transaction.user_id,
+        amount: transaction.amount,
+        currency: transaction.currency,
+        date: transaction.date,
+        created_at: transaction.created_at || null,
+        updated_at: transaction.updated_at || null,
+        description: transaction.description,
+        notes: transaction.notes,
+        type: transaction.type,
+        account_id: transaction.account_id,
+        category_id: transaction.category_id,
+        category_name: category ? category.name : 'Uncategorized',
+        category_type: transaction.type ? transaction.type.toUpperCase() as "INCOME" | "EXPENSE" | "TRANSFER" : 'EXPENSE'
+      };
+      return enrichedTransaction;
+    });
+    
+    return enrichedTransactions;
   } catch (error) {
     console.error("Error in fetchTransactionsByCard:", error);
     throw error;
   }
 };
 
-export const createTransaction = async (transaction: Omit<Transaction, 'transaction_id'>): Promise<Transaction> => {
+export const createTransaction = async (transaction: TransactionInput): Promise<Transaction> => {
   try {
+    const userId = await getCurrentUserId();
+    
     // Check if the category exists
     let categoryId = transaction.category_id;
     
     if (transaction.category_name && !categoryId) {
       const { data: existingCategory, error: categoryError } = await supabase
         .from('categories')
-        .select('category_id')
-        .eq('category_name', transaction.category_name)
-        .eq('category_type', transaction.category_type || 'EXPENSE')
-        .maybeSingle();
+        .select('category_id, name, type')
+        .eq('name', transaction.category_name)
+        .eq('user_id', userId)
+        .eq('type', transaction.type?.toLowerCase() || 'expense')
+        .maybeSingle<Category>();
 
       if (categoryError) {
         console.error('Category lookup error:', categoryError);
@@ -131,8 +250,9 @@ export const createTransaction = async (transaction: Omit<Transaction, 'transact
         const { data: newCategory, error: insertCategoryError } = await supabase
           .from('categories')
           .insert({
-            category_name: transaction.category_name,
-            category_type: transaction.category_type || 'EXPENSE'
+            name: transaction.category_name,
+            user_id: userId,
+            type: (transaction.type?.toLowerCase() || 'expense') as 'income' | 'expense' | 'transfer'
           })
           .select()
           .single();
@@ -146,12 +266,61 @@ export const createTransaction = async (transaction: Omit<Transaction, 'transact
       }
     }
 
+    // Get account currency if not provided
+    let currency = transaction.currency;
+    if (!currency && transaction.account_id) {
+      const { data: accountData, error: accountError } = await supabase
+        .from('accounts')
+        .select('currency')
+        .eq('account_id', transaction.account_id)
+        .single();
+      
+      if (accountError) {
+        console.error('Error fetching account currency:', accountError);
+        throw accountError;
+      }
+      
+      currency = accountData.currency;
+    }
+
+    // Prepare transaction data with required fields
+    const transactionData = {
+      user_id: userId,
+      account_id: transaction.account_id,
+      type: (transaction.type || 'expense').toLowerCase() as 'income' | 'expense' | 'transfer', // Default to expense if not specified
+      amount: transaction.amount,
+      currency: currency || 'USD', // Default to USD if not specified
+      description: transaction.description || '',
+      date: transaction.date || new Date().toISOString(),
+      category_id: categoryId,
+      notes: transaction.notes || '',
+      name: transaction.name || transaction.description || ''
+    };
+    
+    // If no category_name was provided but we have a description, use the description as the category name
+    if (!transaction.category_name && transaction.description && !categoryId) {
+      // Create a new category using the description as the name
+      const { data: newCategory, error: insertCategoryError } = await supabase
+        .from('categories')
+        .insert({
+          name: transaction.description,
+          user_id: userId,
+          type: (transaction.type?.toLowerCase() || 'expense') as 'income' | 'expense' | 'transfer'
+        })
+        .select()
+        .single();
+
+      if (insertCategoryError) {
+        console.error('Category creation error:', insertCategoryError);
+        throw insertCategoryError;
+      }
+
+      transactionData.category_id = newCategory.category_id;
+    }
+
     const { data, error } = await supabase
       .from('transactions')
-      .insert({
-        ...transaction,
-        category_id: categoryId
-      })
+      .insert(transactionData)
       .select()
       .single();
 
@@ -169,9 +338,11 @@ export const createTransaction = async (transaction: Omit<Transaction, 'transact
 
 export const updateTransaction = async (
   transactionId: string, 
-  updates: Partial<Transaction>
+  updates: Partial<TransactionInput>
 ): Promise<Transaction> => {
   try {
+    const userId = await getCurrentUserId();
+    
     // Handle category updates if needed
     let categoryId = updates.category_id;
     
@@ -179,8 +350,9 @@ export const updateTransaction = async (
       const { data: existingCategory, error: categoryError } = await supabase
         .from('categories')
         .select('category_id')
-        .eq('category_name', updates.category_name)
-        .eq('category_type', updates.category_type || 'EXPENSE')
+        .eq('name', updates.category_name)
+        .eq('user_id', userId)
+        .eq('type', (updates.type || 'expense').toLowerCase())
         .maybeSingle();
 
       if (categoryError) {
@@ -195,8 +367,9 @@ export const updateTransaction = async (
         const { data: newCategory, error: insertCategoryError } = await supabase
           .from('categories')
           .insert({
-            category_name: updates.category_name,
-            category_type: updates.category_type || 'EXPENSE'
+            name: updates.category_name,
+            user_id: userId,
+            type: updates.type?.toLowerCase() || 'expense'
           })
           .select()
           .single();
@@ -210,12 +383,65 @@ export const updateTransaction = async (
       }
     }
 
+    // Prepare update data
+    const updateData: any = {};
+    
+    // Only include fields that are in the new schema
+    if (updates.type !== undefined) updateData.type = updates.type;
+    if (updates.amount !== undefined) updateData.amount = updates.amount;
+    if (updates.currency !== undefined) updateData.currency = updates.currency;
+    if (updates.description !== undefined) {
+      updateData.description = updates.description;
+      
+      // If description is updated but no category_name is provided, use description as category_name
+      if (!updates.category_name && !categoryId) {
+        updates.category_name = updates.description;
+        
+        // Create or find a category with the same name as the description
+        const { data: existingCategory, error: categoryError } = await supabase
+          .from('categories')
+          .select('category_id')
+          .eq('name', updates.description)
+          .eq('user_id', userId)
+          .eq('type', (updates.type || 'expense').toLowerCase())
+          .maybeSingle();
+
+        if (categoryError) {
+          console.error('Category lookup error:', categoryError);
+          throw categoryError;
+        }
+
+        if (existingCategory) {
+          categoryId = existingCategory.category_id;
+        } else {
+          // Create a new category
+          const { data: newCategory, error: insertCategoryError } = await supabase
+            .from('categories')
+            .insert({
+              name: updates.description,
+              user_id: userId,
+              type: updates.type?.toLowerCase() || 'expense'
+            })
+            .select()
+            .single();
+
+          if (insertCategoryError) {
+            console.error('Category creation error:', insertCategoryError);
+            throw insertCategoryError;
+          }
+
+          categoryId = newCategory.category_id;
+        }
+      }
+    }
+    if (updates.date !== undefined) updateData.date = updates.date;
+    if (updates.notes !== undefined) updateData.notes = updates.notes;
+    if (categoryId !== undefined) updateData.category_id = categoryId;
+    if (updates.account_id !== undefined) updateData.account_id = updates.account_id;
+
     const { data, error } = await supabase
       .from('transactions')
-      .update({
-        ...updates,
-        category_id: categoryId
-      })
+      .update(updateData)
       .eq('transaction_id', transactionId)
       .select()
       .single();
