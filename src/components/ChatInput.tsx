@@ -106,6 +106,44 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       if (!parsedData.description || parsedData.amount === undefined || parsedData.amount === null) {
         throw new Error('Could not extract transaction details from your message. Please try being more specific about the amount and type of transaction.');
       }
+      
+      // Ensure category_name is properly set based on the description
+      if (!parsedData.category_name && parsedData.description) {
+        // For food-related items, categorize as "Food"
+        if (parsedData.description.toLowerCase().includes('fruit') || 
+            parsedData.description.toLowerCase().includes('food') || 
+            parsedData.description.toLowerCase().includes('grocery') || 
+            parsedData.description.toLowerCase().includes('meal') || 
+            parsedData.description.toLowerCase().includes('lunch') || 
+            parsedData.description.toLowerCase().includes('dinner') || 
+            parsedData.description.toLowerCase().includes('breakfast')) {
+          parsedData.category_name = "Food";
+          // If the description specifically mentions fruits, update it to be more specific
+          if (parsedData.description.toLowerCase().includes('fruit')) {
+            parsedData.description = "Fruits";
+          }
+        } else {
+          // Default to using the description as category if no better match
+          parsedData.category_name = parsedData.description;
+        }
+      }
+      
+      // Set the name field based on the description without hard-coding prefixes
+      if (!parsedData.name && parsedData.description) {
+        // Let the AI parser determine the appropriate name based on context
+        // This allows for more natural and varied transaction naming
+        parsedData.name = parsedData.description;
+        
+        // If needed, we can enhance the name with additional context from the original input
+        // This lets the AI parser be more intelligent in interpretation
+        if (input.toLowerCase().includes(parsedData.description.toLowerCase())) {
+          // Use the original input context to create a more descriptive name
+          const contextWords = input.split(' ').slice(0, 5).join(' ');
+          if (contextWords.length > parsedData.description.length) {
+            parsedData.name = contextWords;
+          }
+        }
+      }
 
       // Ensure amount is a number
       if (typeof parsedData.amount !== 'number') {
@@ -121,8 +159,8 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       const { data: existingCategory, error: categoryError } = await supabase
         .from('categories')
         .select('category_id')
-        .eq('category_name', parsedData.category_name)
-        .eq('category_type', parsedData.category_type)
+        .eq('name', parsedData.category_name)
+        .eq('type', parsedData.category_type === 'INCOME' ? 'income' : 'expense')
         .maybeSingle();
 
       if (categoryError) {
@@ -144,8 +182,9 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
         const { data: newCategory, error: insertCategoryError } = await supabase
           .from('categories')
           .insert([{
-            category_name: parsedData.category_name,
-            category_type: validCategoryType
+            name: parsedData.category_name,
+            type: validCategoryType.toLowerCase(),
+            user_id: (await supabase.auth.getUser()).data.user?.id
           }])
           .select();
 
@@ -164,22 +203,64 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       // Format the date correctly
       let transactionDate = parsedData.date;
       if (!transactionDate) {
+        // Default to current date
         transactionDate = new Date().toISOString();
+      } else if (typeof transactionDate === 'string' && transactionDate.toLowerCase().includes('yesterday')) {
+        // Handle 'yesterday' in the date field
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        transactionDate = yesterday.toISOString();
+        console.log('Setting date to yesterday:', transactionDate);
       } else if (!transactionDate.includes('T')) {
         // Convert YYYY-MM-DD to ISO format
         transactionDate = new Date(transactionDate).toISOString();
       }
 
-      // Insert the transaction with the category ID
+      // Get or create default account
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+      if (!userId) throw new Error('User not authenticated');
+
+      let accountId;
+      const { data: defaultAccount, error: accountError } = await supabase
+        .from('accounts')
+        .select('account_id')
+        .eq('user_id', userId)
+        .limit(1)
+        .single();
+
+      if (accountError) {
+        // Create default account if none exists
+        const { data: newAccount, error: createAccountError } = await supabase
+          .from('accounts')
+          .insert([{
+            name: 'Default Account',
+            type: 'checking',
+            balance: 0,
+            currency: 'NGN',
+            is_active: true,
+            user_id: userId
+          }])
+          .select('account_id')
+          .single();
+
+        if (createAccountError) throw createAccountError;
+        accountId = newAccount.account_id;
+      } else {
+        accountId = defaultAccount.account_id;
+      }
+
+      // Insert the transaction with the category ID and account ID
       const { data, error: insertError } = await supabase
         .from('transactions')
         .insert([{
           description: parsedData.description,
           amount: parsedData.amount,
-          category_type: parsedData.category_type,
+          type: parsedData.category_type?.toLowerCase() === 'income' ? 'income' : 'expense',
           category_id: categoryId,
           date: transactionDate,
-          category_name: parsedData.category_name // Store the category name directly as well
+          user_id: userId,
+          currency: 'NGN',
+          account_id: accountId
         }])
         .select();
 

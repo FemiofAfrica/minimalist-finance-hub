@@ -15,7 +15,7 @@
     "strict": true
   },
   "imports": {
-    "std/": "https://deno.land/std@0.201.0/"
+    "std/": "https://deno.land/std@0.168.0/"
   },
   "tasks": {
 
