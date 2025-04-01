@@ -1,10 +1,9 @@
 
 import { useEffect, useState } from "react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { supabase } from "@/integrations/supabase/client";
 import { useCurrency, formatCurrency } from "@/contexts/CurrencyContext";
 import { format } from "date-fns";
-import { Transaction } from "@/types/transaction";
+import { fetchRevenueData } from "@/services/revenueChartService";
 
 export type TimePeriod = "7days" | "30days" | "90days";
 
@@ -23,60 +22,43 @@ const RevenueChart = ({ period }: RevenueChartProps) => {
   const { currentCurrency } = useCurrency();
 
   useEffect(() => {
-    const fetchBalanceData = async () => {
+    const loadRevenueData = async () => {
       setLoading(true);
       try {
-        const now = new Date();
-        let startDate = new Date();
-
-        if (period === "7days") {
-          startDate.setDate(now.getDate() - 7);
-        } else if (period === "30days") {
-          startDate.setDate(now.getDate() - 30);
-        } else if (period === "90days") {
-          startDate.setDate(now.getDate() - 90);
-        }
-
-        const { data: transactions, error } = await supabase
-          .from('transactions')
-          .select('*')
-          .gte('date', startDate.toISOString())
-          .order('date', { ascending: true });
-
-        if (error) throw error;
-
-        const dailyBalances = new Map<string, number>();
+        // Use the revenue chart service to fetch data
+        const revenueData = await fetchRevenueData(period);
+        
+        // Transform the revenue data to balance chart data format
         let runningBalance = 0;
-
-        transactions?.forEach((transaction: any) => {
-          const date = format(new Date(transaction.date), 'MMM d');
-          const amount = Number(transaction.amount);
-          
-          if (transaction.category_type === 'INCOME') {
-            runningBalance += amount;
-          } else if (transaction.category_type === 'EXPENSE') {
-            runningBalance -= amount;
-          }
-
-          dailyBalances.set(date, runningBalance);
+        const chartData: BalanceChartData[] = revenueData.map(item => {
+          runningBalance += item.revenue;
+          return {
+            date: item.month,
+            balance: runningBalance
+          };
         });
-
-        const chartData: BalanceChartData[] = Array.from(dailyBalances.entries())
-          .map(([date, balance]) => ({
-            date,
-            balance
-          }));
 
         setData(chartData);
       } catch (error) {
-        console.error("Failed to load balance data:", error);
+        console.error("Failed to load revenue data:", error);
         setData([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchBalanceData();
+    loadRevenueData();
+    
+    // Set up event listener for transaction updates
+    const handleRefresh = () => {
+      loadRevenueData();
+    };
+    
+    document.addEventListener('refresh-transactions', handleRefresh);
+    
+    return () => {
+      document.removeEventListener('refresh-transactions', handleRefresh);
+    };
   }, [period]);
 
   if (loading) {

@@ -1,9 +1,9 @@
 
 import { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { useCurrency, formatCurrency } from '@/contexts/CurrencyContext';
+import { fetchCategoryExpenses } from '@/services/dashboardService';
 
 type ExpenseCategory = {
   name: string;
@@ -22,63 +22,43 @@ const ExpensesPieChart = () => {
   const [loading, setLoading] = useState(true);
   const [expensesByCategory, setExpensesByCategory] = useState<ExpenseCategory[]>([]);
 
-  const fetchCategoryExpenses = async () => {
+  const loadCategoryExpenses = async () => {
     try {
       setLoading(true);
       
-      // Fetch transactions that are expenses from Supabase
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('amount, categories:category_id(name)')
-        .eq('type', 'expense');
-        
-      if (error) {
-        console.error('Error fetching expense data:', error);
-        return;
-      }
+      // Use the centralized service to fetch category expenses
+      const chartData = await fetchCategoryExpenses();
       
-      // Process data to aggregate expenses by category
-      const categoryMap = new Map<string, number>();
+      // Add colors to the data for the pie chart
+      const formattedData: ExpenseCategory[] = chartData.map((item, index) => ({
+        name: item.name,
+        value: item.value,
+        color: COLORS[index % COLORS.length]
+      }));
       
-      data?.forEach(transaction => {
-        const categoryName = transaction.categories?.name || 'Uncategorized';
-        const amount = Number(transaction.amount);
-        
-        if (!isNaN(amount)) {
-          const currentTotal = categoryMap.get(categoryName) || 0;
-          categoryMap.set(categoryName, currentTotal + amount);
-        }
-      });
-      
-      // Convert map to array format needed for Recharts
-      const chartData: ExpenseCategory[] = Array.from(categoryMap.entries())
-        .map(([name, value], index) => ({
-          name,
-          value,
-          color: COLORS[index % COLORS.length]
-        }))
-        .sort((a, b) => b.value - a.value); // Sort by amount (descending)
-      
-      setExpensesByCategory(chartData);
+      setExpensesByCategory(formattedData);
     } catch (err) {
-      console.error('Error processing expense data:', err);
+      console.error('Error loading expense data:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCategoryExpenses();
+    loadCategoryExpenses();
     
     // Listen for refresh events from the transaction table
     const handleRefresh = () => {
-      fetchCategoryExpenses();
+      loadCategoryExpenses();
     };
     
+    // Listen for both refresh and refresh-transactions events
     document.addEventListener('refresh', handleRefresh);
+    document.addEventListener('refresh-transactions', handleRefresh);
     
     return () => {
       document.removeEventListener('refresh', handleRefresh);
+      document.removeEventListener('refresh-transactions', handleRefresh);
     };
   }, []);
 
