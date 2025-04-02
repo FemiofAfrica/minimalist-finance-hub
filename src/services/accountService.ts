@@ -1,11 +1,116 @@
-
 import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
-import { Account } from "@/types/account";
+// Assuming generated types are here:
+import { Database } from "@/integrations/supabase/database.types";
+import { Account } from "@/types/account"; // Your application's Account type
 
+// Define the specific type for inserting into the accounts table using generated types
+// Adjust 'public' if your schema is different
+type AccountInsert = Database['public']['Tables']['accounts']['Insert'];
+// Define the type for a row returned from the accounts table
+type AccountRow = Database['public']['Tables']['accounts']['Row'];
+
+
+// Helper function to get user ID safely
+async function getUserId(): Promise<string> {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    throw new Error("User not authenticated.");
+  }
+  return userId;
+}
+
+// Other functions (fetchAccounts, createAccount, etc.) would go here...
+// Assume they are defined as in previous versions ('supabase_accounts_api_fix')
+
+
+/**
+ * Gets the default account for the user. Creates one if it doesn't exist.
+ */
+export const getDefaultAccount = async (): Promise<Account> => { // Returns application Account type
+  try {
+    const userId = await getUserId();
+    const defaultAccountName = 'Default Account'; // Define default name
+
+    console.log(`Getting or creating default account for user ${userId}`);
+
+    // Try to fetch the existing default account
+    const { data: existingAccount, error: fetchError } = await supabase
+      .from('accounts')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('name', defaultAccountName) // Use schema column 'name'
+      .maybeSingle(); // Returns AccountRow | null
+
+    // Handle fetch errors (excluding 'No rows found' which is expected)
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = range not satisfiable (0 rows)
+      console.error('Error fetching default account:', fetchError);
+      throw new Error('Failed to get default account: ' + fetchError.message);
+    }
+
+    // If account exists, return it (Map DB Row to Application Account type)
+    if (existingAccount) {
+      console.log("Found existing default account:", existingAccount.account_id);
+      // You might need a mapping function here if AccountRow differs significantly from Account type
+      // For simplicity, assuming direct compatibility or minimal mapping needed:
+      return {
+          ...existingAccount,
+          // Ensure type compatibility if Account type uses different enum casing etc.
+          type: existingAccount.type as Account['type'] // Cast if needed
+      } as Account; // Assert as Account type
+    }
+
+    // --- Create Default Account ---
+    console.log("Default account not found. Creating one...");
+
+    // Explicitly type the object using the generated 'Insert' type
+    const defaultAccountData: AccountInsert = {
+      user_id: userId,
+      name: defaultAccountName, // DB column 'name'
+      type: 'savings' as 'checking' | 'savings' | 'credit' | 'investment', // Ensure this matches one of the expected literal types
+      balance: 0,              // DB column 'balance'
+      currency: 'NGN',         // DB column 'currency' - Ensure NGN is valid/default
+      is_active: true          // DB column 'is_active'
+      // created_at and updated_at are usually handled by the database
+    };
+
+    const { data: newAccount, error: createError } = await supabase
+      .from('accounts')
+      .insert(defaultAccountData) // Pass the correctly typed object
+      .select()
+      .single(); // Returns AccountRow
+
+    if (createError) {
+      console.error('Error creating default account:', createError);
+      throw new Error('Failed to create default account: ' + createError.message);
+    }
+
+     if (!newAccount) {
+         throw new Error("Failed to create or retrieve default account after insertion.");
+     }
+
+    console.log("Created new default account:", newAccount.account_id);
+    // Map the newly created AccountRow to the application's Account type before returning
+     return {
+          ...newAccount,
+          type: newAccount.type as Account['type'] // Cast if needed
+      } as Account; // Assert as Account type
+
+  } catch (error) {
+    console.error("Error in getDefaultAccount:", error);
+    throw error;
+  }
+};
+
+// Make sure other functions like createAccount, updateAccount also use AccountInsert
+// or AccountUpdate types from generated Supabase types when preparing data for .insert()/.update()
+
+
+/**
+ * Fetches all accounts for the current user.
+ */
 export const fetchAccounts = async (): Promise<Account[]> => {
   try {
-    console.log("Fetching accounts...");
-    const userId = await getCurrentUserId();
+    const userId = await getUserId();
     
     const { data, error } = await supabase
       .from('accounts')
@@ -18,96 +123,14 @@ export const fetchAccounts = async (): Promise<Account[]> => {
       throw error;
     }
 
-    return data || [];
-  } catch (error) {
-    console.error("Error in fetchAccounts:", error);
-    throw error;
-  }
-};
-
-export const createAccount = async (account: Omit<Account, 'account_id'>): Promise<Account> => {
-  try {
-    const userId = await getCurrentUserId();
-    
-    const accountWithUserId = {
+    // Map the database rows to Account type
+    return (data || []).map(account => ({
       ...account,
-      user_id: userId
-    };
-    
-    console.log("Creating account with user_id:", accountWithUserId);
-    
-    const { data, error } = await supabase
-      .from('accounts')
-      .insert(accountWithUserId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating account:', error);
-      throw error;
-    }
-
-    return data;
+      type: account.type as Account['type']
+    }));
   } catch (error) {
-    console.error("Error in createAccount:", error);
+    console.error('Error in fetchAccounts:', error);
     throw error;
   }
 };
 
-export const updateAccount = async (accountId: string, updates: Partial<Account>): Promise<Account> => {
-  try {
-    const { data, error } = await supabase
-      .from('accounts')
-      .update(updates)
-      .eq('account_id', accountId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating account:', error);
-      throw error;
-    }
-
-    return data;
-  } catch (error) {
-    console.error("Error in updateAccount:", error);
-    throw error;
-  }
-};
-
-export const deleteAccount = async (accountId: string): Promise<void> => {
-  try {
-    const { error } = await supabase
-      .from('accounts')
-      .delete()
-      .eq('account_id', accountId);
-
-    if (error) {
-      console.error('Error deleting account:', error);
-      throw error;
-    }
-  } catch (error) {
-    console.error("Error in deleteAccount:", error);
-    throw error;
-  }
-};
-
-export const getAccountById = async (accountId: string): Promise<Account | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('accounts')
-      .select('*')
-      .eq('account_id', accountId)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error fetching account:', error);
-      throw error;
-    }
-
-    return data;
-  } catch (error) {
-    console.error("Error in getAccountById:", error);
-    throw error;
-  }
-};

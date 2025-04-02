@@ -35,9 +35,13 @@ export const fetchCategoryExpenses = async (): Promise<CategoryExpense[]> => {
     // Fetch transactions with category information
     const { data, error } = await supabase
       .from('transactions')
-      .select('amount, categories:category_id(name)')
+      .select(`
+        amount,
+        category_id,
+        category_id!categories(name)
+      `)
       .eq('user_id', userId)
-      .eq('category_type', 'EXPENSE')
+      .eq('type', 'expense')
       .gte('date', startOfMonth)
       .lte('date', endOfMonth);
     
@@ -94,7 +98,11 @@ export const fetchDashboardAnalytics = async (): Promise<DashboardAnalytics> => 
     // Fetch current month transactions
     const { data: currentMonthData, error: currentMonthError } = await supabase
       .from('transactions')
-      .select('amount, category_type')
+      .select(`
+        amount,
+        type,
+        category_id!categories(type)
+      `)
       .eq('user_id', userId)
       .gte('date', currentMonthStart)
       .lte('date', currentMonthEnd);
@@ -107,7 +115,11 @@ export const fetchDashboardAnalytics = async (): Promise<DashboardAnalytics> => 
     // Fetch previous month transactions for comparison
     const { data: previousMonthData, error: previousMonthError } = await supabase
       .from('transactions')
-      .select('amount, category_type')
+      .select(`
+        amount,
+        type,
+        category_id!categories(type)
+      `)
       .eq('user_id', userId)
       .gte('date', previousMonthStart)
       .lte('date', previousMonthEnd);
@@ -123,9 +135,15 @@ export const fetchDashboardAnalytics = async (): Promise<DashboardAnalytics> => 
     
     currentMonthData?.forEach((transaction: any) => {
       const amount = Number(transaction.amount);
-      if (transaction.category_type === 'INCOME') {
+      // Use transaction.type directly (which is from the transactions table)
+      // or derive from categories if needed
+      const transactionType = transaction.type ? transaction.type.toUpperCase() : 
+                             (transaction.categories && transaction.categories.type ? 
+                              transaction.categories.type.toUpperCase() : 'EXPENSE');
+      
+      if (transactionType === 'INCOME') {
         totalIncome += amount;
-      } else if (transaction.category_type === 'EXPENSE') {
+      } else if (transactionType === 'EXPENSE') {
         totalExpense += Math.abs(amount);
       }
     });
@@ -139,9 +157,15 @@ export const fetchDashboardAnalytics = async (): Promise<DashboardAnalytics> => 
     
     previousMonthData?.forEach((transaction: any) => {
       const amount = Number(transaction.amount);
-      if (transaction.category_type === 'INCOME') {
+      // Use transaction.type directly (which is from the transactions table)
+      // or derive from categories if needed
+      const transactionType = transaction.type ? transaction.type.toUpperCase() : 
+                             (transaction.categories && transaction.categories.type ? 
+                              transaction.categories.type.toUpperCase() : 'EXPENSE');
+      
+      if (transactionType === 'INCOME') {
         previousIncome += amount;
-      } else if (transaction.category_type === 'EXPENSE') {
+      } else if (transactionType === 'EXPENSE') {
         previousExpense += Math.abs(amount);
       }
     });

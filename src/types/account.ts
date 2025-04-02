@@ -1,22 +1,23 @@
+export type AccountType = "checking" | "savings" | "credit" | "investment";
 
-export type AccountType = "checking" | "savings" | "credit" | "investment" | string;
-
+/**
+ * Represents a user's financial account.
+ * Properties generally align with the 'accounts' table schema in the database.
+ */
 export interface Account {
-  account_id: string;
-  user_id: string;
-  name: string; // Changed from account_name to match DB schema
-  type: AccountType; // Changed from account_type to match DB schema
-  balance: number; // Changed from current_balance to match DB schema
-  currency: string; // Added to match DB schema
-  is_active: boolean;
-  created_at?: string;
-  updated_at?: string;
-  
-  // Legacy fields for backward compatibility
-  account_name?: string;
-  account_type?: string;
-  current_balance?: number;
-  institution?: string;
-  account_number?: string;
-  custom_tags?: string[];
+  // Core fields mapping directly to the database schema
+  account_id: string; // Primary Key (UUID)
+  user_id?: string; // Foreign Key (UUID) - Optional here, but required in DB operations
+  name: string; // Account name (e.g., "Primary Checking") - DB: text
+  type: AccountType; // Account type - DB: account_type (USER-DEFINED)
+  balance: number; // Current balance - DB: numeric
+  currency?: string; // Currency code (e.g., "NGN", "USD") - DB: text
+  is_active: boolean; // Whether the account is active - DB: boolean
+  created_at?: string; // Timestamp of creation - DB: timestamptz
+  updated_at?: string; // Timestamp of last update - DB: timestamptz
+
+  // Optional fields - These might be application-level details
+  institution?: string; // Name of the financial institution (if applicable)
+  account_number?: string; // Account number (masked or full, consider security)
+  custom_tags?: string[]; // Any custom tags user might apply
 }

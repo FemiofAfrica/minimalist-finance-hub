@@ -9,7 +9,7 @@ import ChartsSection from "@/components/dashboard/ChartsSection";
 import { fetchDashboardAnalytics, DashboardAnalytics } from "@/services/dashboardService";
 
 const Index = () => {
-  const { user } = useAuth();
+  const { user, loading: isAuthLoading } = useAuth();
   const [dashboardData, setDashboardData] = useState<DashboardAnalytics>({
     totalBalance: 0,
     totalIncome: 0,
@@ -34,22 +34,37 @@ const Index = () => {
   };
 
   useEffect(() => {
-    fetchDashboardData();
-    
-    // Set up event listeners for transaction updates
-    const handleRefresh = () => {
+    // Only fetch data if user is authenticated and auth loading is complete
+    if (!isAuthLoading && user) {
       fetchDashboardData();
-    };
-    
-    // Listen for both refresh and refresh-transactions events
-    document.addEventListener('refresh', handleRefresh);
-    document.addEventListener('refresh-transactions', handleRefresh);
-    
-    return () => {
-      document.removeEventListener('refresh', handleRefresh);
-      document.removeEventListener('refresh-transactions', handleRefresh);
-    };
-  }, []);
+      
+      // Set up event listeners for transaction updates
+      const handleRefresh = () => {
+        fetchDashboardData();
+      };
+      
+      // Listen for both refresh and refresh-transactions events
+      document.addEventListener('refresh', handleRefresh);
+      document.addEventListener('refresh-transactions', handleRefresh);
+      
+      return () => {
+        document.removeEventListener('refresh', handleRefresh);
+        document.removeEventListener('refresh-transactions', handleRefresh);
+      };
+    } else if (!isAuthLoading && !user) {
+      // Reset dashboard data when user is not authenticated
+      setDashboardData({
+        totalBalance: 0,
+        totalIncome: 0,
+        totalExpense: 0,
+        monthlyTransactionCount: 0,
+        incomeChange: 0,
+        expenseChange: 0,
+        balanceChange: 0
+      });
+      setIsLoading(false);
+    }
+  }, [user, isAuthLoading]);
 
   const handleTransactionAdded = () => {
     fetchDashboardData();
@@ -58,6 +73,28 @@ const Index = () => {
     const refreshEvent = new Event('refresh');
     document.dispatchEvent(refreshEvent);
   };
+
+  // Show loading state while auth is being checked
+  if (isAuthLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-screen">
+          <div>Loading...</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Show login message if user is not authenticated
+  if (!user) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-screen">
+          <div>Please log in to view the dashboard.</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

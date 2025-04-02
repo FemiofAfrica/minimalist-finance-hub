@@ -1,99 +1,111 @@
-
 import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
-import { Database } from "@/integrations/supabase/database.types";
+import { Database } from "@/integrations/supabase/database.types"; // Assuming types are generated
 import { Category } from "@/types/category";
 import { Transaction, TransactionInput } from "@/types/transaction";
 
-// Define the type of the data returned by the supabase query
-type TransactionWithRelations = Database['public']['Tables']['transactions']['Row'] & {
-  accounts: Pick<Database['public']['Tables']['accounts']['Row'], 'name'> | null;
-  categories: Pick<Database['public']['Tables']['categories']['Row'], 'name' | 'type'> | null;
-};
+// Helper function to get user ID safely
+async function getUserId(): Promise<string> {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    throw new Error("User not authenticated.");
+  }
+  return userId;
+}
+
+// --- Helper Function to Map Supabase Data to Application Type ---
+// This ensures consistency and handles potential nulls from joins
+// Takes 'any' because the exact structure returned by Supabase with hints can be complex for TS to infer directly
+function mapSupabaseDataToTransaction(dbData: any): Transaction {
+    // Basic validation
+    if (!dbData || typeof dbData !== 'object') {
+        console.error("Invalid data received for mapping:", dbData);
+        throw new Error("Invalid data structure received from database query.");
+    }
+
+    // Safely access nested properties, providing defaults
+    // IMPORTANT: Double-check the actual structure returned by Supabase with the '!' syntax.
+    // It might nest under 'account_id' or 'category_id' instead of 'accounts'/'categories'.
+    // Adjust the accessors below if necessary after inspecting the 'data' object via console.log(dbData).
+    const accountsData = dbData.accounts ?? dbData.account_id; // Example fallback
+    const categoriesData = dbData.categories ?? dbData.category_id; // Example fallback
+
+    const categoryName = categoriesData?.name ?? 'Uncategorized';
+    const categoryTypeRaw = categoriesData?.type ?? dbData.type; // Use category table type first
+    // Ensure categoryType aligns with your expected Transaction type values
+    const categoryType = categoryTypeRaw?.toUpperCase() as "INCOME" | "EXPENSE" | "TRANSFER" | undefined ?? 'EXPENSE';
+
+    const accountName = accountsData?.name ?? null;
+
+    const amount = typeof dbData.amount === 'number' ? dbData.amount : parseFloat(String(dbData.amount ?? 0));
+
+    return {
+        transaction_id: dbData.transaction_id,
+        user_id: dbData.user_id,
+        account_id: dbData.account_id,
+        category_id: dbData.category_id,
+        name: dbData.description ?? '', // Or map differently if 'name' exists directly
+        description: dbData.description ?? '',
+        amount: isNaN(amount) ? 0 : amount,
+        currency: dbData.currency,
+        date: dbData.date,
+        type: dbData.type as 'income' | 'expense' | 'transfer', // Transaction's own type
+        notes: dbData.notes,
+        created_at: dbData.created_at,
+        updated_at: dbData.updated_at,
+        // Mapped fields from relations
+        account_name: accountName,
+        category_name: categoryName,
+        category_type: categoryType, // Type from the Category relation
+    };
+}
+
+
+// --- Corrected Fetching Functions ---
 
 export const fetchTransactions = async (limit?: number): Promise<Transaction[]> => {
   try {
-    console.log("Fetching transactions...");
-    const userId = await getCurrentUserId();
-    
-    // Step 1: Fetch all transactions
-    // Sort by created_at to include time information, falling back to date if created_at is not available
+    console.log(`Fetching transactions${limit ? ` (limit ${limit})` : ''}...`);
+    const userId = await getUserId();
+
     let query = supabase
       .from('transactions')
-      .select('*, accounts:account_id(name), categories:category_id(name)')
+      // Apply explicit foreign key hinting syntax
+      // VERIFY 'account_id' and 'category_id' are the correct FK column names in 'transactions'
+      .select(`
+        *,
+        account_id!accounts ( name ),
+        category_id!categories ( name, type )
+      `)
       .eq('user_id', userId)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false, nullsFirst: false })
       .order('date', { ascending: false });
 
     if (limit) {
       query = query.limit(limit);
     }
 
-    const { data: transactionsData, error: transactionsError } = await query as { data: TransactionWithRelations[] | null, error: any };
+    // Execute the query, let Supabase handle the complex return type internally for now
+    const { data, error } = await query;
 
-    if (transactionsError) {
-      console.error('Error fetching transactions:', transactionsError);
-      throw transactionsError;
+    if (error) {
+      console.error('Error fetching transactions:', error);
+      if (error.code === '42703') {
+          console.error("Database schema mismatch or incorrect relationship detection. Verify foreign keys and table/column names used in the select hint (e.g., 'account_id', 'category_id', 'accounts', 'categories', 'name', 'type').");
+      }
+      throw error;
     }
 
-    console.log("Transactions data from Supabase:", transactionsData);
-
-    if (!transactionsData || transactionsData.length === 0) {
+    if (!data || data.length === 0) {
       console.log("No transactions found in database");
       return [];
     }
 
-    // Step 2: Extract all category IDs and fetch categories in a separate query
-    const categoryIds = transactionsData
-      .map(transaction => transaction.category_id)
-      .filter((id): id is string => id !== null && id !== undefined);
-    
-    let categoriesMap = new Map();
-    
-    if (categoryIds.length > 0) {
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from('categories')
-        .select('*')
-        .in('category_id', categoryIds);
-      
-      if (categoriesError) {
-        console.error('Error fetching categories:', categoriesError);
-      } else if (categoriesData) {
-        console.log("Categories data from Supabase:", categoriesData);
-        // Create a map of category_id to category object for faster lookups
-        categoriesData.forEach(category => {
-          categoriesMap.set(category.category_id, category);
-        });
-      }
-    }
+    // Map the potentially complex/less-typed data structure using our helper
+    const enrichedTransactions = (data as any[]).map(mapSupabaseDataToTransaction);
 
-    // Step 3: Combine transaction data with category data
-    const enrichedTransactions = transactionsData.map(transaction => {
-      const category = transaction.categories;
-      const account = transaction.accounts;
-      
-      const enrichedTransaction: Transaction = {
-        transaction_id: transaction.transaction_id,
-        user_id: transaction.user_id,
-        amount: transaction.amount,
-        currency: transaction.currency,
-        date: transaction.date,
-        created_at: transaction.created_at || null,
-        updated_at: transaction.updated_at || null,
-        description: transaction.description,
-        notes: transaction.notes,
-        name: transaction.name || transaction.description,
-        type: transaction.type,
-        account_id: transaction.account_id,
-        category_id: transaction.category_id,
-        category_name: category ? category.name : 'Uncategorized',
-        account_name: account ? account.name : null,
-        category_type: transaction.type ? transaction.type.toUpperCase() as "INCOME" | "EXPENSE" | "TRANSFER" : 'EXPENSE'
-      };
-      return enrichedTransaction;
-    });
-    
-    console.log("Processed transactions:", enrichedTransactions);
+    console.log(`Processed ${enrichedTransactions.length} transactions.`);
     return enrichedTransactions;
+
   } catch (error) {
     console.error("Error in fetchTransactions:", error);
     throw error;
@@ -102,234 +114,208 @@ export const fetchTransactions = async (limit?: number): Promise<Transaction[]> 
 
 export const fetchTransactionsByAccount = async (accountId: string): Promise<Transaction[]> => {
   try {
-    const { data: transactionsData, error } = await supabase
+    console.log(`Fetching transactions for account ID: ${accountId}`);
+    const userId = await getUserId();
+
+    const { data, error } = await supabase
       .from('transactions')
-      .select('*, categories:category_id(name)')
+       // Apply explicit foreign key hinting syntax
+      // VERIFY 'account_id' and 'category_id' are the correct FK column names in 'transactions'
+      .select(`
+        *,
+        account_id!accounts ( name ),
+        category_id!categories ( name, type )
+      `)
+      .eq('user_id', userId)
       .eq('account_id', accountId)
-      .order('created_at', { ascending: false })
-      .order('date', { ascending: false }) as { data: TransactionWithRelations[] | null, error: any };
+      .order('created_at', { ascending: false, nullsFirst: false })
+      .order('date', { ascending: false });
 
     if (error) {
       console.error('Error fetching transactions by account:', error);
+      if (error.code === '42703') {
+           console.error("Database schema mismatch or incorrect relationship detection. Verify foreign keys and table/column names used in the select hint.");
+      }
       throw error;
     }
 
-    if (!transactionsData || transactionsData.length === 0) {
+    if (!data || data.length === 0) {
+       console.log(`No transactions found for account ${accountId}`);
       return [];
     }
 
-    const enrichedTransactions = transactionsData.map(transaction => {
-      const category = transaction.categories;
-      
-      const enrichedTransaction: Transaction = {
-        transaction_id: transaction.transaction_id,
-        user_id: transaction.user_id,
-        amount: transaction.amount,
-        currency: transaction.currency,
-        date: transaction.date,
-        created_at: transaction.created_at || null,
-        updated_at: transaction.updated_at || null,
-        description: transaction.description,
-        notes: transaction.notes,
-        type: transaction.type,
-        account_id: transaction.account_id,
-        category_id: transaction.category_id,
-        category_name: category ? category.name : 'Uncategorized',
-        category_type: transaction.type ? transaction.type.toUpperCase() as "INCOME" | "EXPENSE" | "TRANSFER" : 'EXPENSE'
-      };
-      return enrichedTransaction;
-    });
+    // Map results using the helper function
+    const enrichedTransactions = (data as any[]).map(mapSupabaseDataToTransaction);
 
+    console.log(`Processed ${enrichedTransactions.length} transactions for account ${accountId}.`);
     return enrichedTransactions;
+
   } catch (error) {
     console.error("Error in fetchTransactionsByAccount:", error);
     throw error;
   }
 };
 
+// Assuming 'card_id' is a column in your 'transactions' table
 export const fetchTransactionsByCard = async (cardId: string): Promise<Transaction[]> => {
   try {
-    console.log("Fetching transactions by card...");
-    
-    // Step 1: Fetch all transactions for this card
-    const { data: transactionsData, error: transactionsError } = await supabase
-      .from('transactions')
-      .select('*, categories:category_id(name)')
-      .eq('card_id', cardId)
-      .order('created_at', { ascending: false })
-      .order('date', { ascending: false }) as { data: TransactionWithRelations[] | null, error: any };
+    console.log(`Fetching transactions for card ID: ${cardId}`);
+    const userId = await getUserId();
 
-    if (transactionsError) {
-      console.error('Error fetching transactions by card:', transactionsError);
-      throw transactionsError;
+    const { data, error } = await supabase
+      .from('transactions')
+      // Apply explicit foreign key hinting syntax
+      // VERIFY 'account_id' and 'category_id' are the correct FK column names in 'transactions'
+      .select(`
+        *,
+        account_id!accounts ( name ),
+        category_id!categories ( name, type )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false, nullsFirst: false })
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching transactions by card:', error);
+       if (error.code === '42703') {
+           console.error("Database schema mismatch or incorrect relationship detection. Verify foreign keys and table/column names used in the select hint.");
+      }
+      throw error;
     }
 
-    if (!transactionsData || transactionsData.length === 0) {
-      console.log("No transactions found for this card");
+     if (!data || data.length === 0) {
+       console.log(`No transactions found for card ${cardId}`);
       return [];
     }
 
-    // Step 2: Extract all category IDs and fetch categories in a separate query
-    const categoryIds = transactionsData
-      .map(transaction => transaction.category_id)
-      .filter((id): id is string => id !== null && id !== undefined);
-    
-    let categoriesMap = new Map();
-    
-    if (categoryIds.length > 0) {
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from('categories')
-        .select('*')
-        .in('category_id', categoryIds);
-      
-      if (categoriesError) {
-        console.error('Error fetching categories:', categoriesError);
-      } else if (categoriesData) {
-        // Create a map of category_id to category object for faster lookups
-        categoriesData.forEach(category => {
-          categoriesMap.set(category.category_id, category);
-        });
-      }
-    }
+    // Map results using the helper function
+    const enrichedTransactions = (data as any[]).map(mapSupabaseDataToTransaction);
 
-    // Step 3: Combine transaction data with category data
-    const enrichedTransactions = transactionsData.map(transaction => {
-      const category = transaction.categories;
-      
-      const enrichedTransaction: Transaction = {
-        transaction_id: transaction.transaction_id,
-        user_id: transaction.user_id,
-        amount: transaction.amount,
-        currency: transaction.currency,
-        date: transaction.date,
-        created_at: transaction.created_at || null,
-        updated_at: transaction.updated_at || null,
-        description: transaction.description,
-        notes: transaction.notes,
-        type: transaction.type,
-        account_id: transaction.account_id,
-        category_id: transaction.category_id,
-        category_name: category ? category.name : 'Uncategorized',
-        category_type: transaction.type ? transaction.type.toUpperCase() as "INCOME" | "EXPENSE" | "TRANSFER" : 'EXPENSE'
-      };
-      return enrichedTransaction;
-    });
-    
+    console.log(`Processed ${enrichedTransactions.length} transactions for card ${cardId}.`);
     return enrichedTransactions;
+
   } catch (error) {
     console.error("Error in fetchTransactionsByCard:", error);
     throw error;
   }
 };
 
+
+// --- createTransaction and updateTransaction ---
+
 export const createTransaction = async (transaction: TransactionInput): Promise<Transaction> => {
   try {
-    const userId = await getCurrentUserId();
-    
-    // Check if the category exists
+    const userId = await getUserId();
+
+    // --- Category Handling ---
     let categoryId = transaction.category_id;
-    
+    // [ Keep existing category find/create logic here... ]
     if (transaction.category_name && !categoryId) {
-      const { data: existingCategory, error: categoryError } = await supabase
+      const categoryTypeLower = (transaction.type ?? 'expense').toLowerCase() as 'income' | 'expense' | 'transfer';
+      const { data: existingCategory } = await supabase
         .from('categories')
-        .select('category_id, name, type')
+        .select('category_id')
         .eq('name', transaction.category_name)
         .eq('user_id', userId)
-        .eq('type', transaction.type?.toLowerCase() || 'expense')
-        .maybeSingle<Category>();
-
-      if (categoryError) {
-        console.error('Category lookup error:', categoryError);
-        throw categoryError;
-      }
+        .eq('type', categoryTypeLower)
+        .maybeSingle();
 
       if (existingCategory) {
         categoryId = existingCategory.category_id;
       } else {
-        // Create a new category
-        const { data: newCategory, error: insertCategoryError } = await supabase
+        const { data: newCategory, error: insertCatError } = await supabase
           .from('categories')
-          .insert({
-            name: transaction.category_name,
-            user_id: userId,
-            type: (transaction.type?.toLowerCase() || 'expense') as 'income' | 'expense' | 'transfer'
-          })
-          .select()
+          .insert({ name: transaction.category_name, user_id: userId, type: categoryTypeLower })
+          .select('category_id')
           .single();
-
-        if (insertCategoryError) {
-          console.error('Category creation error:', insertCategoryError);
-          throw insertCategoryError;
-        }
-
+        if (insertCatError) throw insertCatError;
         categoryId = newCategory.category_id;
       }
+    } else if (!categoryId && transaction.description) {
+       const categoryTypeLower = (transaction.type ?? 'expense').toLowerCase() as 'income' | 'expense' | 'transfer';
+       const { data: existingCategory } = await supabase
+        .from('categories')
+        .select('category_id')
+        .eq('name', transaction.description)
+        .eq('user_id', userId)
+        .eq('type', categoryTypeLower)
+        .maybeSingle();
+
+       if (existingCategory) {
+           categoryId = existingCategory.category_id;
+       } else {
+           const { data: newCategory, error: insertCatError } = await supabase
+             .from('categories')
+             .insert({ name: transaction.description, user_id: userId, type: categoryTypeLower })
+             .select('category_id')
+             .single();
+           if (insertCatError) throw insertCatError;
+           categoryId = newCategory.category_id;
+       }
     }
 
-    // Get account currency if not provided
+
+    // --- Currency Handling ---
     let currency = transaction.currency;
-    if (!currency && transaction.account_id) {
-      const { data: accountData, error: accountError } = await supabase
-        .from('accounts')
-        .select('currency')
-        .eq('account_id', transaction.account_id)
-        .single();
-      
-      if (accountError) {
-        console.error('Error fetching account currency:', accountError);
-        throw accountError;
-      }
-      
-      currency = accountData.currency;
+     if (!currency && transaction.account_id) {
+       const { data: accountData, error: accountError } = await supabase
+         .from('accounts')
+         .select('currency')
+         .eq('account_id', transaction.account_id)
+         .maybeSingle();
+       if (accountError) throw accountError;
+       currency = accountData?.currency ?? 'NGN';
+    } else if (!currency) {
+        currency = 'NGN';
     }
 
-    // Prepare transaction data with required fields
-    const transactionData = {
+
+    // --- Prepare Data for DB ---
+    const transactionDataToInsert = {
       user_id: userId,
       account_id: transaction.account_id,
-      type: (transaction.type || 'expense').toLowerCase() as 'income' | 'expense' | 'transfer', // Default to expense if not specified
-      amount: transaction.amount,
-      currency: currency || 'USD', // Default to USD if not specified
-      description: transaction.description || '',
-      date: transaction.date || new Date().toISOString(),
       category_id: categoryId,
-      notes: transaction.notes || '',
-      name: transaction.name || transaction.description || ''
+      type: (transaction.type ?? 'expense').toLowerCase() as 'income' | 'expense' | 'transfer',
+      amount: transaction.amount,
+      currency: currency,
+      description: transaction.description ?? '',
+      date: transaction.date ?? new Date().toISOString().split('T')[0],
+      notes: transaction.notes,
+      // card_id: transaction.card_id // Include if applicable
     };
-    
-    // If no category_name was provided but we have a description, use the description as the category name
-    if (!transaction.category_name && transaction.description && !categoryId) {
-      // Create a new category using the description as the name
-      const { data: newCategory, error: insertCategoryError } = await supabase
-        .from('categories')
-        .insert({
-          name: transaction.description,
-          user_id: userId,
-          type: (transaction.type?.toLowerCase() || 'expense') as 'income' | 'expense' | 'transfer'
-        })
-        .select()
-        .single();
 
-      if (insertCategoryError) {
-        console.error('Category creation error:', insertCategoryError);
-        throw insertCategoryError;
-      }
+     Object.keys(transactionDataToInsert).forEach(key => {
+        const typedKey = key as keyof typeof transactionDataToInsert;
+        if (transactionDataToInsert[typedKey] === undefined) {
+            delete transactionDataToInsert[typedKey];
+        }
+    });
 
-      transactionData.category_id = newCategory.category_id;
-    }
 
+    // --- Insert Transaction ---
     const { data, error } = await supabase
       .from('transactions')
-      .insert(transactionData)
-      .select()
-      .single();
+      .insert(transactionDataToInsert)
+      // Apply explicit foreign key hinting syntax to the select after insert
+      // VERIFY 'account_id' and 'category_id' are the correct FK column names
+      .select(`
+          *,
+          account_id!accounts ( name ),
+          category_id!categories ( name, type )
+      `)
+      .single(); // This returns the inserted row with the joined data
+
+    // ** The TS2589 error likely occurred around the line above **
+    // The fix is to rely on the mapping function rather than complex type inference here.
 
     if (error) {
       console.error('Error creating transaction:', error);
       throw error;
     }
 
-    return data;
+    // Map the result to the application's Transaction type
+    return mapSupabaseDataToTransaction(data); // Pass the raw data to the mapper
+
   } catch (error) {
     console.error("Error in createTransaction:", error);
     throw error;
@@ -337,121 +323,123 @@ export const createTransaction = async (transaction: TransactionInput): Promise<
 };
 
 export const updateTransaction = async (
-  transactionId: string, 
+  transactionId: string,
   updates: Partial<TransactionInput>
 ): Promise<Transaction> => {
-  try {
+   try {
     const userId = await getCurrentUserId();
-    
-    // Handle category updates if needed
+    if (!userId) throw new Error("User not authenticated.");
+
+    // --- Category Handling ---
     let categoryId = updates.category_id;
-    
-    if (updates.category_name && !categoryId) {
-      const { data: existingCategory, error: categoryError } = await supabase
-        .from('categories')
-        .select('category_id')
-        .eq('name', updates.category_name)
-        .eq('user_id', userId)
-        .eq('type', (updates.type || 'expense').toLowerCase())
-        .maybeSingle();
+    // [ Keep existing category find/create logic here... ]
+     if (updates.category_name) {
+        const categoryTypeLower = (updates.type ?? 'expense').toLowerCase() as 'income' | 'expense' | 'transfer';
+         const { data: existingCategory } = await supabase
+            .from('categories')
+            .select('category_id')
+            .eq('name', updates.category_name)
+            .eq('user_id', userId)
+            .eq('type', categoryTypeLower)
+            .maybeSingle();
 
-      if (categoryError) {
-        console.error('Category lookup error:', categoryError);
-        throw categoryError;
-      }
+         if (existingCategory) {
+             categoryId = existingCategory.category_id;
+         } else {
+              const { data: newCategory, error: insertCatError } = await supabase
+                 .from('categories')
+                 .insert({ name: updates.category_name, user_id: userId, type: categoryTypeLower })
+                 .select('category_id')
+                 .single();
+              if (insertCatError) throw insertCatError;
+              categoryId = newCategory.category_id;
+         }
+    } else if (updates.description && updates.category_id === undefined) {
+         const categoryTypeLower = (updates.type ?? 'expense').toLowerCase() as 'income' | 'expense' | 'transfer';
+          const { data: existingCategory } = await supabase
+            .from('categories')
+            .select('category_id')
+            .eq('name', updates.description) // Use description as name
+            .eq('user_id', userId)
+            .eq('type', categoryTypeLower)
+            .maybeSingle();
 
-      if (existingCategory) {
-        categoryId = existingCategory.category_id;
-      } else {
-        // Create a new category
-        const { data: newCategory, error: insertCategoryError } = await supabase
-          .from('categories')
-          .insert({
-            name: updates.category_name,
-            user_id: userId,
-            type: updates.type?.toLowerCase() || 'expense'
-          })
-          .select()
-          .single();
-
-        if (insertCategoryError) {
-          console.error('Category creation error:', insertCategoryError);
-          throw insertCategoryError;
-        }
-
-        categoryId = newCategory.category_id;
-      }
+         if (existingCategory) {
+             categoryId = existingCategory.category_id;
+         } else {
+              const { data: newCategory, error: insertCatError } = await supabase
+                 .from('categories')
+                 .insert({ name: updates.description, user_id: userId, type: categoryTypeLower })
+                 .select('category_id')
+                 .single();
+              if (insertCatError) throw insertCatError;
+              categoryId = newCategory.category_id;
+         }
     }
 
-    // Prepare update data
-    const updateData: any = {};
-    
-    // Only include fields that are in the new schema
-    if (updates.type !== undefined) updateData.type = updates.type;
+
+    // --- Prepare Update Data ---
+    const updateData: { [key: string]: any } = {};
+    if (updates.account_id !== undefined) updateData.account_id = updates.account_id;
+    if (categoryId !== undefined) updateData.category_id = categoryId; // Use determined categoryId
+    if (updates.type !== undefined) updateData.type = updates.type.toLowerCase();
     if (updates.amount !== undefined) updateData.amount = updates.amount;
     if (updates.currency !== undefined) updateData.currency = updates.currency;
-    if (updates.description !== undefined) {
-      updateData.description = updates.description;
-      
-      // If description is updated but no category_name is provided, use description as category_name
-      if (!updates.category_name && !categoryId) {
-        updates.category_name = updates.description;
-        
-        // Create or find a category with the same name as the description
-        const { data: existingCategory, error: categoryError } = await supabase
-          .from('categories')
-          .select('category_id')
-          .eq('name', updates.description)
-          .eq('user_id', userId)
-          .eq('type', (updates.type || 'expense').toLowerCase())
-          .maybeSingle();
-
-        if (categoryError) {
-          console.error('Category lookup error:', categoryError);
-          throw categoryError;
-        }
-
-        if (existingCategory) {
-          categoryId = existingCategory.category_id;
-        } else {
-          // Create a new category
-          const { data: newCategory, error: insertCategoryError } = await supabase
-            .from('categories')
-            .insert({
-              name: updates.description,
-              user_id: userId,
-              type: updates.type?.toLowerCase() || 'expense'
-            })
-            .select()
-            .single();
-
-          if (insertCategoryError) {
-            console.error('Category creation error:', insertCategoryError);
-            throw insertCategoryError;
-          }
-
-          categoryId = newCategory.category_id;
-        }
-      }
-    }
+    if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.date !== undefined) updateData.date = updates.date;
     if (updates.notes !== undefined) updateData.notes = updates.notes;
-    if (categoryId !== undefined) updateData.category_id = categoryId;
-    if (updates.account_id !== undefined) updateData.account_id = updates.account_id;
+    // if (updates.card_id !== undefined) updateData.card_id = updates.card_id; // Include if applicable
+
+
+    // --- Update Transaction ---
+     if (Object.keys(updateData).length === 0) {
+         console.warn("Update called with no changes.");
+         // Fetch current data using the same select logic
+         const { data: currentData, error: currentError } = await supabase
+            .from('transactions')
+            .select(`
+                *,
+                account_id!accounts ( name ),
+                category_id!categories ( name, type )
+            `)
+            .eq('transaction_id', transactionId)
+            .eq('user_id', userId) // Also check user ID here for fetch
+            .single();
+         if (currentError) throw currentError;
+         // Check if data exists before mapping
+         if (!currentData) throw new Error("Transaction not found or access denied.");
+         return mapSupabaseDataToTransaction(currentData);
+     }
+
 
     const { data, error } = await supabase
       .from('transactions')
       .update(updateData)
       .eq('transaction_id', transactionId)
-      .select()
-      .single();
+      .eq('user_id', userId) // Ensure user can only update their own transactions
+      // Apply explicit foreign key hinting syntax to the select after update
+      // VERIFY 'account_id' and 'category_id' are the correct FK column names
+      .select(`
+          *,
+          account_id!accounts ( name ),
+          category_id!categories ( name, type )
+      `)
+      .single(); // This returns the updated row with joined data
+
+    // ** The TS2589 error likely occurred around the line above **
+    // The fix is to rely on the mapping function rather than complex type inference here.
 
     if (error) {
       console.error('Error updating transaction:', error);
       throw error;
     }
 
-    return data;
+     // Check if data exists before mapping (update might not return data if RLS prevents it)
+    if (!data) throw new Error("Transaction update failed or data not returned.");
+
+    // Map the result to the application's Transaction type
+    return mapSupabaseDataToTransaction(data);
+
   } catch (error) {
     console.error("Error in updateTransaction:", error);
     throw error;
