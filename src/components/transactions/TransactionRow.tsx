@@ -42,8 +42,8 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
         // We'll need to handle this in our code
         const { data, error } = await supabase
           .from('categories')
-          .select('category_id, name')
-          .order('name');
+          .select('category_id, category_name')
+          .order('category_name');
 
         if (error) {
           console.error('Error fetching categories:', error);

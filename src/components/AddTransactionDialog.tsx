@@ -24,7 +24,6 @@ import { TransactionFlowType } from "@/types/transaction";
 const AddTransactionDialog = () => {
   const [open, setOpen] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<{
     description: string;
@@ -33,7 +32,6 @@ const AddTransactionDialog = () => {
     category: string;
     date: string;
     account_id: string;
-    card_id: string;
     transaction_type: TransactionFlowType;
   }>({
     description: '',
@@ -41,32 +39,53 @@ const AddTransactionDialog = () => {
     type: 'expense',
     category: 'uncategorized',
     date: new Date().toISOString().split('T')[0],
-    account_id: 'none',
-    card_id: 'none',
+    account_id: '',
     transaction_type: 'REGULAR' as TransactionFlowType
   });
   const { toast } = useToast();
 
   useEffect(() => {
     if (open) {
-      loadAccountsAndCards();
+      loadAccountsAndSetDefault();
     }
   }, [open]);
 
-  const loadAccountsAndCards = async () => {
+  const loadAccountsAndSetDefault = async () => {
     try {
       setLoading(true);
-      const [accountsData, cardsData] = await Promise.all([
-        fetchAccounts(),
-        fetchCards()
-      ]);
+      const accountsData = await fetchAccounts();
       setAccounts(accountsData);
-      setCards(cardsData);
+      
+      // Find or create default account
+      const defaultAccount = await getDefaultAccount();
+      if (defaultAccount) {
+        setFormData(prev => ({
+          ...prev,
+          account_id: defaultAccount.account_id
+        }));
+      }
     } catch (error) {
-      console.error('Error loading accounts and cards:', error);
+      console.error('Error loading accounts:', error);
       toast({
         title: "Error",
-        description: "Failed to load accounts and cards",
+        description: "Failed to load accounts",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAccounts = async () => {
+    try {
+      setLoading(true);
+      const accountsData = await fetchAccounts();
+      setAccounts(accountsData);
+    } catch (error) {
+      console.error('Error loading accounts:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load accounts",
         variant: "destructive"
       });
     } finally {
@@ -81,35 +100,20 @@ const AddTransactionDialog = () => {
     }));
 
     // Update transaction_type based on selected options
-    if (field === 'account_id' || field === 'card_id' || field === 'type') {
+    if (field === 'account_id' || field === 'type') {
       const accountSelected = field === 'account_id' ? value : formData.account_id;
-      const cardSelected = field === 'card_id' ? value : formData.card_id;
       const transactionType = field === 'type' ? value : formData.type;
       
-      updateTransactionType(accountSelected, cardSelected, transactionType);
+      updateTransactionType(accountSelected, transactionType);
     }
   };
 
-  const updateTransactionType = (accountId: string, cardId: string, type: string) => {
+  const updateTransactionType = (accountId: string, type: string) => {
     let transactionType: TransactionFlowType = 'REGULAR';
 
-    if (accountId && cardId) {
-      // Both account and card are selected
-      if (type === 'expense') {
-        transactionType = 'CARD_TO_EXTERNAL';
-      } else {
-        // For income, it's regular since money usually comes from external source
-        transactionType = 'REGULAR';
-      }
-    } else if (accountId && !cardId) {
+    if (accountId) {
       if (type === 'expense') {
         transactionType = 'ACCOUNT_TO_EXTERNAL';
-      } else {
-        transactionType = 'REGULAR';
-      }
-    } else if (!accountId && cardId) {
-      if (type === 'expense') {
-        transactionType = 'CARD_TO_EXTERNAL';
       } else {
         transactionType = 'REGULAR';
       }
@@ -143,7 +147,7 @@ const AddTransactionDialog = () => {
         category_name: formData.category || 'Uncategorized',
         date: new Date(formData.date).toISOString(),
         account_id: formData.account_id === 'none' ? null : formData.account_id,
-        card_id: formData.card_id === 'none' ? null : formData.card_id,
+
         transaction_type: formData.transaction_type
       };
       
@@ -162,7 +166,7 @@ const AddTransactionDialog = () => {
         category: 'uncategorized',
         date: new Date().toISOString().split('T')[0],
         account_id: 'none',
-        card_id: 'none',
+
         transaction_type: 'REGULAR'
       });
       
@@ -263,43 +267,23 @@ const AddTransactionDialog = () => {
             />
           </div>
           
-          {/* Account and Card Selection */}
+          {/* Account Selection */}
           <div className="pt-2 border-t border-gray-200">
-            <h4 className="text-sm font-medium mb-2">Link to Account or Card</h4>
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="account">Account</Label>
-                <Select name="account_id" value={formData.account_id} onValueChange={(value) => handleChange('account_id', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {accounts.map((account) => (
-                      <SelectItem key={account.account_id} value={account.account_id}>
-                        {account.account_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="card">Card</Label>
-                <Select name="card_id" value={formData.card_id} onValueChange={(value) => handleChange('card_id', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select card" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {cards.map((card) => (
-                      <SelectItem key={card.card_id} value={card.card_id}>
-                        {card.card_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <h4 className="text-sm font-medium mb-2">Link to Account</h4>
+            <div className="space-y-2">
+              <Label htmlFor="account">Account</Label>
+              <Select name="account_id" value={formData.account_id} onValueChange={(value) => handleChange('account_id', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map((account) => (
+                    <SelectItem key={account.account_id} value={account.account_id}>
+                      {account.account_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           

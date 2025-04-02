@@ -14,7 +14,7 @@ interface TransactionsTableProps {
 }
 
 const TransactionsTable = ({ limit }: TransactionsTableProps) => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -60,7 +60,7 @@ const TransactionsTable = ({ limit }: TransactionsTableProps) => {
     return <TransactionLoading />;
   }
 
-  if (transactions.length === 0) {
+  if (!transactions || transactions.length === 0) {
     return <TransactionEmptyState />;
   }
 
