@@ -4,6 +4,11 @@
     "lib": ["ES2023"],
     "module": "ESNext",
     "skipLibCheck": true,
+<<<<<<< Updated upstream
+=======
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+>>>>>>> Stashed changes
 
     /* Bundler mode */
     "moduleResolution": "bundler",

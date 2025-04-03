@@ -1,18 +1,6 @@
-import { serve as serveHttp } from "https://deno.land/std@0.201.0/http/server.ts";
 
-// Define the ParsedTransaction interface locally instead of importing it
-import { ParsedTransaction } from "./../../../../src/utils/transactionParser.ts";
+import { serve as serveHttp } from "https://deno.land/std@0.201.0/http/server.ts"
 
-interface ParsedTransaction {
-  description: string;
-  amount: number;
-  category_type: string;
-  category_name: string;
-  date: string;
-}
-
-// --- CORS Headers ---
-// Define reusable CORS headers for responses
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*', // Allow requests from any origin
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type', // Allowed headers
@@ -324,230 +312,149 @@ async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
       );
     }
 
-    // Handle other unexpected errors during the API call
-    console.error('Failed to call Groq API:', error);
-    return new Response(
-      JSON.stringify({ error: 'Failed to call Groq API', details: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: corsHeaders } // Internal Server Error
-    );
-  }
-}
-
-
-// --- Main Request Handler ---
-// This function handles incoming HTTP requests.
-export const serve = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests (OPTIONS method)
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  // Ensure the request method is POST
-  if (req.method !== 'POST') {
-      return new Response(JSON.stringify({ error: 'Method Not Allowed' }), { status: 405, headers: corsHeaders });
-  }
-
-  try {
-    // --- Input Validation ---
-    let text: string;
+    // Try to parse the content as JSON
     try {
-        const body = await req.json();
-        text = body.text;
-        if (!text || typeof text !== 'string' || text.trim().length === 0) {
-          throw new Error('Input text must be a non-empty string.');
+      // Clean up the content to handle potential code blocks
+      let cleanContent = content
+      if (content.includes('```json')) {
+        cleanContent = content.split('```json')[1].split('```')[0].trim()
+      } else if (content.includes('```')) {
+        cleanContent = content.split('```')[1].split('```')[0].trim()
+      }
+
+      const parsedData = JSON.parse(cleanContent)
+      
+      // Additional validation and formatting
+      const now = new Date()
+      
+      // Handle date calculation with local time and validation
+      const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      let transactionDate = new Date(nowLocal.getTime()) // Clone local date
+      
+      // Prioritize explicit time references in text
+      const lowerText = text.toLowerCase()
+      const timeKeywords = {
+        yesterday: () => transactionDate.setDate(transactionDate.getDate() - 1),
+        'last week': () => transactionDate.setDate(transactionDate.getDate() - 7),
+        'last month': () => transactionDate.setMonth(transactionDate.getMonth() - 1),
+        today: () => {}
+      } as const;
+      
+      // Check for time keywords first
+      const foundKeyword = Object.keys(timeKeywords).find(key => lowerText.includes(key));
+      if (foundKeyword) {
+        timeKeywords[foundKeyword as keyof typeof timeKeywords]();
+      } else if (parsedData.date) {
+        // Validate LLM-parsed date
+        const [year, month, day] = parsedData.date.split('-')
+        const parsedDate = new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day)
+        )
+        if (!isNaN(parsedDate.getTime()) && 
+            parsedDate <= nowLocal &&
+            parsedDate > new Date(nowLocal.getTime() - 90 * 24 * 60 * 60 * 1000)) {
+          transactionDate = new Date(
+            parsedDate.getFullYear(),
+            parsedDate.getMonth(),
+            parsedDate.getDate()
+          )
         }
-        text = text.trim(); // Trim whitespace
-    } catch (e) {
-        console.error('Invalid request body:', e);
-        return new Response(
-          JSON.stringify({
-            error: 'Invalid request body',
-            details: e instanceof Error ? e.message : 'Request body must be JSON with a non-empty "text" property.'
-          }),
-          { status: 400, headers: corsHeaders } // Bad Request
-        );
-    }
-
-    console.log(`Received request to parse: "${text}"`);
-
-    // --- API Key and Connection Check ---
-    const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY');
-    let useGroq = false; // Flag to determine whether to use Groq or fallback
-
-    if (GROQ_API_KEY) {
-      console.log("GROQ_API_KEY found. Verifying connection...");
-      const isConnected = await verifyGroqConnection(GROQ_API_KEY);
-      if (isConnected) {
-        console.log("Groq API connection successful.");
-        useGroq = true;
-      } else {
-        console.warn('Failed to connect to Groq API. Using fallback parser.');
-        // Optionally return an error here if Groq is essential,
-        // but current logic falls back gracefully.
-        // return new Response(JSON.stringify({ error: 'Failed to connect to Groq API' }), { status: 503, headers: corsHeaders });
       }
-    } else {
-      console.log('GROQ_API_KEY not found. Using fallback parser.');
-    }
-
-    // --- Determine Date ---
-    // Parse the date from the *original* input text, regardless of parser used.
-    const transactionDate = parseRelativeDate(text);
-    // Apply constraints: not in the future, not older than 90 days (configurable)
-    const now = new Date();
-    const currentLocalStartOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    let finalDate = new Date(transactionDate + 'T00:00:00Z'); // Treat YYYY-MM-DD as UTC start of day initially
-
-    // Clamp date to be not in the future
-    if (finalDate > currentLocalStartOfDay) {
-        finalDate = new Date(currentLocalStartOfDay);
-    }
-
-    // Clamp date to be not older than 90 days (adjust as needed)
-    const oldestAllowedDate = new Date(currentLocalStartOfDay);
-    oldestAllowedDate.setDate(oldestAllowedDate.getDate() - 90);
-    if (finalDate < oldestAllowedDate) {
-        finalDate = new Date(oldestAllowedDate);
-    }
-
-    const formattedDate = finalDate.toISOString().split('T')[0]; // Final date in YYYY-MM-DD format
-    console.log(`Determined transaction date: ${formattedDate}`);
-
-
-    // --- Parsing Logic ---
-    let parsedContent: ParsedTransaction; // To hold the parsed JSON data {description, amount, category_name, category_type}
-
-    if (useGroq && GROQ_API_KEY) {
-      // --- Use Groq API ---
-      console.log("Calling Groq API...");
-      const groqResponseObj = await callGroqAPI(GROQ_API_KEY, text);
-
-      // Check if the callGroqAPI function itself returned an error response
-      if (!groqResponseObj.ok) {
-        // The callGroqAPI function already logged the error and created a Response object
-        // We just need to return it.
-        return groqResponseObj;
+      
+      // Final boundary checks (local time)
+      if (transactionDate > nowLocal) {
+        transactionDate = new Date(nowLocal.getTime())
       }
-
-      // --- Process Successful Groq Response ---
+      const minDate = new Date(nowLocal.getTime() - 90 * 24 * 60 * 60 * 1000)
+      if (transactionDate < minDate) {
+        transactionDate = new Date(minDate.getTime())
+      }
+      
+      // Ensure the date is not in the future
+      if (transactionDate > now) {
+        transactionDate = new Date(now)
+        transactionDate.setHours(0, 0, 0, 0)
+      }
+      
+      const validatedData = {
+        description: parsedData.description || "Unknown Transaction",
+        amount: typeof parsedData.amount === 'number' ? parsedData.amount : parseFloat(parsedData.amount) || 0,
+        category_name: parsedData.category_name || "Uncategorized",
+        category_type: ["INCOME", "EXPENSE"].includes(parsedData.category_type) 
+          ? parsedData.category_type 
+          : (parsedData.category_type?.toUpperCase() === "INCOME" ? "INCOME" : "EXPENSE"),
+        date: transactionDate.toISOString().split('T')[0]
+      }
+      
+      console.log('Validated transaction data:', validatedData)
+      
+      return new Response(
+        JSON.stringify(validatedData),
+        { headers: corsHeaders }
+      )
+    } catch (error) {
+      console.error('Error parsing JSON from Groq response:', error)
+      console.error('Raw content:', content)
+      
+      // Attempt to extract key information even if JSON parsing fails
       try {
-        const groqResult = await groqResponseObj.json();
-        console.log('Raw Groq API response body:', groqResult);
-
-        const content = groqResult.choices?.[0]?.message?.content;
-        if (!content || typeof content !== 'string') {
-          console.error('No valid content string found in Groq response:', groqResult);
-          // Fallback gracefully if Groq response is unusable
-          console.log("Groq response unusable, falling back to local parser.");
-          return useFallbackParser(text);
-          // Or return an error:
-          // throw new Error('Invalid content structure in Groq response');
+        // Simple fallback parser
+        const fallbackData = {
+          description: "Unknown Transaction",
+          amount: 0,
+          category_name: "Uncategorized",
+          category_type: "EXPENSE",
+          date: new Date().toISOString().split('T')[0]
         }
-
-        console.log('Raw content string from Groq:', content);
-
-        // --- Robust JSON Parsing from Groq Content ---
-        let cleanContent = content.trim();
-        try {
-          // Attempt 1: Direct parse (ideal case)
-          // Remove potential markdown backticks first
-          cleanContent = cleanContent.replace(/^```(json)?\s*|\s*```$/g, '');
-          parsedContent = JSON.parse(cleanContent);
-          console.log('Successfully parsed JSON directly from Groq content.');
-
-        } catch (directParseError) {
-          console.warn('Direct JSON parse failed. Attempting extraction...', directParseError);
-          // Attempt 2: Extract JSON object using regex (handles surrounding text)
-          const jsonMatch = cleanContent.match(/\{[\s\S]*?\}/);
-          if (jsonMatch && jsonMatch[0]) {
-            try {
-              parsedContent = JSON.parse(jsonMatch[0]);
-              console.log('Successfully parsed JSON extracted via regex.');
-            } catch (regexParseError) {
-              console.error('Failed to parse JSON extracted via regex:', regexParseError);
-              // If even extraction fails, fallback might be best
-              console.log("Groq JSON extraction failed, falling back to local parser.");
-              return useFallbackParser(text);
-              // Or throw: throw new Error('Failed to parse JSON content from Groq response');
-            }
-          } else {
-            console.error('Could not find any JSON object within Groq content.');
-            // Fallback if no JSON is found
-            console.log("No JSON found in Groq response, falling back to local parser.");
-            return useFallbackParser(text);
-            // Or throw: throw new Error('No JSON object found in Groq response content');
+        
+        // Try to extract amount if available
+        const amountMatch = content.match(/amount["\s:]+(\d+([,.]\d+)?)/i)
+        if (amountMatch) {
+          fallbackData.amount = parseFloat(amountMatch[1].replace(',', ''))
+        }
+        
+        // Try to extract description if available
+        const descMatch = content.match(/description["\s:]+["']([^"']+)["']/i)
+        if (descMatch) {
+          fallbackData.description = descMatch[1]
+        }
+        
+        // Try to extract category if available
+        const catMatch = content.match(/category_name["\s:]+["']([^"']+)["']/i)
+        if (catMatch) {
+          fallbackData.category_name = catMatch[1]
+        }
+        
+        // Try to extract type if available
+        const typeMatch = content.match(/category_type["\s:]+["']([^"']+)["']/i)
+        if (typeMatch && typeMatch[1].toUpperCase() === "INCOME") {
+          fallbackData.category_type = "INCOME"
+        }
+        
+        console.log('Fallback parsing result:', fallbackData)
+        
+        return new Response(
+          JSON.stringify(fallbackData),
+          { headers: corsHeaders }
+        )
+      } catch (fallbackError) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to parse JSON from Groq response',
+            rawContent: content
+          }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders }
           }
-        }
-
-        // --- Validation of Parsed Groq Data ---
-        if (!parsedContent || typeof parsedContent !== 'object') {
-           console.error('Parsed content is not a valid object:', parsedContent);
-           console.log("Groq result not a valid object, falling back to local parser.");
-           return useFallbackParser(text);
-           // Or throw: throw new Error('Parsed Groq content is not a valid JSON object');
-        }
-
-        // Coerce and validate fields (even from LLM)
-        parsedContent = {
-            description: String(parsedContent.description || 'Unknown Transaction').trim(),
-            amount: Math.abs(parseFloat(String(parsedContent.amount || '0').replace(/[^0-9.-]/g, '')) || 0),
-            category_name: String(parsedContent.category_name || 'Uncategorized').trim(),
-            category_type: String(parsedContent.category_type || 'EXPENSE').toUpperCase(),
-            date: formattedDate // Add the date field from the parsed date
-        };
-
-        // Final check on critical fields
-        if (!parsedContent.description) parsedContent.description = 'Unknown Transaction';
-        if (isNaN(parsedContent.amount)) parsedContent.amount = 0;
-        if (!parsedContent.category_name) parsedContent.category_name = 'Uncategorized';
-        if (!['INCOME', 'EXPENSE'].includes(parsedContent.category_type)) {
-            parsedContent.category_type = 'EXPENSE'; // Default if invalid type
-        }
-
-        console.log("Successfully parsed and validated data from Groq:", parsedContent);
-
-      } catch (processingError) {
-        console.error('Error processing Groq response:', processingError);
-        // Fallback if any error occurs during processing the successful Groq response
-        console.log("Error processing Groq response, falling back to local parser.");
-        return useFallbackParser(text);
-        // Or return a specific error:
-        // return new Response(
-        //   JSON.stringify({ error: 'Failed to process Groq response', details: processingError.message }),
-        //   { status: 500, headers: corsHeaders }
-        // );
+        )
       }
-
-    } else {
-      // --- Use Fallback Parser ---
-      // If no API key or connection failed, call the fallback directly.
-      // The fallback function returns a complete Response object.
-      return useFallbackParser(text);
     }
-
-    // --- Final Data Assembly ---
-    // Combine parsed data with the determined date.
-    const finalTransactionData = {
-      description: parsedContent.description,
-      amount: parsedContent.amount,
-      category_name: parsedContent.category_name,
-      category_type: parsedContent.category_type, // Should be INCOME or EXPENSE
-      date: formattedDate // Use the calculated YYYY-MM-DD date
-    };
-
-    console.log('Final validated transaction data:', finalTransactionData);
-
-    // --- Return Success Response ---
-    return new Response(
-      JSON.stringify(finalTransactionData),
-      { headers: corsHeaders } // Include CORS headers
-    );
-
-  } catch (error: unknown) {
-    // --- Global Error Handler ---
-    // Catch any unexpected errors during the request handling.
-    const errorMessage = error instanceof Error ? error.message : 'Unknown server error';
-    console.error('Unhandled error processing request:', error);
+  } catch (error) {
+    console.error('Error processing request:', error)
+    
     return new Response(
       JSON.stringify({ error: 'Internal Server Error', details: errorMessage }),
       { status: 500, headers: corsHeaders }
