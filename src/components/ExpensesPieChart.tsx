@@ -1,8 +1,7 @@
-
 import { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { Loader2 } from 'lucide-react';
-import { useCurrency, formatCurrency } from '@/contexts/CurrencyContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { fetchCategoryExpenses } from '@/services/dashboardService';
 
 type ExpenseCategory = {
@@ -18,9 +17,26 @@ const COLORS = [
   '#27AE60', '#E67E22', '#C0392B', '#16A085', '#7D3C98'
 ];
 
+// Define the original base currency of the incoming chart data
+const PROPS_BASE_CURRENCY = "NGN";
+
 const ExpensesPieChart = () => {
   const [loading, setLoading] = useState(true);
   const [expensesByCategory, setExpensesByCategory] = useState<ExpenseCategory[]>([]);
+  // Get necessary values from context
+  const { formatPossiblyConvertedCurrency, exchangeRates } = useCurrency(); 
+
+  // Helper function to convert NGN prop amount to USD base amount
+  const convertNgnToUsd = (amountNgn: number): number | null => {
+      const ngnRate = exchangeRates?.[PROPS_BASE_CURRENCY];
+      // Check if rates are loaded and the NGN rate is valid
+      if (ngnRate && typeof ngnRate === 'number' && ngnRate > 0) {
+          return amountNgn / ngnRate;
+      }
+      // Return null or handle error/loading state appropriately if rates aren't ready
+      // console.warn(`Rate for ${PROPS_BASE_CURRENCY} not available for conversion in pie chart.`);
+      return null; // Indicate conversion failure
+  };
 
   const loadCategoryExpenses = async () => {
     try {
@@ -62,8 +78,6 @@ const ExpensesPieChart = () => {
     };
   }, []);
 
-  const { currentCurrency } = useCurrency();
-
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -100,7 +114,11 @@ const ExpensesPieChart = () => {
           ))}
         </Pie>
         <Tooltip 
-          formatter={(value: number) => formatCurrency(value, currentCurrency)}
+          formatter={(valueNgn: number) => { 
+              const valueUsd = convertNgnToUsd(valueNgn);
+              // Return formatted value or placeholder if conversion fails
+              return valueUsd !== null ? formatPossiblyConvertedCurrency(valueUsd) : "N/A"; 
+          }}
           contentStyle={{ 
             backgroundColor: 'rgba(255, 255, 255, 0.95)', 
             borderRadius: '8px',

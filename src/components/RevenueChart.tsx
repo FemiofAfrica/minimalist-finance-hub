@@ -1,7 +1,6 @@
-
 import { useEffect, useState } from "react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { useCurrency, formatCurrency } from "@/contexts/CurrencyContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import { format } from "date-fns";
 import { fetchRevenueData } from "@/services/revenueChartService";
 
@@ -16,19 +15,27 @@ interface RevenueChartProps {
   period: TimePeriod;
 }
 
+const PROPS_BASE_CURRENCY = "NGN";
+
 const RevenueChart = ({ period }: RevenueChartProps) => {
   const [data, setData] = useState<BalanceChartData[]>([]);
   const [loading, setLoading] = useState(true);
-  const { currentCurrency } = useCurrency();
+  const { formatPossiblyConvertedCurrency, exchangeRates } = useCurrency();
+
+  const convertNgnToUsd = (amountNgn: number): number | null => {
+    const ngnRate = exchangeRates?.[PROPS_BASE_CURRENCY];
+    if (ngnRate && typeof ngnRate === 'number' && ngnRate > 0) {
+      return amountNgn / ngnRate;
+    }
+    return null;
+  };
 
   useEffect(() => {
     const loadRevenueData = async () => {
       setLoading(true);
       try {
-        // Use the revenue chart service to fetch data
         const revenueData = await fetchRevenueData(period);
         
-        // Transform the revenue data to balance chart data format
         let runningBalance = 0;
         const chartData: BalanceChartData[] = revenueData.map(item => {
           runningBalance += item.revenue;
@@ -49,7 +56,6 @@ const RevenueChart = ({ period }: RevenueChartProps) => {
 
     loadRevenueData();
     
-    // Set up event listener for transaction updates
     const handleRefresh = () => {
       loadRevenueData();
     };
@@ -92,11 +98,17 @@ const RevenueChart = ({ period }: RevenueChartProps) => {
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value) => formatCurrency(value, currentCurrency)}
+          tickFormatter={(valueNgn) => {
+            const valueUsd = convertNgnToUsd(valueNgn);
+            return valueUsd !== null ? formatPossiblyConvertedCurrency(valueUsd) : "";
+          }}
         />
         <Tooltip
           content={({ active, payload }) => {
             if (active && payload && payload.length) {
+              const valueNgn = Number(payload[0].value);
+              const valueUsd = convertNgnToUsd(valueNgn);
+
               return (
                 <div className="rounded-lg border bg-background p-2 shadow-sm">
                   <div className="grid grid-cols-2 gap-2">
@@ -105,7 +117,7 @@ const RevenueChart = ({ period }: RevenueChartProps) => {
                         Balance
                       </span>
                       <span className="font-bold text-muted-foreground">
-                        {formatCurrency(Number(payload[0].value), currentCurrency)}
+                        {valueUsd !== null ? formatPossiblyConvertedCurrency(valueUsd) : "N/A"}
                       </span>
                     </div>
                   </div>

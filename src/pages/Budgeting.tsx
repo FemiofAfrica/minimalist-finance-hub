@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { formatCurrency, useCurrency } from '@/contexts/CurrencyContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowUpRight, ArrowDownRight, Target, Wallet, PiggyBank, TrendingUp } from 'lucide-react';
 import { Transaction } from '@/types/transaction';
@@ -46,6 +46,9 @@ type Budget = {
   created_at?: string;
   updated_at?: string;
 };
+
+// Define the original base currency of the incoming props/state data
+const PROPS_BASE_CURRENCY = "NGN";
 
 const Budgeting = () => {
   const [showWizard, setShowWizard] = useState(false);
@@ -146,7 +149,7 @@ const Budgeting = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [budget, setBudget] = useState<Budget | null>(null);
   const [isEditingBudget, setIsEditingBudget] = useState<boolean>(false);
-  const { currentCurrency } = useCurrency();
+  const { formatPossiblyConvertedCurrency, exchangeRates } = useCurrency();
   
   // Fetch user's transactions and calculate income
   useEffect(() => {
@@ -523,663 +526,281 @@ const Budgeting = () => {
   // Calculate progress percentage for financial goal
   const calculateGoalProgress = () => {
     if (!financialGoal || financialGoal.target_amount <= 0) return 0;
-    return (financialGoal.current_amount / financialGoal.target_amount) * 100;
+    return Math.min(100, (financialGoal.current_amount / financialGoal.target_amount) * 100);
   };
   
   // Format date for display
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    try {
+      // Assuming dateString is in ISO format like 'YYYY-MM-DDTHH:mm:ssZ' or just 'YYYY-MM-DD'
+      return new Date(dateString).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch (e) {
+      console.error("Error formatting date:", dateString, e);
+      return "Invalid Date";
+    }
   };
   
   // Calculate days remaining until target date
   const calculateDaysRemaining = () => {
     if (!financialGoal?.target_date) return 0;
-    
-    const targetDate = new Date(financialGoal.target_date);
-    const today = new Date();
-    
-    const diffTime = targetDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    return diffDays > 0 ? diffDays : 0;
+    try {
+        const target = new Date(financialGoal.target_date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Ignore time for comparison
+        target.setHours(0, 0, 0, 0);
+        const diffTime = target.getTime() - today.getTime();
+        if (diffTime < 0) return -1; // Target date has passed
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    } catch (e) {
+        console.error("Error calculating days remaining:", financialGoal.target_date, e);
+        return 0;
+    }
   };
   
   // Handle wizard completion
   const handleWizardComplete = async (data: any) => {
-    try {
-      setLoading(true);
-      
-      // Get the current user ID once at the beginning
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-      
-      if (!userId) {
-        throw new Error('User not authenticated');
+      console.log("Wizard Complete Data:", data);
+      try {
+          // Save Financial Goal
+          const goalPayload: Partial<FinancialGoal> = {
+              goal_type: data.goalType,
+              goal_name: data.goalName,
+              target_amount: data.targetAmount,
+              current_amount: financialGoal?.current_amount || 0, // Keep existing current amount if editing
+              target_date: data.targetDate,
+              start_date: financialGoal?.start_date || new Date().toISOString().split('T')[0],
+          };
+
+          if (financialGoal?.id) { // Update existing goal
+              const { data: updatedGoal, error } = await supabase
+                  .from('financial_goals')
+                  .update(goalPayload)
+                  .eq('id', financialGoal.id)
+                  .select()
+                  .single();
+              if (error) throw error;
+              setFinancialGoal(updatedGoal);
+          } else { // Insert new goal
+              const { data: newGoal, error } = await supabase
+                  .from('financial_goals')
+                  .insert(goalPayload)
+                  .select()
+                  .single();
+              if (error) throw error;
+              setFinancialGoal(newGoal);
+          }
+
+          // Save Budget (assuming wizard provides necessary info)
+          if (data.aiRecommendation?.budget) {
+             setBudgetCategories(data.aiRecommendation.budget);
+             await saveBudget({ 
+                 total_income: data.monthlyIncome,
+                 categories: data.aiRecommendation.budget
+             });
+          }
+          
+          toast({ title: "Success", description: "Budget and goal setup complete!" });
+      } catch (error) {
+          console.error('Error saving wizard data:', error);
+          toast({ title: "Error", description: "Failed to save budget or goal.", variant: "destructive" });
+      } finally {
+          setShowWizard(false);
       }
-      
-      // Save the financial goal
-      const goalData: Omit<FinancialGoal, 'id'> = {
-        user_id: userId,
-        goal_type: data.goalType,
-        goal_name: data.goalName,
-        target_amount: data.targetAmount,
-        current_amount: 0,
-        start_date: new Date().toISOString(),
-        target_date: data.targetDate,
-      };
+  };
 
-      // Add proper headers and error handling for financial goals insertion
-      const { data: savedGoal, error: goalError } = await supabase
-        .from('financial_goals')
-        .insert(goalData)
-        .select()
-        .maybeSingle();
-
-      if (goalError) {
-        console.error('Error saving financial goal:', goalError);
-        throw new Error(`Failed to save financial goal: ${goalError.message}`);
+  // Helper function to convert NGN prop amount to USD base amount
+  const convertNgnToUsd = (amountNgn: number): number | null => {
+      const ngnRate = exchangeRates?.[PROPS_BASE_CURRENCY];
+      // Check if rates are loaded and the NGN rate is valid
+      if (ngnRate && typeof ngnRate === 'number' && ngnRate > 0) {
+          return amountNgn / ngnRate;
       }
-      
-      if (!savedGoal) {
-        throw new Error('Failed to save financial goal: No data returned');
-      }
+      // Return null or handle error/loading state appropriately if rates aren't ready
+      // console.warn(`Rate for ${PROPS_BASE_CURRENCY} not available for conversion on budgeting page.`);
+      return null; // Indicate conversion failure
+  };
 
-      // Save the budget
-      const now = new Date();
-      const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
-      const currentYear = now.getFullYear().toString();
-      
-      // Ensure budget categories are properly formatted with all required fields
-      const budgetCategories = Array.isArray(data.aiRecommendation.budget) 
-        ? data.aiRecommendation.budget.map(cat => ({
-            category_name: cat.category_name,
-            allocated_amount: parseFloat(cat.allocated_amount) || 0,
-            spent_amount: parseFloat(cat.spent_amount) || 0,
-            percentage: parseFloat(cat.percentage) || 0
-          }))
-        : [];
-      
-      // Calculate total budget from allocated amounts
-      const totalBudget = budgetCategories.reduce((sum, cat) => sum + (parseFloat(cat.allocated_amount) || 0), 0);
-      
-      // Format the budget data with all required fields
-      const budgetData = {
-        user_id: userId,
-        name: `Budget ${currentMonth}/${currentYear}`,
-        month: currentMonth,
-        year: currentYear,
-        total_income: parseFloat(data.monthlyIncome) || 0,
-        total_budget: totalBudget,
-        categories: budgetCategories // Ensure it's a properly formatted array for JSONB
-      };
+  const renderOverview = () => {
+    const goalProgress = calculateGoalProgress();
+    const daysRemaining = calculateDaysRemaining();
+    const totalSpent = budgetCategories.reduce((sum, cat) => sum + cat.spent_amount, 0);
+    const totalAllocated = budgetCategories.reduce((sum, cat) => sum + cat.allocated_amount, 0);
+    const overallBudgetProgress = totalAllocated > 0 ? (totalSpent / totalAllocated) * 100 : 0;
 
-      // Log the budget data for debugging
-      console.log('Saving budget data:', budgetData);
+    // Convert amounts for display
+    const incomeUSD = convertNgnToUsd(monthlyIncome);
+    const spentUSD = convertNgnToUsd(totalSpent);
+    const allocatedUSD = convertNgnToUsd(totalAllocated);
+    const goalTargetUSD = financialGoal ? convertNgnToUsd(financialGoal.target_amount) : null;
+    const goalCurrentUSD = financialGoal ? convertNgnToUsd(financialGoal.current_amount) : null;
 
-      const { error: budgetError } = await supabase
-        .from('budgets')
-        .insert(budgetData);
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Monthly Income</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {incomeUSD !== null ? formatPossiblyConvertedCurrency(incomeUSD) : "Loading..."}
+            </div>
+            {/* <p className="text-xs text-muted-foreground">+20.1% from last month</p> */}
+          </CardContent>
+        </Card>
 
-      if (budgetError) throw budgetError;
+        {financialGoal && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold">Financial Goal: {financialGoal.goal_name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span>Progress</span>
+                  <span>{goalProgress.toFixed(1)}%</span>
+                </div>
+                <Progress value={goalProgress} aria-label={`${goalProgress.toFixed(1)}% goal progress`} />
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>
+                    {goalCurrentUSD !== null ? formatPossiblyConvertedCurrency(goalCurrentUSD) : "-"} /
+                    {goalTargetUSD !== null ? formatPossiblyConvertedCurrency(goalTargetUSD) : "-"}
+                  </span>
+                  <span>{daysRemaining >= 0 ? `${daysRemaining} days left` : 'Target date passed'}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-      // Update state
-      setFinancialGoal(savedGoal);
-      setBudget(budgetData as unknown as Budget);
-      setBudgetCategories(budgetCategories);
-      setShowWizard(false);
-      
-      toast({
-        title: 'Success',
-        description: 'Budget and financial goal have been saved',
-        variant: 'default',
-      });
-    } catch (error) {
-      console.error('Error saving budget data:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save budget data. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Spent This Month</CardTitle>
+             <ArrowDownRight className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-500">
+              {spentUSD !== null ? formatPossiblyConvertedCurrency(spentUSD) : "Loading..."}
+            </div>
+             <p className="text-xs text-muted-foreground">
+               Budgeted: {allocatedUSD !== null ? formatPossiblyConvertedCurrency(allocatedUSD) : "Loading..."}
+            </p>
+          </CardContent>
+        </Card>
+        {/* Maybe add Overall Budget Progress card? */} 
+      </div>
+    );
+  };
+
+  const renderBudgetDetails = () => {
+    return (
+      <Card>
+        <CardHeader className="flex justify-between items-center">
+          <CardTitle>Budget Categories</CardTitle>
+           <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setIsEditingBudget(!isEditingBudget)}
+           >
+             {isEditingBudget ? "Cancel" : "Edit Budget"}
+           </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {budgetCategories.map((category, index) => {
+              const progress = category.allocated_amount > 0 ? Math.min(100, (category.spent_amount / category.allocated_amount) * 100) : 0;
+              const spentUSD = convertNgnToUsd(category.spent_amount);
+              const allocatedUSD = convertNgnToUsd(category.allocated_amount);
+              return (
+                <div key={index} className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">{category.category_name}</span>
+                    <div className="flex items-center gap-2">
+                        <span className={`text-sm ${category.spent_amount > category.allocated_amount ? 'text-red-500' : 'text-muted-foreground'}`}>
+                           {spentUSD !== null ? formatPossiblyConvertedCurrency(spentUSD) : "-"} /
+                        </span>
+                       {isEditingBudget ? (
+                           <Input
+                             type="number"
+                             defaultValue={category.allocated_amount} // Use defaultValue for uncontrolled input during edit
+                             onBlur={(e) => { // Update on blur to avoid excessive re-renders
+                                 const newAmount = parseFloat(e.target.value) || 0;
+                                 setBudgetCategories(prev =>
+                                     prev.map(cat =>
+                                         cat.category_name === category.category_name
+                                             ? { ...cat, allocated_amount: newAmount }
+                                             : cat
+                                     )
+                                 );
+                             }}
+                             className="w-24 h-8 text-sm" // Smaller input
+                           />
+                       ) : (
+                         <span className="font-semibold text-sm">
+                             {allocatedUSD !== null ? formatPossiblyConvertedCurrency(allocatedUSD) : "-"}
+                         </span>
+                       )}
+                     </div>
+                  </div>
+                  <Progress value={progress} aria-label={`${category.category_name} budget progress ${progress.toFixed(0)}%`} />
+                   <p className="text-xs text-muted-foreground text-right">{progress.toFixed(0)}% Used</p>
+                </div>
+              );
+            })}
+          </div>
+          {isEditingBudget && (
+             <div className="mt-6 flex justify-end">
+                 <Button onClick={async () => { await saveBudget(); setIsEditingBudget(false); }}>Save Changes</Button>
+             </div>
+           )}
+        </CardContent>
+      </Card>
+    );
   };
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto px-4 py-8">
-        {showWizard ? (
-          <BudgetingWizard
-            onComplete={handleWizardComplete}
-            monthlyIncome={monthlyIncome}
-            transactions={transactions}
-            setTransactions={setTransactions}
-            initialTransactions={transactions}
-            setMonthlyIncome={setMonthlyIncome}
-            budgetCategories={budgetCategories}
-            setBudgetCategories={setBudgetCategories}
-          />
-        ) : (
-          <>
-            <div className="flex justify-between items-center mb-6">
-              <h1 className="text-3xl font-bold">Budgeting & Financial Goals</h1>
-              <Button
-                onClick={() => setShowWizard(true)}
-                className="flex items-center gap-2"
-              >
-                <Target className="w-4 h-4" />
-                Setup Budget
-              </Button>
-            </div>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3 mb-8">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="budget">Budget</TabsTrigger>
-                <TabsTrigger value="goals">Financial Goals</TabsTrigger>
-              </TabsList>
-              <TabsContent value="overview" className="space-y-6">
-                <div className="grid gap-6 md:grid-cols-2">
-                  <Card className="h-full">
-                    <CardHeader className="pb-3">
-                      <CardTitle>Monthly Budget Overview</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center py-2 border-b">
-                          <span className="font-medium">Total Budget:</span>
-                          <span className="text-lg font-semibold">{formatCurrency(budget?.total_budget || 0, currentCurrency)}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2">
-                          <span className="font-medium">Total Spent:</span>
-                          <span className="text-lg font-semibold">{formatCurrency(budgetCategories.reduce((sum, cat) => sum + cat.spent_amount, 0), currentCurrency)}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+      <div className="container mx-auto py-6">
+        <div className="mb-6 flex justify-between items-center">
+          <h1 className="text-3xl font-bold">Budgeting</h1>
+          <Dialog open={showWizard} onOpenChange={setShowWizard}>
+            <DialogTrigger asChild>
+               <Button>Setup Budget Wizard</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[800px]">
+               <BudgetingWizard 
+                 onComplete={handleWizardComplete} 
+                 monthlyIncome={monthlyIncome}
+                 setMonthlyIncome={setMonthlyIncome}
+                 budgetCategories={budgetCategories}
+                 setBudgetCategories={setBudgetCategories}
+                 initialTransactions={transactions} // Pass initial transactions
+               />
+            </DialogContent>
+          </Dialog>
+        </div>
 
-                  <Card className="h-full">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                      <CardTitle>Financial Goal Progress</CardTitle>
-                      {financialGoal && (
-                        <div className="flex space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="flex items-center gap-1"
-                            onClick={() => {
-                              if (financialGoal) {
-                                setGoalType(financialGoal.goal_type);
-                                setGoalName(financialGoal.goal_name);
-                                setTargetAmount(financialGoal.target_amount);
-                                setTargetDate(financialGoal.target_date.split('T')[0]);
-                                setActiveTab('goals');
-                              }
-                            }}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                            Edit
-                          </Button>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm" className="flex items-center gap-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                                Delete
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Confirm Deletion</DialogTitle>
-                                <DialogDescription>
-                                  Are you sure you want to delete this financial goal? This action cannot be undone.
-                                </DialogDescription>
-                              </DialogHeader>
-                              <DialogFooter>
-                                <Button variant="outline" onClick={() => {}}>
-                                  Cancel
-                                </Button>
-                                <Button 
-                                  variant="destructive"
-                                  onClick={async () => {
-                                    if (financialGoal?.id) {
-                                      try {
-                                        const { error } = await supabase
-                                          .from('financial_goals')
-                                          .delete()
-                                          .eq('id', financialGoal.id);
-                                          
-                                        if (error) throw error;
-                                        
-                                        setFinancialGoal(null);
-                                        toast({
-                                          title: 'Success',
-                                          description: 'Financial goal deleted successfully',
-                                        });
-                                      } catch (error) {
-                                        console.error('Error deleting financial goal:', error);
-                                        toast({
-                                          title: 'Error',
-                                          description: 'Failed to delete financial goal',
-                                          variant: 'destructive',
-                                        });
-                                      }
-                                    }
-                                  }}
-                                >
-                                  Delete
-                                </Button>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-                        </div>
-                      )}
-                    </CardHeader>
-                    <CardContent>
-                      {financialGoal ? (
-                        <div className="space-y-4">
-                          <div>
-                            <h4 className="text-sm font-medium mb-2">{financialGoal.goal_name}</h4>
-                            <Progress value={calculateGoalProgress()} className="h-3 mb-2" />
-                            <div className="flex justify-between text-sm font-medium">
-                              <span>{formatCurrency(financialGoal.current_amount, currentCurrency)}</span>
-                              <span>{formatCurrency(financialGoal.target_amount, currentCurrency)}</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between pt-2 border-t">
-                            <span className="text-sm font-medium">Target Date:</span>
-                            <span className="text-sm">{formatDate(financialGoal.target_date)}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">Remaining:</span>
-                            <span className="text-sm font-semibold">{calculateDaysRemaining()} days</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-center py-6">
-                          <p className="text-muted-foreground mb-4">No financial goal set</p>
-                          <Button onClick={() => setShowWizard(true)} size="sm">
-                            Set Up Financial Goal
-                          </Button>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="details">Budget Details</TabsTrigger>
+            <TabsTrigger value="goals">Goals</TabsTrigger>
+          </TabsList>
 
-              <TabsContent value="budget" className="space-y-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold">Monthly Budget Allocation</h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-1"
-                    onClick={() => {
-                      if (isEditingBudget) {
-                        saveBudget();
-                      } else {
-                        setIsEditingBudget(true);
-                      }
-                    }}
-                  >
-                    {isEditingBudget ? (
-                      <>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-save"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                        Save Changes
-                      </>
-                    ) : (
-                      <>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                        Edit Budget
-                      </>
-                    )}
-                  </Button>
-                </div>
-                
-                <div className="grid gap-6 md:grid-cols-2">
-                  <Card className="h-full">
-                    <CardHeader className="pb-3">
-                      <CardTitle>Essential Expenses</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {budgetCategories.slice(0, 5).map((category) => (
-                          <div key={category.category_name} className="space-y-2">
-                            <div className="flex justify-between items-center">
-                              <span className="font-medium">{category.category_name}</span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm">{formatCurrency(category.spent_amount, currentCurrency)} / </span>
-                                {isEditingBudget ? (
-                                  <Input
-                                    type="number"
-                                    value={category.allocated_amount}
-                                    onChange={(e) => {
-                                      const newAmount = parseFloat(e.target.value);
-                                      setBudgetCategories(prev =>
-                                        prev.map(cat =>
-                                          cat.category_name === category.category_name
-                                            ? { ...cat, allocated_amount: newAmount }
-                                            : cat
-                                        )
-                                      );
-                                    }}
-                                    className="w-24 inline-block"
-                                  />
-                                ) : (
-                                  <span className="font-semibold">{formatCurrency(category.allocated_amount, currentCurrency)}</span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Progress
-                                value={(category.spent_amount / (category.allocated_amount || 1)) * 100}
-                                className="h-2 flex-grow"
-                              />
-                              <span className="text-xs whitespace-nowrap">
-                                {Math.round((category.spent_amount / (category.allocated_amount || 1)) * 100)}%
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card className="h-full">
-                    <CardHeader className="pb-3">
-                      <CardTitle>Discretionary Spending</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {budgetCategories.slice(5).map((category) => (
-                          <div key={category.category_name} className="space-y-2">
-                            <div className="flex justify-between items-center">
-                              <span className="font-medium">{category.category_name}</span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm">{formatCurrency(category.spent_amount, currentCurrency)} / </span>
-                                {isEditingBudget ? (
-                                  <Input
-                                    type="number"
-                                    value={category.allocated_amount}
-                                    onChange={(e) => {
-                                      const newAmount = parseFloat(e.target.value);
-                                      setBudgetCategories(prev =>
-                                        prev.map(cat =>
-                                          cat.category_name === category.category_name
-                                            ? { ...cat, allocated_amount: newAmount }
-                                            : cat
-                                        )
-                                      );
-                                    }}
-                                    className="w-24 inline-block"
-                                  />
-                                ) : (
-                                  <span className="font-semibold">{formatCurrency(category.allocated_amount, currentCurrency)}</span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Progress
-                                value={(category.spent_amount / (category.allocated_amount || 1)) * 100}
-                                className="h-2 flex-grow"
-                              />
-                              <span className="text-xs whitespace-nowrap">
-                                {Math.round((category.spent_amount / (category.allocated_amount || 1)) * 100)}%
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-                
-                {isEditingBudget && (
-                  <div className="flex justify-end mt-4">
-                    <Button 
-                      variant="outline" 
-                      className="mr-2"
-                      onClick={() => setIsEditingBudget(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button onClick={() => saveBudget()}>
-                      Save Budget
-                    </Button>
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="goals" className="space-y-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold">Financial Goal Management</h3>
-                  {!financialGoal && (
-                    <Button 
-                      onClick={() => setShowWizard(true)}
-                      className="flex items-center gap-1"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                      Create New Goal
-                    </Button>
-                  )}
-                </div>
-                
-                <div className="grid gap-6 md:grid-cols-2">
-                  <Card className="h-full">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                      <CardTitle>Financial Goal Details</CardTitle>
-                      {financialGoal && (
-                        <div className="flex space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="flex items-center gap-1"
-                            onClick={() => {
-                              if (financialGoal) {
-                                setGoalType(financialGoal.goal_type);
-                                setGoalName(financialGoal.goal_name);
-                                setTargetAmount(financialGoal.target_amount);
-                                setTargetDate(financialGoal.target_date.split('T')[0]);
-                              }
-                            }}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                            Edit
-                          </Button>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm" className="flex items-center gap-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                                Delete
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Confirm Deletion</DialogTitle>
-                                <DialogDescription>
-                                  Are you sure you want to delete this financial goal? This action cannot be undone.
-                                </DialogDescription>
-                              </DialogHeader>
-                              <DialogFooter>
-                                <Button variant="outline" onClick={() => {}}>
-                                  Cancel
-                                </Button>
-                                <Button 
-                                  variant="destructive"
-                                  onClick={async () => {
-                                    if (financialGoal?.id) {
-                                      try {
-                                        const { error } = await supabase
-                                          .from('financial_goals')
-                                          .delete()
-                                          .eq('id', financialGoal.id);
-                                          
-                                        if (error) throw error;
-                                        
-                                        setFinancialGoal(null);
-                                        toast({
-                                          title: 'Success',
-                                          description: 'Financial goal deleted successfully',
-                                        });
-                                      } catch (error) {
-                                        console.error('Error deleting financial goal:', error);
-                                        toast({
-                                          title: 'Error',
-                                          description: 'Failed to delete financial goal',
-                                          variant: 'destructive',
-                                        });
-                                      }
-                                    }
-                                  }}
-                                >
-                                  Delete
-                                </Button>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-                        </div>
-                      )}
-                    </CardHeader>
-                    <CardContent>
-                      {financialGoal ? (
-                        <div className="space-y-4">
-                          <div className="grid gap-4">
-                            <div className="p-4 bg-muted rounded-lg">
-                              <h4 className="text-sm font-medium mb-1 text-muted-foreground">Goal Name</h4>
-                              <p className="text-lg font-semibold">{financialGoal.goal_name}</p>
-                            </div>
-
-                            <div className="flex justify-between items-center py-3 border-b">
-                              <span className="font-medium">Goal Type</span>
-                              <span className="text-sm font-medium capitalize bg-primary/10 text-primary px-3 py-1 rounded-full">
-                                {financialGoal.goal_type.replace(/_/g, ' ')}
-                              </span>
-                            </div>
-
-                            <div className="flex justify-between items-center py-3 border-b">
-                              <span className="font-medium">Target Amount</span>
-                              <span className="text-lg font-semibold">
-                                {formatCurrency(financialGoal.target_amount, currentCurrency)}
-                              </span>
-                            </div>
-                            
-                            <div className="flex justify-between items-center py-3">
-                              <span className="font-medium">Start Date</span>
-                              <span className="text-sm">
-                                {formatDate(financialGoal.start_date)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-4 text-muted-foreground"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>
-                          <p className="text-muted-foreground mb-4">No financial goal set</p>
-                          <Button onClick={() => setShowWizard(true)}>
-                            Set Up Financial Goal
-                          </Button>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {financialGoal && (
-                    <Card className="h-full">
-                      <CardHeader className="pb-3">
-                        <CardTitle>Goal Progress</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-6">
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="font-medium">Current Progress</span>
-                              <span className="text-sm font-semibold">
-                                {Math.round(calculateGoalProgress())}%
-                              </span>
-                            </div>
-                            <Progress value={calculateGoalProgress()} className="h-3 mb-2" />
-                            <div className="flex justify-between text-sm mt-1">
-                              <span>{formatCurrency(financialGoal.current_amount, currentCurrency)}</span>
-                              <span>{formatCurrency(financialGoal.target_amount, currentCurrency)}</span>
-                            </div>
-                          </div>
-
-                          <div className="p-4 bg-muted rounded-lg">
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="font-medium">Target Date</span>
-                              <span className="text-sm font-semibold">{formatDate(financialGoal.target_date)}</span>
-                            </div>
-                            
-                            <div className="mt-4 flex items-center justify-between">
-                              <div className="flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                <span className="text-sm font-medium">Time Remaining:</span>
-                              </div>
-                              <span className="text-lg font-bold">{calculateDaysRemaining()} days</span>
-                            </div>
-                          </div>
-                          
-                          <Button 
-                            className="w-full" 
-                            variant="outline"
-                            onClick={() => {
-                              if (financialGoal) {
-                                // Open a dialog to update current amount
-                                const newAmount = window.prompt(
-                                  'Update current amount:', 
-                                  financialGoal.current_amount.toString()
-                                );
-                                
-                                if (newAmount !== null) {
-                                  const parsedAmount = parseFloat(newAmount);
-                                  if (!isNaN(parsedAmount) && parsedAmount >= 0) {
-                                    // Update the financial goal
-                                    supabase
-                                      .from('financial_goals')
-                                      .update({ current_amount: parsedAmount })
-                                      .eq('id', financialGoal.id)
-                                      .then(({ error }) => {
-                                        if (error) {
-                                          console.error('Error updating goal amount:', error);
-                                          toast({
-                                            title: 'Error',
-                                            description: 'Failed to update goal amount',
-                                            variant: 'destructive',
-                                          });
-                                        } else {
-                                          // Update local state
-                                          setFinancialGoal({
-                                            ...financialGoal,
-                                            current_amount: parsedAmount
-                                          });
-                                          toast({
-                                            title: 'Success',
-                                            description: 'Goal amount updated successfully',
-                                          });
-                                        }
-                                      });
-                                  } else {
-                                    toast({
-                                      title: 'Invalid Amount',
-                                      description: 'Please enter a valid positive number',
-                                      variant: 'destructive',
-                                    });
-                                  }
-                                }
-                              }
-                            }}
-                          >
-                            Update Current Amount
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </>
-        )}
+          <TabsContent value="overview">
+            {renderOverview()} 
+          </TabsContent>
+          <TabsContent value="details">
+            {renderBudgetDetails()} 
+          </TabsContent>
+          <TabsContent value="goals">
+            {renderGoals()} 
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );

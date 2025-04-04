@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Steps } from '@/components/ui/steps';
 import { useToast } from '@/hooks/use-toast';
-import { formatCurrency, useCurrency } from '@/contexts/CurrencyContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Target, Wallet, PiggyBank, TrendingUp } from 'lucide-react';
 import { fetchTransactions } from '@/services/transactionService';
@@ -16,10 +16,9 @@ interface BudgetCategory {
   allocated_amount: number;
   spent_amount: number;
   percentage: number;
-  name?: string; // Adding optional name property to fix the error
+  name?: string;
 }
 
-// Add interface for AI recommendation response
 interface AIRecommendationResponse {
   success: boolean;
   recommendation?: string;
@@ -53,6 +52,8 @@ const GOAL_TYPES = [
   { id: 'investment_growth', label: 'Investment Growth', icon: TrendingUp }
 ];
 
+const PROPS_BASE_CURRENCY = "NGN";
+
 export function BudgetingWizard({ 
   onComplete, 
   monthlyIncome, 
@@ -72,9 +73,16 @@ export function BudgetingWizard({
   const [transactions, setTransactions] = useState<any[]>(propTransactions || initialTransactions || []);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const { currentCurrency } = useCurrency();
+  const { formatPossiblyConvertedCurrency, exchangeRates } = useCurrency();
 
-  // Add useEffect to fetch transaction history when component mounts
+  const convertNgnToUsd = (amountNgn: number): number | null => {
+      const ngnRate = exchangeRates?.[PROPS_BASE_CURRENCY];
+      if (ngnRate && typeof ngnRate === 'number' && ngnRate > 0) {
+          return amountNgn / ngnRate;
+      }
+      return null;
+  };
+
   useEffect(() => {
     fetchTransactionHistory();
   }, []);
@@ -84,22 +92,18 @@ export function BudgetingWizard({
       setLoading(true);
       setError(null);
       
-      // Use the transactionService instead of direct Supabase queries
       const transactionData = await fetchTransactions();
       
-      // Update transactions state
       setTransactions(transactionData);
       
-      // If parent component provided setTransactions function, call it too
       if (propSetTransactions) {
         propSetTransactions(transactionData);
       }
   
-      // Calculate average monthly income if no income is set
       if (monthlyIncome === 0 && transactionData.length > 0) {
         const incomeTransactions = transactionData.filter(t => t.category_type === 'INCOME');
         const totalIncome = incomeTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
-        const monthCount = Math.max(1, Math.ceil(incomeTransactions.length / 10)); // Approximate number of months
+        const monthCount = Math.max(1, Math.ceil(incomeTransactions.length / 10));
         const avgMonthlyIncome = totalIncome / monthCount;
         setMonthlyIncome(avgMonthlyIncome);
       }
@@ -140,7 +144,6 @@ export function BudgetingWizard({
   };
 
   const handleStepClick = (step: number) => {
-    // Only allow going back to previous steps
     if (step < currentStep) {
       setCurrentStep(step);
     }
@@ -148,7 +151,7 @@ export function BudgetingWizard({
 
   const validateCurrentStep = () => {
     switch (currentStep) {
-      case 0: // Goal Setting
+      case 0:
         if (!goalType || !goalName || targetAmount <= 0 || !targetDate) {
           toast({
             title: 'Validation Error',
@@ -158,7 +161,7 @@ export function BudgetingWizard({
           return false;
         }
         break;
-      case 1: // Income Verification
+      case 1:
         if (monthlyIncome <= 0) {
           toast({
             title: 'Validation Error',
@@ -168,7 +171,7 @@ export function BudgetingWizard({
           return false;
         }
         break;
-      case 2: // Expense Analysis
+      case 2:
         if (!transactions || transactions.length === 0) {
           toast({
             title: 'No Transaction Data',
@@ -178,7 +181,7 @@ export function BudgetingWizard({
           return false;
         }
         break;
-      case 3: // Budget Allocation
+      case 3:
         if (monthlyIncome <= 0) {
           toast({
             title: 'Validation Error',
@@ -196,7 +199,6 @@ export function BudgetingWizard({
     if (validateCurrentStep()) {
       setLoading(true);
       try {
-        // Generate default budget based on goal type
         const defaultBudget = generateRecommendedBudget().map(category => ({
           category_name: category.name,
           allocated_amount: monthlyIncome * (category.percentage / 100),
@@ -208,7 +210,6 @@ export function BudgetingWizard({
         let recommendedBudget = defaultBudget;
         
         try {
-          // Try to get AI recommendation
           const { analyzeBudgetGoals } = await import('@/integrations/groq/client');
           const analysis = await analyzeBudgetGoals({
             goalType,
@@ -222,12 +223,10 @@ export function BudgetingWizard({
           if (analysis && analysis.success) {
             aiRecommendation = analysis.recommendation;
             console.log('Successfully received AI recommendation');
-            // If AI provided budget recommendations, use them
-if ('budget' in analysis && analysis.budget) {
+            if ('budget' in analysis && analysis.budget) {
               recommendedBudget = analysis.budget as BudgetCategory[];
             }
           } else if (analysis && analysis.defaultRecommendation) {
-            // Use the default recommendation if the API call failed but returned a defaultRecommendation flag
             console.log('Using default budget recommendation');
             aiRecommendation = 'Standard budget allocation based on your financial goal type.';
           } else {
@@ -240,7 +239,6 @@ if ('budget' in analysis && analysis.budget) {
           }
         } catch (aiError) {
           console.error('Error getting AI recommendation:', aiError);
-          // Continue with default budget if AI fails
           toast({
             title: 'Notice',
             description: 'Could not get AI recommendations. Using standard budget allocation.',
@@ -248,7 +246,6 @@ if ('budget' in analysis && analysis.budget) {
           });
         }
         
-        // Ensure budget categories have the correct structure
         const formattedBudget = recommendedBudget.map(category => ({
           category_name: category.category_name || '',
           allocated_amount: parseFloat(String(category.allocated_amount)) || 0,
@@ -256,7 +253,6 @@ if ('budget' in analysis && analysis.budget) {
           percentage: parseFloat(String(category.percentage)) || 0
         }));
         
-        // Save both the budget and complete the wizard
         await onComplete({
           goalType,
           goalName,
@@ -286,180 +282,152 @@ if ('budget' in analysis && analysis.budget) {
     switch (currentStep) {
       case 0:
         return (
-          <div className="space-y-4">
-            <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                {GOAL_TYPES.map(({ id, label, icon: Icon }) => (
-                  <button
-                    key={id}
-                    onClick={() => setGoalType(id)}
-                    className={`flex items-center p-4 rounded-lg border-2 ${goalType === id ? 'border-primary' : 'border-muted'}`}
-                  >
-                    <Icon className="w-6 h-6 mr-2" />
-                    <span>{label}</span>
-                  </button>
-                ))}
-              </div>
+          <Card>
+            <CardHeader><CardTitle>Set Your Financial Goal</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  {GOAL_TYPES.map(({ id, label, icon: Icon }) => (
+                    <button
+                      key={id}
+                      onClick={() => setGoalType(id)}
+                      className={`flex items-center p-4 rounded-lg border-2 ${goalType === id ? 'border-primary' : 'border-muted'}`}
+                    >
+                      <Icon className="w-6 h-6 mr-2" />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="goalName">Goal Name</Label>
-                <Input
-                  id="goalName"
-                  value={goalName}
-                  onChange={(e) => setGoalName(e.target.value)}
-                  placeholder="e.g., Emergency Fund, House Down Payment"
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="goalName">Goal Name</Label>
+                  <Input
+                    id="goalName"
+                    value={goalName}
+                    onChange={(e) => setGoalName(e.target.value)}
+                    placeholder="e.g., Emergency Fund, House Down Payment"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="targetAmount">Target Amount</Label>
-                <Input
-                  id="targetAmount"
-                  type="number"
-                  value={targetAmount || ''}
-                  onChange={(e) => setTargetAmount(Number(e.target.value))}
-                  placeholder="Enter target amount"
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="targetAmount">Target Amount</Label>
+                  <Input 
+                    id="targetAmount" 
+                    type="number" 
+                    value={targetAmount} 
+                    onChange={(e) => setTargetAmount(parseFloat(e.target.value) || 0)}
+                    placeholder="Enter target amount" 
+                  />
+                   <p className="text-sm text-muted-foreground">
+                     Current Target: {convertNgnToUsd(targetAmount) !== null 
+                       ? formatPossiblyConvertedCurrency(convertNgnToUsd(targetAmount)!) 
+                       : "Loading..."}
+                   </p>
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="targetDate">Target Date</Label>
-                <Input
-                  id="targetDate"
-                  type="date"
-                  value={targetDate}
-                  onChange={(e) => setTargetDate(e.target.value)}
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="targetDate">Target Date</Label>
+                  <Input
+                    id="targetDate"
+                    type="date"
+                    value={targetDate}
+                    onChange={(e) => setTargetDate(e.target.value)}
+                  />
+                </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         );
 
       case 1:
         return (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="monthlyIncome">Monthly Income</Label>
-              <Input
-                id="monthlyIncome"
-                type="number"
-                min="0"
-                step="0.01"
-                value={monthlyIncome || ''}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value);
-                  if (!isNaN(value) && value >= 0) {
-                    setMonthlyIncome(value);
-                  } else if (e.target.value === '') {
-                    setMonthlyIncome(0);
-                  }
-                }}
-                placeholder="Enter your monthly income"
-                className={monthlyIncome <= 0 ? 'border-red-500' : ''}
-              />
-              {monthlyIncome <= 0 && (
-                <p className="text-sm text-red-500 mt-1">
-                  Please enter a valid monthly income amount
-                </p>
-              )}
-            </div>
-
-            {transactions?.length > 0 ? (
-              <div className="mt-4">
-                <h4 className="text-sm font-medium mb-2">Income History (Last 3 Months)</h4>
-                <div className="space-y-2">
-                  {transactions
-                    .filter(t => t.category_type === 'INCOME')
-                    .slice(0, 5)
-                    .map(t => (
-                      <div 
-                        key={t.id || t.transaction_id} 
-                        className="flex justify-between items-center p-2 bg-muted rounded cursor-pointer hover:bg-muted/80"
-                        onClick={() => setMonthlyIncome(Number(t.amount))}
-                      >
-                        <span>{t.description}</span>
-                        <span>{formatCurrency(t.amount, currentCurrency)}</span>
-                      </div>
-                    ))}                    
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Click on any transaction to set it as your monthly income
+          <Card>
+            <CardHeader><CardTitle>Verify Your Monthly Income</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="monthlyIncome">Monthly Income</Label>
+                <Input 
+                  id="monthlyIncome" 
+                  type="number" 
+                  value={monthlyIncome} 
+                  onChange={(e) => setMonthlyIncome(parseFloat(e.target.value) || 0)}
+                  placeholder="Enter your average monthly income" 
+                />
+                <p className="text-sm text-muted-foreground">
+                  Entered Income: {convertNgnToUsd(monthlyIncome) !== null 
+                    ? formatPossiblyConvertedCurrency(convertNgnToUsd(monthlyIncome)!) 
+                    : "Loading..."}
                 </p>
               </div>
-            ) : (
-              <div className="p-4 border border-dashed rounded-md mt-4">
-                <p className="text-center text-muted-foreground">
-                  {loading ? 'Loading transactions...' : error || 'No income transactions found. Please add some transactions first.'}
-                </p>
-                {!loading && (
-                  <Button 
-                    variant="outline" 
-                    className="w-full mt-2"
-                    onClick={fetchTransactionHistory}
-                  >
-                    Retry Loading Transactions
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
+              <Button onClick={fetchTransactionHistory} disabled={loading}>
+                {loading ? 'Reloading History...' : 'Reload Transaction History'}
+              </Button>
+              {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+            </CardContent>
+          </Card>
         );
 
       case 2:
         return (
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium">Expense Analysis</h4>
-            {transactions?.length > 0 ? (
-              <div className="space-y-2">
-                {Object.entries(transactions
-                  .filter(t => t.category_type === 'EXPENSE')
-                  .reduce((acc, t) => {
-                    const category = t.category_name || 'Other';
-                    acc[category] = (acc[category] || 0) + Number(t.amount);
-                    return acc;
-                  }, {} as Record<string, number>))
-                  .map(([category, amount]) => (
-                    <div key={category} className="flex justify-between items-center p-2 bg-muted rounded">
-                      <span>{category}</span>
-                      <span>{formatCurrency(Number(amount), currentCurrency)}</span>
+          <Card>
+            <CardHeader><CardTitle>Analyze Your Expenses</CardTitle></CardHeader>
+            <CardContent>
+              <p className="mb-4">Review your recent transactions to understand spending patterns.</p>
+              {loading && <p>Loading transactions...</p>}
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+              {!loading && !error && transactions.length === 0 && <p>No transactions found.</p>}
+              {!loading && !error && transactions.length > 0 && (
+                <div className="max-h-80 overflow-y-auto border rounded-md p-2">
+                  {transactions.map((t, index) => (
+                    <div key={index} className="text-sm py-1 border-b last:border-b-0">
+                      {t.date}: {t.description} - 
+                      <span className={t.category_type === 'INCOME' ? 'text-green-600' : 'text-red-600'}>
+                        {convertNgnToUsd(t.amount) !== null 
+                          ? formatPossiblyConvertedCurrency(convertNgnToUsd(t.amount)!) 
+                          : "N/A"}
+                      </span>
                     </div>
                   ))}
-              </div>
-            ) : (
-              <div className="p-4 border border-dashed rounded-md">
-                <p className="text-center text-muted-foreground">
-                  {loading ? 'Loading transactions...' : error || 'No expense data available. Please add some transactions first.'}
-                </p>
-                {!loading && (
-                  <Button 
-                    variant="outline" 
-                    className="w-full mt-2"
-                    onClick={fetchTransactionHistory}
-                  >
-                    Retry Loading Transactions
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         );
 
       case 3:
+        const totalAllocated = budgetCategories.reduce((sum, cat) => sum + cat.allocated_amount, 0);
+        const remainingToAllocate = monthlyIncome - totalAllocated;
         return (
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium">Recommended Budget Allocation</h4>
-            <div className="grid gap-2">
-              {generateRecommendedBudget().map(category => (
-                <div key={category.name} className="flex items-center justify-between p-2 bg-muted rounded">
-                  <span>{category.name}</span>
-                  <div className="flex items-center gap-2">
-                    <span>{category.percentage}%</span>
-                    <span>{formatCurrency(monthlyIncome * (category.percentage / 100), currentCurrency)}</span>
+          <Card>
+            <CardHeader><CardTitle>Allocate Your Budget</CardTitle></CardHeader>
+            <CardContent>
+              <p className="mb-4">
+                Allocate your monthly income ({convertNgnToUsd(monthlyIncome) !== null 
+                  ? formatPossiblyConvertedCurrency(convertNgnToUsd(monthlyIncome)!) 
+                  : "Loading..."}) across different categories.
+              </p>
+              <div className="space-y-2">
+                {budgetCategories.map((cat, index) => (
+                  <div key={index} className="flex justify-between items-center text-sm">
+                    <span>{cat.category_name} ({cat.percentage}%)</span>
+                    <span>
+                      {convertNgnToUsd(cat.allocated_amount) !== null 
+                        ? formatPossiblyConvertedCurrency(convertNgnToUsd(cat.allocated_amount)!) 
+                        : "N/A"}
+                    </span>
                   </div>
+                ))}
+                <div className="flex justify-between items-center font-semibold pt-2 border-t">
+                   <span>Remaining to Allocate:</span>
+                   <span>
+                      {convertNgnToUsd(remainingToAllocate) !== null 
+                        ? formatPossiblyConvertedCurrency(convertNgnToUsd(remainingToAllocate)!) 
+                        : "N/A"}
+                   </span>
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         );
     }
   };
@@ -503,55 +471,33 @@ if ('budget' in analysis && analysis.budget) {
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>Create Your Budget Plan</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          <Steps
-            steps={STEPS}
-            currentStep={currentStep}
-            onStepClick={handleStepClick}
-            className="mb-8"
-          />
+    <div className="p-4 md:p-6 space-y-6">
+      <Steps
+        steps={STEPS}
+        currentStep={currentStep}
+        onStepClick={handleStepClick}
+        className="mb-8"
+      />
 
-          {loading ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <span className="ml-2">Loading...</span>
-            </div>
-          ) : error && transactions.length === 0 ? (
-            <div className="p-6 border border-dashed rounded-md text-center">
-              <p className="text-muted-foreground mb-4">{error}</p>
-              <Button 
-                variant="outline" 
-                onClick={fetchTransactionHistory}
-              >
-                Retry Loading Transactions
-              </Button>
-            </div>
-          ) : (
-            renderStepContent()
-          )}
+      <div className="mt-6">
+        {renderStepContent()} 
+      </div>
 
-          <div className="flex justify-between mt-6">
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={currentStep === 0}
-            >
-              Back
-            </Button>
+      <div className="flex justify-between mt-6">
+        <Button
+          variant="outline"
+          onClick={handleBack}
+          disabled={currentStep === 0}
+        >
+          Back
+        </Button>
 
-            {currentStep < STEPS.length - 1 ? (
-              <Button onClick={handleNext}>Next</Button>
-            ) : (
-              <Button onClick={handleComplete}>Complete</Button>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        {currentStep < STEPS.length - 1 ? (
+          <Button onClick={handleNext}>Next</Button>
+        ) : (
+          <Button onClick={handleComplete}>Complete</Button>
+        )}
+      </div>
+    </div>
   );
 }

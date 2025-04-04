@@ -12,15 +12,20 @@ interface VoiceInputProps {
 }
 
 const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
+  const { toast } = useToast();
   const [isListening, setIsListening] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [sdkReady, setSdkReady] = useState(false);
   const [useBrowserFallback, setUseBrowserFallback] = useState(false);
-  const [azureKeyValid, setAzureKeyValid] = useState(false);
-  const [networkConnected, setNetworkConnected] = useState(true);
+  const [azureKeyValid, setAzureKeyValid] = useState<boolean | null>(null);
+  const [networkConnected, setNetworkConnected] = useState(navigator.onLine);
+  const [speechServiceConnected, setSpeechServiceConnected] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
   const recognizerRef = useRef<any>(null);
   const speechSDKRef = useRef<SpeechSDKType | null>(null);
-  const { toast } = useToast();
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const recognitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const consecutiveTimeoutCountRef = useRef(0);
 
   // Azure Speech API key - This should be moved to environment variables in production
   const AZURE_SPEECH_KEY = import.meta.env.VITE_AZURE_SPEECH_KEY || '';
@@ -690,7 +695,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
         const MAX_RETRIES = 3;
         const BASE_DELAY = 1000; // 1 second
         const MAX_DELAY = 8000; // 8 seconds
-        const [retryCount, setRetryCount] = useState(0);
         
         // Provide more specific error messages based on error type
         let errorMessage = `Error: ${event.error}`;

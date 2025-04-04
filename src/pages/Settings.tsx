@@ -16,7 +16,7 @@ import { Separator } from '@/components/ui/separator';
 
 export default function Settings() {
   const { user } = useAuth();
-  const { currentCurrency, setCurrentCurrency } = useCurrency();
+  const { currentCurrency, setCurrentCurrency, supportedCurrencies, isLiveConversionEnabled, toggleLiveConversion } = useCurrency();
   const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
   
@@ -79,27 +79,20 @@ export default function Settings() {
     try {
       setLoading(true);
       
-      // Update currency preference
-      const currencies = [
-        { code: "NGN", symbol: "₦", name: "Nigerian Naira" },
-        { code: "USD", symbol: "$", name: "US Dollar" },
-        { code: "EUR", symbol: "€", name: "Euro" },
-        { code: "GBP", symbol: "£", name: "British Pound" },
-      ];
-      
-      const selectedCurrency = currencies.find(c => c.code === currency);
-      if (selectedCurrency) {
-        setCurrentCurrency(selectedCurrency);
+      // Update currency preference using context function
+      const selectedCurrency = supportedCurrencies.find(c => c.code === currency);
+      if (selectedCurrency && selectedCurrency.code !== currentCurrency.code) {
+        setCurrentCurrency(selectedCurrency); // This now persists to localStorage via context
       }
       
-      // Update theme preference
-      if ((darkMode && theme === 'light') || (!darkMode && theme === 'dark')) {
-        toggleTheme();
+      // Update theme preference using context function
+      // Check if the local state `darkMode` differs from the context `theme`
+      if (darkMode !== (theme === 'dark')) {
+        toggleTheme(); // This persists via context
       }
       
-      // Save preferences to database if needed
-      // This could be implemented with a preferences table
-      
+      // NOTE: No need to call toggleLiveConversion here as the Switch handles it directly.
+
       toast({
         title: 'Preferences updated',
         description: 'Your preferences have been updated successfully.',
@@ -202,10 +195,11 @@ export default function Settings() {
                       <SelectValue placeholder="Select currency" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="NGN">Nigerian Naira (₦)</SelectItem>
-                      <SelectItem value="USD">US Dollar ($)</SelectItem>
-                      <SelectItem value="EUR">Euro (€)</SelectItem>
-                      <SelectItem value="GBP">British Pound (£)</SelectItem>
+                      {supportedCurrencies.map((c) => (
+                        <SelectItem key={c.code} value={c.code}>
+                          {`${c.name} (${c.symbol})`}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <p className="text-sm text-muted-foreground">Choose your preferred currency for displaying amounts</p>
@@ -215,13 +209,29 @@ export default function Settings() {
                 
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label htmlFor="darkMode">Dark Mode</Label>
+                    <Label htmlFor="darkMode" className="text-base">Dark Mode</Label>
                     <p className="text-sm text-muted-foreground">Toggle between light and dark theme</p>
                   </div>
                   <Switch 
                     id="darkMode" 
                     checked={darkMode}
                     onCheckedChange={setDarkMode}
+                  />
+                </div>
+                
+                <Separator />
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="liveConversion" className="text-base">Live Currency Conversion</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Automatically convert amounts to the selected currency using live rates.
+                    </p>
+                  </div>
+                  <Switch 
+                    id="liveConversion" 
+                    checked={isLiveConversionEnabled}
+                    onCheckedChange={toggleLiveConversion}
                   />
                 </div>
                 

@@ -1,8 +1,8 @@
-
 import { ArrowDownRight, ArrowUpRight, Pencil, Trash2 } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Transaction } from "@/types/transaction";
-import { formatNaira, formatDate } from "@/utils/formatters";
+import { formatDate } from "@/utils/formatters";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -17,29 +17,29 @@ interface TransactionRowProps {
   onTransactionUpdate: () => void;
 }
 
+const PROPS_BASE_CURRENCY = "NGN";
+
 const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProps) => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<{ category_id: string; name: string; type: string }[]>([]);
   const [categoryError, setCategoryError] = useState<Error | null>(null);
+  const { formatPossiblyConvertedCurrency, exchangeRates } = useCurrency();
   const [editedTransaction, setEditedTransaction] = useState({
     description: transaction.description,
     name: transaction.name || transaction.description,
     amount: transaction.amount,
-    category_name: transaction.description, // Use description as category_name
+    category_name: transaction.description,
     category_type: transaction.category_type?.toLowerCase() || 'expense',
-    date: transaction.date.split('T')[0], // Convert to YYYY-MM-DD format
+    date: transaction.date.split('T')[0],
     notes: transaction.notes || '',
   });
   const { toast } = useToast();
 
-  // Fetch categories for the dropdown
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        // Note: The 'type' column doesn't exist in the database schema
-        // We'll need to handle this in our code
         const { data, error } = await supabase
           .from('categories')
           .select('category_id, category_name')
@@ -51,23 +51,18 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
           return;
         }
         
-        // Ensure we're only setting valid category data to the state
         if (data && Array.isArray(data)) {
-          // First convert to unknown to avoid TypeScript errors with potential SelectQueryError
           const rawData = data as unknown;
           
-          // Then safely cast to our expected structure
           const safeData = rawData as Array<{
             category_id: string;
             name: string;
             description?: string | null;
           }>;
           
-          // Map the data and add a default type since it's missing from the database
           const typedCategories = safeData.map(category => ({
             category_id: category.category_id,
             name: category.name,
-            // Default to 'expense' as the type since it's not in the database
             type: 'expense'
           }));
           setCategories(typedCategories);
@@ -83,15 +78,21 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
     fetchCategories();
   }, []);
 
+  const convertNgnToUsd = (amountNgn: number): number | null => {
+    const ngnRate = exchangeRates?.[PROPS_BASE_CURRENCY];
+    if (ngnRate && typeof ngnRate === 'number' && ngnRate > 0) {
+      return amountNgn / ngnRate;
+    }
+    console.warn(`Rate for ${PROPS_BASE_CURRENCY} not available for conversion.`);
+    return null;
+  };
+
   const handleEditSubmit = async () => {
     try {
       setIsSubmitting(true);
       
-      // First, handle the category
       let categoryId = null;
       
-      // Find if category exists
-      // Since description and category_name are now one and the same, we use description for consistency
       const existingCategory = categories.find(
         c => c.name.toLowerCase() === editedTransaction.description.toLowerCase() && 
              c.type.toLowerCase() === editedTransaction.category_type.toLowerCase()
@@ -100,15 +101,12 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
       if (existingCategory) {
         categoryId = existingCategory.category_id;
       } else {
-        // Create new category if it doesn't exist
-        // Note: The 'type' field is required in the database schema
-        // Use description as the category name to ensure they are one and the same
         const { data: newCategory, error: categoryError } = await supabase
           .from('categories')
           .insert({
-            name: editedTransaction.description, // Use description as the category name
+            name: editedTransaction.description,
             user_id: transaction.user_id,
-            type: editedTransaction.category_type // Add the type field which is required
+            type: editedTransaction.category_type
           })
           .select()
           .single();
@@ -125,10 +123,8 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
         }
       }
       
-      // Format the date for PostgreSQL timestamp
       const formattedDate = new Date(editedTransaction.date).toISOString();
       
-      // Update the transaction
       const updateData = {
         description: editedTransaction.description,
         name: editedTransaction.name,
@@ -136,8 +132,6 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
         date: formattedDate,
         category_id: categoryId,
         notes: editedTransaction.notes,
-        // Don't store redundant category info in transaction table
-        // as it's already linked via category_id
         updated_at: new Date().toISOString()
       };
       
@@ -174,7 +168,6 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
     try {
       setIsSubmitting(true);
       
-      // Delete the transaction from Supabase
       const { error } = await supabase
         .from('transactions')
         .delete()
@@ -226,16 +219,26 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
         <TableCell className="whitespace-nowrap py-3 text-left pl-4">{transaction.category_name || 'Uncategorized'}</TableCell>
         <TableCell className="whitespace-nowrap py-3">{formatDate(transaction.date)}</TableCell>
         <TableCell className="whitespace-nowrap py-3">
-          <span
-            className={
-              transaction.category_type?.toLowerCase() === "expense"
-                ? "text-red-500 font-medium"
-                : "text-emerald-500 font-medium"
+          {(() => {
+            const amountInUsd = convertNgnToUsd(transaction.amount);
+            
+            if (amountInUsd === null) {
+              return <span className="text-muted-foreground text-xs">Loading...</span>;
             }
-          >
-            {transaction.category_type?.toLowerCase() === "expense" ? "-" : "+"}
-            {formatNaira(transaction.amount)}
-          </span>
+
+            const isExpense = transaction.category_type?.toLowerCase() === "expense";
+            const amountClass = isExpense
+              ? "text-red-500 font-medium"
+              : "text-emerald-500 font-medium";
+            
+            const formattedAmount = formatPossiblyConvertedCurrency(amountInUsd);
+
+            return (
+              <span className={amountClass}>
+                {formattedAmount}
+              </span>
+            );
+          })()}
         </TableCell>
         <TableCell className="py-3">
           <div className="flex space-x-1">
@@ -251,7 +254,6 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
         </TableCell>
       </TableRow>
 
-      {/* Edit Transaction Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -285,7 +287,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                   setEditedTransaction({
                     ...editedTransaction,
                     description: e.target.value,
-                    category_name: e.target.value, // Update category_name to match description
+                    category_name: e.target.value,
                   })
                 }
                 className="col-span-3"
@@ -299,12 +301,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                 id="amount"
                 type="number"
                 value={editedTransaction.amount}
-                onChange={(e) => 
-                  setEditedTransaction({
-                    ...editedTransaction,
-                    amount: parseFloat(e.target.value) || 0,
-                  })
-                }
+                onChange={(e) => setEditedTransaction({ ...editedTransaction, amount: parseFloat(e.target.value) || 0 })}
                 className="col-span-3"
               />
             </div>
@@ -340,7 +337,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                   setEditedTransaction({
                     ...editedTransaction,
                     category_name: value,
-                    description: value, // Update description to match category_name
+                    description: value,
                   })
                 }
               >
@@ -403,7 +400,6 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>

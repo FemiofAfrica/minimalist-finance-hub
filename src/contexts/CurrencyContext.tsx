@@ -6,68 +6,147 @@ type Currency = {
   name: string;
 };
 
+// Base currency for fetching rates and for input amounts to conversion functions
+const BASE_CURRENCY_CODE = "USD"; 
+
 type CurrencyContextType = {
   currentCurrency: Currency;
-  exchangeRates: Record<string, number>;
+  supportedCurrencies: Currency[];
+  exchangeRates: Record<string, number>; // Rates relative to BASE_CURRENCY_CODE
+  isLiveConversionEnabled: boolean;
   setCurrentCurrency: (currency: Currency) => void;
-  convertAmount: (amount: number, fromCurrency: string, toCurrency: string) => number;
+  toggleLiveConversion: () => void;
+  // Converts an amount FROM BASE_CURRENCY_CODE (USD) TO the targetCurrency code
+  convertFromBase: (amountInBase: number, targetCurrencyCode: string) => number; 
+  // Formats an amount (assumed to be in BASE_CURRENCY_CODE), 
+  // optionally converting to currentCurrency if live conversion is enabled
+  formatPossiblyConvertedCurrency: (amountInBase: number) => string; 
 };
 
+// Default currency is now USD
 const defaultCurrency: Currency = {
-  code: "NGN",
-  symbol: "₦",
-  name: "Nigerian Naira"
+  code: BASE_CURRENCY_CODE, 
+  symbol: "$", // Make sure this matches BASE_CURRENCY_CODE
+  name: "US Dollar"
 };
 
+// Add NGN, CAD, AUD
 const supportedCurrencies: Currency[] = [
-  defaultCurrency,
-  { code: "USD", symbol: "$", name: "US Dollar" },
+  defaultCurrency, // USD
+  { code: "NGN", symbol: "₦", name: "Nigerian Naira" },
+  { code: "CAD", symbol: "CA$", name: "Canadian Dollar" },
   { code: "EUR", symbol: "€", name: "Euro" },
   { code: "GBP", symbol: "£", name: "British Pound" },
+  { code: "AUD", symbol: "A$", name: "Australian Dollar" },
 ];
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
-export function CurrencyProvider({ children }: { children: React.ReactNode }) {
-  const [currentCurrency, setCurrentCurrency] = useState<Currency>(defaultCurrency);
-  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
+// Local storage key for the preference
+const LIVE_CONVERSION_STORAGE_KEY = 'liveCurrencyConversionEnabled';
 
+export function CurrencyProvider({ children }: { children: React.ReactNode }) {
+  // Initialize currency from localStorage or default
+  const [currentCurrency, setCurrentCurrencyInternal] = useState<Currency>(() => {
+      const storedCurrencyCode = localStorage.getItem('selectedCurrencyCode');
+      return supportedCurrencies.find(c => c.code === storedCurrencyCode) || defaultCurrency;
+  });
+  
+  // Initialize rates relative to BASE_CURRENCY_CODE (USD)
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ [BASE_CURRENCY_CODE]: 1 }); 
+  
+  // Initialize live conversion preference from localStorage or default (false)
+  const [isLiveConversionEnabled, setIsLiveConversionEnabled] = useState<boolean>(() => {
+      const storedValue = localStorage.getItem(LIVE_CONVERSION_STORAGE_KEY);
+      return storedValue === 'true'; // Default to false if not found or not 'true'
+  });
+
+  // Fetch rates relative to BASE_CURRENCY_CODE on initial load
   useEffect(() => {
     const fetchExchangeRates = async () => {
       try {
-        // Note: Replace with your actual API key and preferred exchange rate API
+        console.log(`Fetching exchange rates relative to ${BASE_CURRENCY_CODE}...`);
+        // Always fetch rates based on the BASE_CURRENCY_CODE
         const response = await fetch(
-          `https://api.exchangerate-api.com/v4/latest/${currentCurrency.code}`
+          `https://api.exchangerate-api.com/v4/latest/${BASE_CURRENCY_CODE}` 
         );
+        if (!response.ok) {
+            throw new Error(`API request failed with status ${response.status}`);
+        }
         const data = await response.json();
-        setExchangeRates(data.rates);
+        if (data && data.rates) {
+             setExchangeRates(data.rates);
+             console.log("Exchange rates loaded:", data.rates);
+        } else {
+             throw new Error("Invalid data format received from API");
+        }
+       
       } catch (error) {
         console.error("Error fetching exchange rates:", error);
+        // Keep default rate (1.0 for base) in case of error
+         setExchangeRates({ [BASE_CURRENCY_CODE]: 1 });
       }
     };
 
     fetchExchangeRates();
-  }, [currentCurrency.code]);
+    // Run only once on mount as base currency doesn't change
+  }, []); 
 
-  const convertAmount = (amount: number, fromCurrency: string, toCurrency: string): number => {
-    if (!exchangeRates || !exchangeRates[toCurrency]) return amount;
-    
-    // Convert to base currency first (if not already)
-    const inBaseCurrency = fromCurrency === currentCurrency.code
-      ? amount
-      : amount / exchangeRates[fromCurrency];
-    
-    // Convert to target currency
-    return inBaseCurrency * exchangeRates[toCurrency];
+  // Function to set currency and save to localStorage
+  const setCurrentCurrency = (currency: Currency) => {
+      setCurrentCurrencyInternal(currency);
+      localStorage.setItem('selectedCurrencyCode', currency.code);
   };
+
+  // Function to toggle live conversion setting and save to localStorage
+  const toggleLiveConversion = () => {
+      setIsLiveConversionEnabled(prev => {
+          const newValue = !prev;
+          localStorage.setItem(LIVE_CONVERSION_STORAGE_KEY, String(newValue));
+          console.log("Live conversion toggled:", newValue);
+          return newValue;
+      });
+  };
+
+  // Simplified conversion function: assumes amountInBase is in BASE_CURRENCY_CODE (USD)
+  const convertFromBase = (amountInBase: number, targetCurrencyCode: string): number => {
+    // If target is base or rates are missing/invalid, return original amount
+    if (targetCurrencyCode === BASE_CURRENCY_CODE || !exchangeRates || typeof exchangeRates[targetCurrencyCode] !== 'number' || exchangeRates[targetCurrencyCode] <= 0) {
+        // console.warn(`Conversion rate unavailable or invalid for ${targetCurrencyCode}. Returning original amount.`);
+        return amountInBase;
+    }
+    // Convert from base using the rate
+    const rate = exchangeRates[targetCurrencyCode];
+    return amountInBase * rate;
+  };
+
+   // Helper to format amount, converting if needed
+   // IMPORTANT: amountInBase is assumed to be in BASE_CURRENCY_CODE (USD)
+   const formatPossiblyConvertedCurrency = (amountInBase: number): string => {
+       const amountToFormat = isLiveConversionEnabled 
+         ? convertFromBase(amountInBase, currentCurrency.code) 
+         : amountInBase;
+       
+       // Use Intl.NumberFormat for proper formatting
+       return new Intl.NumberFormat(undefined, { // Use locale default or specify e.g., "en-US"
+           style: "currency",
+           currency: currentCurrency.code,
+           // Add options like minimumFractionDigits if needed
+       }).format(amountToFormat);
+   };
+
 
   return (
     <CurrencyContext.Provider
       value={{
         currentCurrency,
+        supportedCurrencies,
         exchangeRates,
+        isLiveConversionEnabled,
         setCurrentCurrency,
-        convertAmount,
+        toggleLiveConversion,
+        convertFromBase,
+        formatPossiblyConvertedCurrency // Provide the new formatter
       }}
     >
       {children}
@@ -75,6 +154,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Keep useCurrency hook
 export function useCurrency() {
   const context = useContext(CurrencyContext);
   if (context === undefined) {
@@ -83,9 +163,5 @@ export function useCurrency() {
   return context;
 }
 
-export const formatCurrency = (amount: number, currency: Currency) => {
-  return new Intl.NumberFormat("en", {
-    style: "currency",
-    currency: currency.code,
-  }).format(amount);
-};
+// Remove old formatCurrency helper, use formatPossiblyConvertedCurrency from context instead
+// export const formatCurrency = (amount: number, currency: Currency) => { ... }
