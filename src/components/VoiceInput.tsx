@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Mic, MicOff, Loader2, Square, Check, CircleSlash, Network } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
@@ -26,46 +26,69 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const recognitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const consecutiveTimeoutCountRef = useRef(0);
+  const isIntentionalAbortRef = useRef(false);
+  const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [provisionalText, setProvisionalText] = useState<string | null>(null);
 
   // Azure Speech API key - This should be moved to environment variables in production
   const AZURE_SPEECH_KEY = import.meta.env.VITE_AZURE_SPEECH_KEY || '';
   const AZURE_SPEECH_REGION = import.meta.env.VITE_AZURE_SPEECH_REGION || 'eastus';
 
-  // Load Azure Speech SDK only when needed
-  const loadSpeechSDK = async () => {
+  // --- MODIFIED: loadSpeechSDK returns load status --- 
+  type LoadSdkResult = {
+    sdkLoaded: boolean;
+    keyValid: boolean;
+    useFallback: boolean;
+  };
+  
+  const loadSpeechSDK = async (): Promise<LoadSdkResult> => {
+    let localSdkLoaded = false;
+    let localKeyValid = false;
+    let localUseFallback = false;
+
     if (speechSDKRef.current) {
-      return speechSDKRef.current;
+      // If already loaded, check existing state (which should be reliable by now)
+      return {
+        sdkLoaded: sdkReady,
+        keyValid: azureKeyValid ?? false, // Handle null case
+        useFallback: useBrowserFallback
+      };
     }
 
     try {
       setIsLoading(true);
       
       // First check network connectivity
+      console.log('[loadSpeechSDK] Checking initial network connectivity...');
       const isConnected = await checkNetworkConnectivity();
       setNetworkConnected(isConnected);
       
       if (!isConnected) {
-        console.warn('Network appears to be offline, will use browser fallback when connection is available');
+        console.warn('[loadSpeechSDK] Initial network check failed. Setting useBrowserFallback=true.');
         setUseBrowserFallback(true);
-        return null;
+        localUseFallback = true;
+        return { sdkLoaded: false, keyValid: false, useFallback: true };
       }
       
       // Dynamically import the Speech SDK with explicit error handling
       try {
         // Add a console log to track SDK loading attempt
-        console.log('Attempting to load Microsoft Cognitive Services Speech SDK...');
+        console.log(`[loadSpeechSDK] Attempting dynamic import of 'microsoft-cognitiveservices-speech-sdk'...`);
         const speechModule = await import('microsoft-cognitiveservices-speech-sdk');
         
         // The SDK doesn't have a default export, so we use the module directly
         if (!speechModule) {
+          console.error('[loadSpeechSDK] Dynamic import returned null/undefined.');
           throw new Error('Speech SDK module failed to load');
         }
         
         // Store in ref and update state
         speechSDKRef.current = speechModule;
-        console.log('Speech SDK loaded successfully');
-        setSdkReady(true);
+        console.log('[loadSpeechSDK] SDK module loaded successfully. speechSDKRef.current set.');
+        setSdkReady(true); // Still set state for other component logic
+        localSdkLoaded = true;
         
+        console.log(`[loadSpeechSDK] Validating Azure Key (length: ${AZURE_SPEECH_KEY?.length}) and Region: ${AZURE_SPEECH_REGION}`);
         // Extremely lenient validation for Azure key format
         // Azure Speech Service keys can have various formats including:
         // - 32-character hex strings
@@ -78,31 +101,49 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
           // Allow most special characters that could be part of valid keys
           !/\s/.test(AZURE_SPEECH_KEY);
         
-        setAzureKeyValid(isValidKey);
+        setAzureKeyValid(isValidKey); // Still set state
+        localKeyValid = isValidKey;
         
         if (!isValidKey) {
-          console.warn('Azure Speech key appears to be invalid or missing');
-          console.warn('Key validation failed. Key length:', AZURE_SPEECH_KEY?.length);
-          setUseBrowserFallback(true);
-          return null;
+          console.warn(`[loadSpeechSDK] Azure Key validation FAILED. Length: ${AZURE_SPEECH_KEY?.length}. Setting useBrowserFallback=true.`);
+          setUseBrowserFallback(true); // Still set state
+          localUseFallback = true;
+        } else {
+          console.log('[loadSpeechSDK] Azure Key validation PASSED.');
         }
 
-        return speechModule;
+        return {
+          sdkLoaded: localSdkLoaded,
+          keyValid: localKeyValid,
+          useFallback: localUseFallback || useBrowserFallback // Combine local flag with state
+        };
       } catch (sdkError) {
-        console.error('Failed to load Speech SDK module:', sdkError);
-        throw sdkError; // Re-throw to be caught by outer try/catch
+        console.error('[loadSpeechSDK] Error during dynamic import or processing:', sdkError);
+        console.warn('[loadSpeechSDK] Setting useBrowserFallback=true due to SDK load error.');
+        setUseBrowserFallback(true);
+        localUseFallback = true;
+        // Don't re-throw here, return status instead
+        // throw sdkError; 
       }
     } catch (error) {
-      console.error('Failed to load Azure Speech SDK:', error);
+      console.error('[loadSpeechSDK] Overall error during SDK loading:', error);
       toast({
         title: 'Speech Recognition Fallback',
         description: 'Using browser speech recognition as fallback.',
       });
+      console.warn('[loadSpeechSDK] Setting useBrowserFallback=true due to overall error.');
       setUseBrowserFallback(true);
-      return null;
+      localUseFallback = true;
+      // return null;
     } finally {
       setIsLoading(false);
     }
+    
+    return {
+      sdkLoaded: localSdkLoaded,
+      keyValid: localKeyValid,
+      useFallback: localUseFallback || useBrowserFallback // Combine local flag with state
+    };
   };
 
   // Set up network status listener
@@ -280,12 +321,10 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
       console.error('Speech service connectivity check failed, cannot use Azure Speech recognition');
       toast({
         title: 'Speech Service Unavailable',
-        description: 'Cannot connect to speech recognition service. Trying browser recognition instead.',
+        description: 'Cannot connect to speech recognition service. Please try again later.',
         variant: 'destructive',
       });
       setIsListening(false);
-      setUseBrowserFallback(true);
-      startBrowserSpeechRecognition();
       return;
     }
     
@@ -293,36 +332,16 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
     console.log(`Successfully connected to Azure Speech service in region: ${AZURE_SPEECH_REGION}`);
     
     // Load the SDK if not already loaded
-    const SpeechSDK = await loadSpeechSDK();
+    const SpeechSDK = speechSDKRef.current; // Get from ref
     
-    if (!SpeechSDK || !sdkReady) {
-      console.error('Azure Speech SDK not ready or not properly initialized, falling back to browser recognition');
-      toast({
-        title: 'Speech SDK Not Ready',
-        description: 'Speech recognition service is not ready yet. Using browser recognition instead.',
-      });
-      // Fall back to browser-based speech recognition
-      setUseBrowserFallback(true);
-      startBrowserSpeechRecognition();
+    if (!SpeechSDK) {
+      console.error('CRITICAL: startAzureSpeechRecognition called but SpeechSDK ref is null!');
+      toast({ title: 'Internal Error', description: 'Speech SDK reference missing.', variant: 'destructive' });
+      setIsListening(false);
       return;
     }
     
-    // Log SDK readiness
-    console.log('Azure Speech SDK is ready and properly initialized');
-    
-    if (!azureKeyValid) {
-      console.error('Azure Speech key invalid, falling back to browser recognition');
-      toast({
-        title: 'Azure Configuration Error',
-        description: 'Azure Speech key appears to be invalid or missing. Using browser recognition instead.',
-      });
-      setUseBrowserFallback(true);
-      startBrowserSpeechRecognition();
-      return;
-    }
-    
-    // Log key validation success
-    console.log('Azure Speech key validation passed')
+    console.log('Azure Speech SDK is ready and key is valid (checked by caller).');
 
     try {
       // Create speech config
@@ -336,11 +355,12 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
       const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
       recognizerRef.current = recognizer;
 
-      // Add timeout to prevent hanging if network is unavailable
+      // Add overall timeout for the recognizeOnceAsync operation
       const recognitionTimeout = setTimeout(() => {
         try {
           if (recognizerRef.current) {
-            recognizerRef.current.stopContinuousRecognitionAsync?.() || recognizerRef.current.close();
+            // For recognizeOnceAsync, closing is usually sufficient
+            recognizerRef.current.close();
             recognizerRef.current = null;
           }
           console.warn('Azure Speech recognition timed out');
@@ -350,131 +370,42 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
             variant: 'destructive',
           });
           setIsListening(false);
-          
-          // Try browser fallback on timeout
-          setUseBrowserFallback(true);
-          startBrowserSpeechRecognition();
         } catch (e) {
           console.error('Error aborting Azure recognition on timeout:', e);
         }
       }, 10000); // 10 second timeout
 
-      // Set up silence detection for Azure Speech SDK
-      let silenceTimer: ReturnType<typeof setTimeout> | null = null;
-      let isSpeaking = false;
-      
-      // Function to reset silence timer
-      const resetSilenceTimer = () => {
-        // Clear existing timer if any
-        if (silenceTimer) {
-          clearTimeout(silenceTimer);
-          silenceTimer = null;
-        }
-        
-        // Only set a new timer if we've detected speech and now it's ended
-        if (isSpeaking) {
-          console.log('Speech ended, starting 3-second auto-submission timer');
-          // Set new timer for 3 seconds of silence
-          silenceTimer = setTimeout(() => {
-            console.log('Auto-submitting after 3 seconds of silence');
-            try {
-              // Store the current recognizer object in ref to ensure we can access it later
-              // No need to reassign recognizerRef.current as it's already set to the recognizer
-              
-              // Create a flag to track if we've already processed a result
-              let resultProcessed = false;
-              
-              // Override the result handler to capture the final result
-              // Azure Speech SDK uses different methods than Web Speech API
-              
-              // Stop recognition which will finalize results
-              if (recognizerRef.current) {
-                // Use the appropriate method for Azure Speech SDK
-                recognizerRef.current.stopContinuousRecognitionAsync?.() || recognizerRef.current.close?.();
-              }
-              
-              // Set a backup timeout in case stop doesn't trigger events
-              setTimeout(() => {
-                if (!resultProcessed) {
-                  console.log('Backup timeout triggered - forcing cleanup');
-                  setIsListening(false);
-                  if (recognizerRef.current) {
-                    recognizerRef.current = null;
-                  }
-                }
-              }, 1500);
-            } catch (e) {
-              console.error('Error stopping recognition during auto-submit:', e);
-              setIsListening(false);
-              recognizerRef.current = null;
-            }
-          }, 3000);
-        }
-      };
-      
-      // Set up speech activity detection events
-      recognizer.recognized = (s, e) => {
-        console.log('Speech recognized, resetting silence timer');
-        resetSilenceTimer();
-      };
-      
-      recognizer.recognizing = (s, e) => {
-        console.log('Speech being recognized, marking as speaking');
-        isSpeaking = true;
-        // Clear any existing silence timer when speech is being recognized
-        if (silenceTimer) {
-          clearTimeout(silenceTimer);
-          silenceTimer = null;
-        }
-      };
-      
-      recognizer.speechEndDetected = (s, e) => {
-        console.log('Speech ended, starting silence timer');
-        // Only start the silence timer if we've detected speech
-        if (isSpeaking) {
-          resetSilenceTimer();
-        }
-      };
-      
-      // Start recognition
+      // Start recognition - recognizeOnceAsync handles silence detection internally
       recognizer.recognizeOnceAsync(
         (result: any) => {
           clearTimeout(recognitionTimeout);
-          // Clear silence timer when we get a result
-          if (silenceTimer) {
-            clearTimeout(silenceTimer);
-            silenceTimer = null;
-          }
-          
           if (result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
             const recognizedText = result.text;
-            if (recognizedText.trim()) {
-              onTextCaptured(recognizedText);
-            } else {
-              toast({
-                title: 'No Speech Detected',
-                description: 'No speech was detected. Please try again.',
-                variant: 'destructive',
-              });
-            }
-          } else {
+            console.log(`Azure recognized: "${recognizedText}"`);
+            handleProvisionalCapture(recognizedText);
+          } else if (result.reason === SpeechSDK.ResultReason.NoMatch) {
+            console.log('Azure NoMatch: Speech could not be recognized.');
             toast({
               title: 'Recognition Failed',
-              description: 'Speech recognition failed or was canceled.',
-              variant: 'destructive',
+              description: 'Could not recognize speech.',
+              variant: 'default',
             });
+            setIsListening(false);
+          } else {
+            console.log(`Azure Canceled: Reason=${SpeechSDK.CancellationReason[result.reason]}`);
+            if (result.reason === SpeechSDK.CancellationReason.Error) {
+              console.error(`Azure ErrorDetails: ${result.errorDetails}`);
+              toast({ title: 'Recognition Error', description: result.errorDetails, variant: 'destructive' });
+            }
+            setIsListening(false);
           }
-          setIsListening(false);
-          if (recognizerRef.current) {
-            recognizerRef.current.close();
-            recognizerRef.current = null;
-          }
+          recognizerRef.current?.close();
         },
         (error: any) => {
           clearTimeout(recognitionTimeout);
           console.error('Azure Speech recognition error:', error);
           
-          let errorMessage = 'An error occurred during speech recognition. Trying browser fallback.';
+          let errorMessage = 'An error occurred during speech recognition.';
           let errorTitle = 'Recognition Error';
           
           // Check if error is network-related
@@ -491,29 +422,23 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
             variant: 'destructive',
           });
           
+          recognizerRef.current?.close();
+          recognizerRef.current = null;
           setIsListening(false);
-          if (recognizerRef.current) {
-            recognizerRef.current.close();
-            recognizerRef.current = null;
-          }
-          
-          // Try browser fallback on Azure error
-          setUseBrowserFallback(true);
-          startBrowserSpeechRecognition();
+          setProvisionalText(null);
         }
       );
     } catch (error) {
       console.error('Error initializing Azure speech recognition:', error);
       toast({
         title: 'Recognition Error',
-        description: 'Failed to initialize speech recognition. Trying browser fallback.',
+        description: 'Failed to initialize Azure speech recognition.',
         variant: 'destructive',
       });
+      recognizerRef.current?.close();
+      recognizerRef.current = null;
       setIsListening(false);
-      
-      // Try browser fallback on Azure error
-      setUseBrowserFallback(true);
-      startBrowserSpeechRecognition();
+      setProvisionalText(null);
     }
   };
 
@@ -606,7 +531,8 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
             try {
               // Store the current recognition object in ref to ensure we can access it later
               recognizerRef.current = recognition;
-              
+              isIntentionalAbortRef.current = true;
+
               // Create a flag to track if we've already processed a result
               let resultProcessed = false;
               
@@ -676,25 +602,37 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
         
         const transcript = event.results[0][0].transcript;
         if (transcript.trim()) {
-          onTextCaptured(transcript);
+          console.log('Browser recognized:', transcript);
+          handleProvisionalCapture(transcript);
         } else {
+          console.log('Browser NoMatch: No transcript available');
           toast({
-            title: 'No Speech Detected',
-            description: 'No speech was detected. Please try again.',
-            variant: 'destructive',
+            title: 'Recognition Failed',
+            description: 'Could not recognize speech.',
+            variant: 'default'
           });
+          setIsListening(false);
         }
         setIsListening(false);
+        setProvisionalText(null);
+        setRetryCount(0);
       };
 
       recognition.onerror = async (event: SpeechRecognitionErrorEvent) => {
         clearTimeout(recognitionTimeout);
-        console.error('Speech recognition error:', event.error, event.message);
         
-        // Add retry configuration at component level
-        const MAX_RETRIES = 3;
-        const BASE_DELAY = 1000; // 1 second
-        const MAX_DELAY = 8000; // 8 seconds
+        // Check if the error was triggered by our own abort call
+        if (isIntentionalAbortRef.current) {
+          console.log('Ignoring error possibly triggered by intentional abort:', event.error);
+          isIntentionalAbortRef.current = false;
+          if (event.error !== 'aborted') {
+            console.warn('Unexpected error type following intentional abort:', event.error, event.message);
+          }
+          setIsListening(false);
+          return;
+        }
+        
+        console.error('[Browser Recognition Error]', event.error, event.message);
         
         // Provide more specific error messages based on error type
         let errorMessage = `Error: ${event.error}`;
@@ -705,49 +643,14 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
           errorTitle = 'Network Error';
           errorMessage = 'Unable to connect to speech recognition service. Please check your internet connection and try again.';
           
-          // Log additional details for debugging
+          // Log additional details for debugging but remove retry logic
           console.log('Network error details:', navigator.onLine ? 'Browser reports online' : 'Browser reports offline');
-          
-          // Perform a more thorough network check
-          const isConnected = await checkNetworkConnectivity();
-          setNetworkConnected(isConnected);
-          
-          if (isConnected && retryCount < MAX_RETRIES) {
-            const delay = Math.min(BASE_DELAY * Math.pow(2, retryCount), MAX_DELAY);
-            console.warn(`Network appears connected but speech recognition reports network error. Retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
-            errorMessage = `Unable to connect to speech recognition service. Retrying in ${Math.round(delay/1000)} seconds...`;
-            
-            setTimeout(() => {
-              if (isListening) {
-                console.log(`Attempting retry ${retryCount + 1} after network error`);
-                try {
-                  recognition.abort();
-                  setTimeout(() => {
-                    const newRecognition = new SpeechRecognition();
-                    newRecognition.lang = 'en-US';
-                    newRecognition.interimResults = false;
-                    newRecognition.maxAlternatives = 1;
-                    newRecognition.onresult = recognition.onresult;
-                    newRecognition.onerror = recognition.onerror;
-                    newRecognition.onend = recognition.onend;
-                    newRecognition.start();
-                    setRetryCount(prev => prev + 1);
-                  }, 500);
-                } catch (e) {
-                  console.error('Failed to restart speech recognition:', e);
-                  setIsListening(false);
-                }
-              }
-            }, delay);
-          } else if (isConnected) {
-            errorMessage = 'Maximum retry attempts reached. Please try again later.';
-            setIsListening(false);
-            setRetryCount(0);
-          }
+          checkNetworkConnectivity().then(isConnected => {
+            setNetworkConnected(isConnected);
+            console.log(`Connectivity re-checked after network error: ${isConnected}`);
+          });
+          // No retry logic here anymore
         } else {
-          // Reset retry count for non-network errors
-          setRetryCount(0);
-          
           if (event.error === 'not-allowed') {
             errorMessage = 'Microphone access was denied. Please allow microphone access and try again.';
           } else if (event.error === 'aborted') {
@@ -767,19 +670,22 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
           variant: 'destructive',
         });
         
-        // Only set isListening to false for terminal errors
-        // For network errors, we might try to recover
-        if (event.error !== 'network' || !networkConnected) {
-          setIsListening(false);
-        }
+        // Always stop listening on any error now
+        setIsListening(false);
+        setProvisionalText(null);
+        setRetryCount(0);
       };
 
       recognition.onend = () => {
         clearTimeout(recognitionTimeout);
+        isIntentionalAbortRef.current = false;
         setIsListening(false);
+        setProvisionalText(null);
       };
 
+      isIntentionalAbortRef.current = false;
       recognition.start();
+      console.log('[Browser Recognition] recognition.start() called');
     } catch (error) {
       console.error('Error initializing browser speech recognition:', error);
       toast({
@@ -788,33 +694,39 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
         variant: 'destructive',
       });
       setIsListening(false);
+      setProvisionalText(null);
     }
   };
 
   const toggleListening = async () => {
     if (disabled) return;
     
+    if (provisionalText !== null) {
+      console.log('[toggleListening] Clicked while confirming. Submitting early.');
+      confirmSubmission();
+      return;
+    }
+
     if (isListening) {
-      // Stop listening
+      console.log('[toggleListening] Clicked while listening. Stopping.');
       if (recognizerRef.current) {
         try {
-          // Try different methods to stop recognition based on what's available
-          if (recognizerRef.current.stopContinuousRecognitionAsync) {
-            recognizerRef.current.stopContinuousRecognitionAsync();
-          } else if (recognizerRef.current.close) {
-            recognizerRef.current.close();
-          } else {
-            // Last resort for browser SpeechRecognition
-            recognizerRef.current.abort?.();
-          }
+          console.log('[toggleListening] Stopping Azure via stopContinuousRecognitionAsync...');
+          await recognizerRef.current.stopContinuousRecognitionAsync();
         } catch (error) {
           console.warn('Error stopping recognition:', error);
         }
         recognizerRef.current = null;
       }
+      console.log('[toggleListening] Stopping Azure/Browser via close()...');
+      if (autoSubmitTimerRef.current) {
+        clearTimeout(autoSubmitTimerRef.current);
+        autoSubmitTimerRef.current = null;
+      }
+      setProvisionalText(null);
       setIsListening(false);
     } else {
-      // Check network connectivity before starting with a thorough check
+      console.log('[toggleListening] Clicked while idle. Starting listening...');
       const isConnected = await checkNetworkConnectivity();
       if (!isConnected) {
         toast({
@@ -833,13 +745,27 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
       });
 
       try {
-        // Determine which recognition method to use
-        // If SDK failed to load or key is invalid, use browser fallback
-        if (useBrowserFallback || !sdkReady || !azureKeyValid) {
-          console.log('Using browser speech recognition');
+        // --- MODIFIED LOGIC: Use result from loadSpeechSDK --- 
+        let loadResult: LoadSdkResult | null = null;
+        if (!sdkReady && !useBrowserFallback) {
+          console.log('[toggleListening] SDK not ready, attempting to load...');
+          // loadSpeechSDK sets isLoading, sdkReady, azureKeyValid, useBrowserFallback
+          loadResult = await loadSpeechSDK(); 
+          // Re-check flags after load attempt
+          console.log(`[toggleListening] SDK load attempt complete. Result:`, loadResult);
+        }
+        
+        // Determine flags based on loadResult if available, otherwise use current state
+        const finalUseFallback = loadResult ? loadResult.useFallback : useBrowserFallback;
+        const finalSdkReady = loadResult ? loadResult.sdkLoaded : sdkReady;
+        const finalKeyValid = loadResult ? loadResult.keyValid : (azureKeyValid ?? false);
+
+        // Now decide which recognition to use based on potentially updated flags
+        if (finalUseFallback || !finalSdkReady || !finalKeyValid) {
+          console.log('[toggleListening] Using browser speech recognition (post-load check).');
           startBrowserSpeechRecognition();
         } else {
-          console.log('Attempting to use Azure speech recognition');
+          console.log('[toggleListening] Attempting to use Azure speech recognition (post-load check).');
           // Double check SDK is properly loaded before attempting to use it
           if (!speechSDKRef.current || typeof speechSDKRef.current.SpeechConfig === 'undefined') {
             console.warn('Azure Speech SDK not properly initialized, falling back to browser recognition');
@@ -847,7 +773,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
             startBrowserSpeechRecognition();
           } else {
             // Log the Azure Speech key validity and region for debugging
-            console.log(`Azure Speech configuration: Region=${AZURE_SPEECH_REGION}, Key valid=${azureKeyValid}`);
+            console.log(`Azure Speech configuration: Region=${AZURE_SPEECH_REGION}, Key valid=${finalKeyValid}`);
             startAzureSpeechRecognition();
           }
         }
@@ -861,7 +787,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
         setIsListening(false);
         
         // Try browser fallback as last resort
-        if (!useBrowserFallback) {
+        if (!finalUseFallback) {
           setUseBrowserFallback(true);
           setTimeout(() => {
             if (!isListening) {
@@ -873,6 +799,36 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
     }
   };
 
+  const confirmSubmission = useCallback(() => {
+    if (autoSubmitTimerRef.current) {
+      clearTimeout(autoSubmitTimerRef.current);
+      autoSubmitTimerRef.current = null;
+    }
+    if (provisionalText !== null) {
+      console.log('[confirmSubmission] Submitting text:', provisionalText);
+      onTextCaptured(provisionalText);
+      setProvisionalText(null);
+      setIsListening(false);
+    }
+  }, [provisionalText, onTextCaptured]);
+
+  const handleProvisionalCapture = useCallback((text: string) => {
+    if (!text) return;
+    console.log('[handleProvisionalCapture] Provisionally captured:', text);
+    setProvisionalText(text);
+    setIsListening(false);
+
+    if (autoSubmitTimerRef.current) {
+      clearTimeout(autoSubmitTimerRef.current);
+    }
+
+    console.log('[handleProvisionalCapture] Starting 3-second auto-submit timer...');
+    autoSubmitTimerRef.current = setTimeout(() => {
+      console.log('[handleProvisionalCapture] Auto-submit timer expired.');
+      confirmSubmission();
+    }, 3000);
+  }, [confirmSubmission]);
+
   return (
     <Button
       type="button"
@@ -880,15 +836,23 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
       variant="ghost"
       onClick={toggleListening}
       disabled={disabled || isLoading}
-      className={`rounded-full ${isListening ? 'bg-red-100 text-red-500 hover:bg-red-200 hover:text-red-600' : ''}`}
-      title="Voice input"
+      className={`rounded-full transition-colors duration-200 
+        ${provisionalText !== null 
+          ? 'bg-green-100 text-green-600 hover:bg-green-200 hover:text-green-700'
+          : isListening 
+          ? 'bg-red-100 text-red-500 hover:bg-red-200 hover:text-red-600'
+          : ''
+        }`}
+      aria-label={provisionalText !== null ? "Confirm Input" : isListening ? "Stop Listening" : "Start Listening"}
     >
       {isLoading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
+        <Loader2 className="h-5 w-5 animate-spin" />
+      ) : provisionalText !== null ? (
+        <Check className="h-5 w-5" />
       ) : isListening ? (
-        <MicOff className="h-4 w-4" />
+        <Square className="h-5 w-5" />
       ) : (
-        <Mic className="h-4 w-4" />
+        <Mic className="h-5 w-5" />
       )}
     </Button>
   );

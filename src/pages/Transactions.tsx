@@ -7,19 +7,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import PageLayout from "@/components/dashboard/PageLayout";
 
-// Define the Transaction interface
+// Define the Transaction interface reflecting the actual DB schema
 interface Transaction {
   transaction_id: string;
-  description: string;
+  description: string | null; // Allow null based on schema
   amount: number;
-  category_type: string; // Changed from type to category_type
+  type: 'income' | 'expense' | 'transfer'; // Use the correct type field
   category_id?: string | null;
   date: string;
-  created_at?: string;
-  updated_at?: string;
+  created_at?: string | null;
+  updated_at?: string | null;
   notes?: string | null;
-  source?: string | null;
+  account_id: string; // Add account_id if used/needed
   user_id?: string | null;
+  currency: string; // Add currency if used/needed
 }
 
 // Format number to Nigerian Naira
@@ -74,9 +75,9 @@ const Transactions = () => {
         let expenseTotal = 0;
 
         typedTransactions.forEach((transaction) => {
-          if (transaction.category_type === "INCOME") {
+          if (transaction.type === "income") {
             incomeTotal += Number(transaction.amount);
-          } else if (transaction.category_type === "EXPENSE") {
+          } else if (transaction.type === "expense") {
             expenseTotal += Number(transaction.amount);
           }
         });

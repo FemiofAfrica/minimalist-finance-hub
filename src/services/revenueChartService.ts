@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
@@ -32,7 +31,7 @@ export const fetchRevenueData = async (period: TimePeriod): Promise<RevenueChart
     // Fetch transactions within the date range
     const { data, error } = await supabase
       .from('transactions')
-      .select('date, amount, category_type')
+      .select('date, amount, type')
       .gte('date', formattedStartDate)
       .order('date', { ascending: true });
     
@@ -57,8 +56,8 @@ export const fetchRevenueData = async (period: TimePeriod): Promise<RevenueChart
       const date = new Date(transaction.date);
       const formattedDate = format(date, formatStr);
       
-      // Only count income transactions for revenue
-      if (transaction.category_type === 'INCOME') {
+      // Only count income transactions for revenue using the 'type' field
+      if (transaction.type === 'income') {
         if (!aggregatedData[formattedDate]) {
           aggregatedData[formattedDate] = 0;
         }

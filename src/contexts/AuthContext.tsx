@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,30 +22,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setLoading(true);
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // getSession() can be used to potentially get session data faster
+    // but the listener is the reliable source of truth.
+    supabase.auth.getSession(); // Removed .then() handler
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+      setLoading(false); // Set loading to false once the initial state is determined
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setLoading(true);
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      } else if (event === 'USER_UPDATED') {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      } else {
-        setSession(null);
-        setUser(null);
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {

@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { format } from "date-fns";
-import { fetchRevenueData } from "@/services/revenueChartService";
+import { fetchRevenueData, RevenueChartData as FetchedRevenueData } from "@/services/revenueChartService";
 
 export type TimePeriod = "7days" | "30days" | "90days";
 
-interface BalanceChartData {
+interface RevenueChartDataPoint {
   date: string;
-  balance: number;
+  revenue: number;
 }
 
 interface RevenueChartProps {
@@ -18,7 +18,7 @@ interface RevenueChartProps {
 const PROPS_BASE_CURRENCY = "NGN";
 
 const RevenueChart = ({ period }: RevenueChartProps) => {
-  const [data, setData] = useState<BalanceChartData[]>([]);
+  const [data, setData] = useState<RevenueChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const { formatPossiblyConvertedCurrency, exchangeRates } = useCurrency();
 
@@ -34,16 +34,12 @@ const RevenueChart = ({ period }: RevenueChartProps) => {
     const loadRevenueData = async () => {
       setLoading(true);
       try {
-        const revenueData = await fetchRevenueData(period);
+        const fetchedData: FetchedRevenueData[] = await fetchRevenueData(period);
         
-        let runningBalance = 0;
-        const chartData: BalanceChartData[] = revenueData.map(item => {
-          runningBalance += item.revenue;
-          return {
-            date: item.month,
-            balance: runningBalance
-          };
-        });
+        const chartData: RevenueChartDataPoint[] = fetchedData.map(item => ({
+          date: item.month,
+          revenue: item.revenue
+        }));
 
         setData(chartData);
       } catch (error) {
@@ -106,15 +102,16 @@ const RevenueChart = ({ period }: RevenueChartProps) => {
         <Tooltip
           content={({ active, payload }) => {
             if (active && payload && payload.length) {
-              const valueNgn = Number(payload[0].value);
+              const pointData = payload[0].payload as RevenueChartDataPoint;
+              const valueNgn = pointData.revenue;
               const valueUsd = convertNgnToUsd(valueNgn);
 
               return (
                 <div className="rounded-lg border bg-background p-2 shadow-sm">
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-1">
                     <div className="flex flex-col">
                       <span className="text-[0.70rem] uppercase text-muted-foreground">
-                        Balance
+                        Revenue ({pointData.date})
                       </span>
                       <span className="font-bold text-muted-foreground">
                         {valueUsd !== null ? formatPossiblyConvertedCurrency(valueUsd) : "N/A"}
@@ -129,7 +126,7 @@ const RevenueChart = ({ period }: RevenueChartProps) => {
         />
         <Line
           type="monotone"
-          dataKey="balance"
+          dataKey="revenue"
           stroke="#2563eb"
           strokeWidth={2}
           dot={false}

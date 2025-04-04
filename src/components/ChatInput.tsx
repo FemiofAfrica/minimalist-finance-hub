@@ -161,7 +161,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       const { data: existingCategory, error: categoryError } = await supabase
         .from('categories')
         .select('category_id') // Only select the ID
-        .eq('name', parsedData.category_name) // Match name
+        .eq('category_name', parsedData.category_name) // Match category_name
         .maybeSingle(); // Expect 0 or 1 result
 
       if (categoryError) {
@@ -185,10 +185,11 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
         const { data: newCategory, error: insertCategoryError } = await supabase
           .from('categories')
           .insert([{
-            name: parsedData.category_name,
+            category_name: parsedData.category_name, // Use category_name
             user_id: userResponse.user.id, // Associate with the current user
-            color: null,
-            icon: null
+            color: null, // Default color
+            icon: null, // Default icon
+            category_type: categoryTypeLower // Add category type
           }])
           .select('category_id') // Select the ID of the newly created category
           .single(); // Expect exactly one result after insertion
