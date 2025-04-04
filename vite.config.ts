@@ -5,34 +5,37 @@ import path from "path";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: '0.0.0.0',
+    host: '127.0.0.1',
     port: 8080,
     open: false,
+    watch: {
+      ignored: [
+        '**/node_modules/**',
+        '**/.git/**',
+      ],
+    },
     hmr: {
       protocol: 'ws',
-      host: 'localhost',
+      host: '127.0.0.1',
       port: 8080,
       clientPort: 8080,
-<<<<<<< Updated upstream
-      timeout: 30000,
-      overlay: false,
+      timeout: 60000,
+      overlay: true,
       webSocketServer: {
         options: {
           perMessageDeflate: false
         }
-      }
-=======
-      timeout: 60000,
-      overlay: true
->>>>>>> Stashed changes
-    }
+      },
+    },
   },
   plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src")
-    }
+    },
+    dedupe: ['react', 'react-dom']
   },
+
   build: {
     outDir: "dist",
     sourcemap: true,

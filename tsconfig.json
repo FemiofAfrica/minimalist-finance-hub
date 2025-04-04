@@ -14,13 +14,9 @@
     "skipLibCheck": true,
     "allowJs": true,
     "noUnusedLocals": false,
-<<<<<<< Updated upstream
-    "strictNullChecks": false
-=======
     "strictNullChecks": false,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true
->>>>>>> Stashed changes
   }
 }

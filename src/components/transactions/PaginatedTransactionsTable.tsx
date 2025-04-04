@@ -48,7 +48,7 @@ const PaginatedTransactionsTable = ({ limit: initialLimit }: PaginatedTransactio
     try {
       console.log("Fetching transactions...");
       const data = await fetchTransactions();
-      setTransactions(data);
+      setTransactions(data.transactions);
     } catch (error) {
       toast({
         title: "Error",

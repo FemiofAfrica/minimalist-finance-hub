@@ -62,11 +62,7 @@ function mapSupabaseDataToTransaction(dbData: any): Transaction {
 
 
 // --- Fetching Functions ---
-<<<<<<< Updated upstream
-export const fetchTransactions = async (limit?: number): Promise<Transaction[]> => {
-=======
-export const fetchTransactions = async (limit?: number): Promise<{ totalIncome: number, totalExpenses: number, netBalance: number }> => {
->>>>>>> Stashed changes
+export const fetchTransactions = async (limit?: number): Promise<{ transactions: Transaction[], totalIncome: number, totalExpenses: number, netBalance: number }> => {
   try {
     const userId = await getUserId();
     if (!userId) {
@@ -96,9 +92,6 @@ export const fetchTransactions = async (limit?: number): Promise<{ totalIncome: 
       throw error;
     }
 
-<<<<<<< Updated upstream
-    return (data || []).map(mapSupabaseDataToTransaction);
-=======
     const transactions = (data || []).map(mapSupabaseDataToTransaction);
 
     // Calculate totals
@@ -106,8 +99,7 @@ export const fetchTransactions = async (limit?: number): Promise<{ totalIncome: 
     const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
     const netBalance = totalIncome - totalExpenses;
 
-    return { totalIncome, totalExpenses, netBalance };
->>>>>>> Stashed changes
+    return { transactions, totalIncome, totalExpenses, netBalance };
   } catch (error) {
     console.error('Error in fetchTransactions:', error);
     throw error;

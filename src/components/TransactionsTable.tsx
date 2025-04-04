@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Table, TableBody } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
@@ -22,7 +21,7 @@ const TransactionsTable = ({ limit }: TransactionsTableProps) => {
     try {
       console.log("Fetching transactions...");
       const data = await fetchTransactions(limit);
-      setTransactions(data);
+      setTransactions(data.transactions);
     } catch (error) {
       toast({
         title: "Error",
@@ -60,7 +59,7 @@ const TransactionsTable = ({ limit }: TransactionsTableProps) => {
     return <TransactionLoading />;
   }
 
-  if (!transactions || transactions.length === 0) {
+  if (!Array.isArray(transactions) || transactions.length === 0) {
     return <TransactionEmptyState />;
   }
 
