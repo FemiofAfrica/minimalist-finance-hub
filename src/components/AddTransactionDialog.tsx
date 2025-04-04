@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -14,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { fetchAccounts } from "@/services/accountService";
+import { fetchAccounts, getDefaultAccount } from "@/services/accountService";
 import { fetchCards } from "@/services/cardService";
 import { Account } from "@/types/account";
 import { Card } from "@/types/card";
@@ -51,26 +50,48 @@ const AddTransactionDialog = () => {
   }, [open]);
 
   const loadAccountsAndSetDefault = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
+      // Fetch all accounts for the dropdown
       const accountsData = await fetchAccounts();
-      setAccounts(accountsData);
-      
-      // Find or create default account
+      if (Array.isArray(accountsData)) {
+        setAccounts(accountsData);
+      } else {
+        console.error("fetchAccounts did not return an array.");
+        setAccounts([]); // Reset accounts on error
+        // Optionally throw or show toast
+      }
+
+      // Get the default account (service handles creation if needed)
       const defaultAccount = await getDefaultAccount();
-      if (defaultAccount) {
+      
+      // Set the default account in the form state
+      if (defaultAccount && defaultAccount.account_id) {
         setFormData(prev => ({
           ...prev,
-          account_id: defaultAccount.account_id
+          account_id: defaultAccount.account_id 
         }));
+      } else {
+        // Handle case where getDefaultAccount failed unexpectedly
+        console.error("Failed to get or create default account from service.");
+        setFormData(prev => ({ ...prev, account_id: '' })); 
+        toast({
+          title: "Error",
+          description: "Could not set default account.",
+          variant: "destructive"
+        });
       }
+
     } catch (error) {
-      console.error('Error loading accounts:', error);
+      // Catch errors from either fetchAccounts or getDefaultAccount
+      console.error('Error loading accounts and setting default:', error);
       toast({
         title: "Error",
-        description: "Failed to load accounts",
+        description: "Failed to load account information",
         variant: "destructive"
       });
+      setAccounts([]); // Clear accounts list on error
+      setFormData(prev => ({ ...prev, account_id: '' })); 
     } finally {
       setLoading(false);
     }

@@ -171,9 +171,9 @@ function useFallbackParser(text: string): Response {
   // --- Regex Patterns for Extraction ---
   const patterns = {
     // Capture description (more robust pattern)
-    description: /(?:for|on|at|:|bought|paid|spent|received)\s+(.+?)(?:\s+(?:₦|\$|[\d.,]+)|yesterday|today|last week|last month|$)/i,
+    description: /(?:for|on|at|:|bought|paid|spent|received)\\s+(.+?)(?:\\s+(?:₦|\\$|[\\d.,]+)|yesterday|today|last week|last month|$)/i,
     // Capture amount, allowing for currency symbols (optional) and commas/dots
-    amount: /[₦$]?\s*(\d+(?:[,.]\d{1,2})?)/,
+    amount: /[₦$]?\\s*(\\d+(?:[,.]\\d{1,2})?)/,
     // Keywords indicating income
     income: /(?:received|earned|got paid|salary|bonus|gift|refund|income|deposit)/i,
     // Keywords indicating expense (used if income keywords aren't found)
@@ -184,12 +184,15 @@ function useFallbackParser(text: string): Response {
         { name: "Dining", patterns: /(?:dinner|lunch|breakfast|restaurant|cafe|food|eat out)/i },
         { name: "Salary", patterns: /(?:salary|paycheck|wages)/i },
         { name: "Transport", patterns: /(?:fuel|gas|transport|uber|taxi|bus|train|bolt|lagos ride)/i },
-        { name: "Utilities", patterns: /(?:utilities|electricity|water|gas bill|internet|data|airtime|nep[ha]|ikedc|ekedc)/i },
+        // Updated Utilities pattern
+        { name: "Utilities", patterns: /(?:utilities|electricity|water|gas bill|internet|data|airtime|recharge|top-up|bill|nep[ha]|ikedc|ekedc)/i },
         { name: "Entertainment", patterns: /(?:movie|cinema|concert|show|game|entertainment|netflix|spotify)/i },
         { name: "Shopping", patterns: /(?:shopping|clothes|shoes|accessories|mall|amazon|jumia|konga)/i },
         { name: "Healthcare", patterns: /(?:medical|doctor|hospital|pharmacy|healthcare|chemist)/i },
         { name: "Education", patterns: /(?:tuition|course|books|school fees|education)/i },
+        // Updated Housing pattern
         { name: "Housing", patterns: /(?:rent|mortgage|housing|accommodation)/i },
+        { name: "Insurance", patterns: /(?:insurance|premium)/i }, // Added Insurance
         { name: "Gift", patterns: /(?:gift|present)/i },
         { name: "Transfer", patterns: /(?:transfer|sent money|received money)/i },
       ]
@@ -213,27 +216,22 @@ function useFallbackParser(text: string): Response {
   // Extract Description
   const descriptionMatch = text.match(patterns.description);
   if (descriptionMatch && descriptionMatch[1]) {
-    // Capitalize first letter of each word in the extracted description
     let desc = descriptionMatch[1].trim();
-     // Attempt to remove amount part if it's in the extracted description
     if (amountMatch && amountMatch[0]) {
         desc = desc.replace(amountMatch[0].trim(), '').trim();
     }
-    // Attempt to remove date parts
-    desc = desc.replace(/(?:yesterday|today|last week|last month|on \d{4}-\d{2}-\d{2})/i, '').trim();
-
-    fallbackData.description = desc
-      .split(" ")
-      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
+    desc = desc.replace(/(?:yesterday|today|last week|last month|on \\d{4}-\\d{2}-\\d{2})/i, '').trim();
+    // Capitalize only the first letter
+    fallbackData.description = desc.charAt(0).toUpperCase() + desc.slice(1);
   } else {
     // Basic fallback: use the first few words, removing amount/date if possible
     let desc = text.split(" ").slice(0, 5).join(" ");
     if (amountMatch && amountMatch[0]) {
       desc = desc.replace(amountMatch[0].trim(), "").trim();
     }
-     desc = desc.replace(/(?:yesterday|today|last week|last month|on \d{4}-\d{2}-\d{2})/i, '').trim();
-    fallbackData.description = desc || "Unknown Transaction"; // Ensure not empty
+     desc = desc.replace(/(?:yesterday|today|last week|last month|on \\d{4}-\\d{2}-\\d{2})/i, '').trim();
+    // Capitalize only the first letter
+    fallbackData.description = desc ? desc.charAt(0).toUpperCase() + desc.slice(1) : "Unknown Transaction"; // Ensure not empty
   }
 
   // Determine Category Name
@@ -262,14 +260,14 @@ function useFallbackParser(text: string): Response {
 // --- Groq API Call Function ---
 // Calls the Groq API to parse the transaction text using an LLM.
 async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
-  // Define the prompt for the LLM, instructing it to output only JSON
+  // Updated prompt with more specific category guidance and examples
   const prompt = `
     You are a transaction parser that outputs ONLY raw JSON.
     Parse the following transaction text strictly into this JSON format:
     {
-      "description": "Brief capitalized description of the item/service (e.g., 'Groceries from Shoprite', 'Salary for March')",
+      "description": "Brief description of the item/service (e.g., 'Groceries from Shoprite', 'Salary for March', 'Netflix subscription')",
       "amount": 1234.56,
-      "category_name": "Appropriate category (e.g., 'Groceries', 'Salary', 'Transport', 'Dining', 'Utilities', 'Shopping', 'Entertainment', 'Healthcare', 'Education', 'Housing', 'Gift', 'Transfer', 'Uncategorized')",
+      "category_name": "Appropriate category (e.g., 'Groceries', 'Salary', 'Transport', 'Dining', 'Utilities', 'Shopping', 'Entertainment', 'Healthcare', 'Education', 'Housing', 'Insurance', 'Gift', 'Transfer', 'Uncategorized')",
       "category_type": "INCOME or EXPENSE"
     }
 
@@ -277,9 +275,22 @@ async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
     1. Output ONLY the JSON object. No introductory text, explanations, apologies, or markdown code blocks (like \`\`\`json).
     2. 'amount' MUST be a positive number (integer or float). Do not include currency symbols.
     3. 'category_type' MUST be exactly "INCOME" or "EXPENSE". Determine this based on keywords like 'spent', 'paid', 'bought' (EXPENSE) or 'received', 'salary', 'deposit' (INCOME). Default to EXPENSE if unsure.
-    4. 'category_name' should be one of the suggested categories if possible, otherwise use a sensible alternative or 'Uncategorized'.
-    5. 'description' should be concise and capitalized. If the text mentions a specific date (e.g., 'yesterday', 'last week', '2024-03-15'), DO NOT include it in the description.
+    4. 'category_name' should be one of the suggested categories if possible. Use 'Utilities' for electricity, water, internet, phone bills, airtime/data recharge. Use 'Transport' for fuel, ride-sharing, public transit. Use 'Shopping' for general goods, clothes, electronics. Use 'Insurance' for premium payments. If unsure, use a sensible alternative or 'Uncategorized'.
+    5. 'description' should be concise. Extract the core item/service, omitting generic phrases like 'payment for', 'spent on', 'bought at' unless essential for clarity. Do not include dates (like 'yesterday') in the description. Capitalize only the first letter unless it's a proper noun.
     6. DO NOT include a 'date' field in the JSON output.
+
+    EXAMPLES:
+    Text: "Payment for Netflix subscription yesterday"
+    JSON: { "description": "Netflix subscription", "amount": 15.00, "category_name": "Entertainment", "category_type": "EXPENSE" }
+
+    Text: "Received ₦500,000 salary for May from Work Inc"
+    JSON: { "description": "Salary for May from Work Inc", "amount": 500000.00, "category_name": "Salary", "category_type": "INCOME" }
+
+    Text: "Bolt ride home 500"
+    JSON: { "description": "Bolt ride home", "amount": 500.00, "category_name": "Transport", "category_type": "EXPENSE" }
+
+    Text: "Bought airtime recharge online 1000 NGN"
+    JSON: { "description": "Airtime recharge online", "amount": 1000.00, "category_name": "Utilities", "category_type": "EXPENSE" }
 
     Transaction Text: "${text}"
   `;
@@ -369,10 +380,15 @@ async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
         }
         // If parsing failed or type was wrong, validatedAmount remains 0
 
+        // Validate description and apply minimal capitalization
+        let validatedDescription = "Unknown Transaction";
+        if (typeof parsedData.description === 'string' && parsedData.description.trim()) {
+            const trimmedDesc = parsedData.description.trim();
+            validatedDescription = trimmedDesc.charAt(0).toUpperCase() + trimmedDesc.slice(1);
+        }
+
         const validatedData: LocalParsedTransaction = {
-            description: typeof parsedData.description === 'string' && parsedData.description.trim()
-                ? parsedData.description.trim()
-                : "Unknown Transaction",
+            description: validatedDescription, // Use validated & minimally capitalized description
             amount: validatedAmount, // Use the validated amount
             category_name: typeof parsedData.category_name === 'string' && parsedData.category_name.trim()
                 ? parsedData.category_name.trim()

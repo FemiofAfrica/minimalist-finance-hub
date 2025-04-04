@@ -1,4 +1,4 @@
-import { ArrowDownRight, ArrowUpRight, Pencil, Trash2 } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Pencil, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Transaction } from "@/types/transaction";
 import { formatDate } from "@/utils/formatters";
@@ -8,9 +8,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface TransactionRowProps {
   transaction: Transaction;
@@ -23,14 +37,15 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [categories, setCategories] = useState<{ category_id: string; name: string; type: string }[]>([]);
+  const [categories, setCategories] = useState<{ category_id: string; category_name: string; category_type: string }[]>([]);
+  const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
   const [categoryError, setCategoryError] = useState<Error | null>(null);
   const { formatPossiblyConvertedCurrency, exchangeRates } = useCurrency();
   const [editedTransaction, setEditedTransaction] = useState({
-    description: transaction.description,
+    description: transaction.description ?? '',
     name: transaction.name || transaction.description,
     amount: transaction.amount,
-    category_name: transaction.description,
+    category_name: transaction.category_name ?? '',
     category_type: transaction.category_type?.toLowerCase() || 'expense',
     date: transaction.date.split('T')[0],
     notes: transaction.notes || '',
@@ -42,7 +57,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
       try {
         const { data, error } = await supabase
           .from('categories')
-          .select('category_id, category_name')
+          .select('category_id, category_name, category_type')
           .order('category_name');
 
         if (error) {
@@ -56,14 +71,15 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
           
           const safeData = rawData as Array<{
             category_id: string;
-            name: string;
+            category_name: string;
+            category_type: string;
             description?: string | null;
           }>;
           
           const typedCategories = safeData.map(category => ({
             category_id: category.category_id,
-            name: category.name,
-            type: 'expense'
+            category_name: category.category_name,
+            category_type: category.category_type.toLowerCase()
           }));
           setCategories(typedCategories);
         } else {
@@ -94,8 +110,8 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
       let categoryId = null;
       
       const existingCategory = categories.find(
-        c => c.name.toLowerCase() === editedTransaction.description.toLowerCase() && 
-             c.type.toLowerCase() === editedTransaction.category_type.toLowerCase()
+        c => c.category_name.toLowerCase() === editedTransaction.category_name.toLowerCase() && 
+             c.category_type.toLowerCase() === editedTransaction.category_type.toLowerCase()
       );
       
       if (existingCategory) {
@@ -104,11 +120,11 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
         const { data: newCategory, error: categoryError } = await supabase
           .from('categories')
           .insert({
-            name: editedTransaction.description,
+            category_name: editedTransaction.category_name,
             user_id: transaction.user_id,
-            type: editedTransaction.category_type
+            category_type: editedTransaction.category_type
           })
-          .select()
+          .select('category_id')
           .single();
         
         if (categoryError) {
@@ -127,10 +143,11 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
       
       const updateData = {
         description: editedTransaction.description,
-        name: editedTransaction.name,
         amount: parseFloat(String(editedTransaction.amount)),
         date: formattedDate,
         category_id: categoryId,
+        category_name: editedTransaction.category_name,
+        category_type: editedTransaction.category_type,
         notes: editedTransaction.notes,
         updated_at: new Date().toISOString()
       };
@@ -196,6 +213,20 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
     }
   };
 
+  // --- Prepare data for Combobox ---
+  // Filter categories based on selected type for the dropdown
+  const filteredCategoriesByType = categories.filter(
+      cat => cat.category_type === editedTransaction.category_type
+  );
+  // Get the current search term/value from state
+  const currentCategorySearch = editedTransaction.category_name.trim();
+  // Check if the current input exactly matches an existing category for the current type
+  const exactMatchExists = filteredCategoriesByType.some(
+      cat => cat.category_name.toLowerCase() === currentCategorySearch.toLowerCase()
+  );
+  // Determine whether to show the "Create" option
+  const showCreateOption = currentCategorySearch !== "" && !exactMatchExists;
+
   return (
     <>
       <TableRow key={transaction.transaction_id} className="border-b border-muted hover:bg-muted/20 transition-colors">
@@ -209,7 +240,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
               )}
             </div>
             <div className="flex flex-col">
-              <span className="truncate">{transaction.name || `Bought ${transaction.description}`}</span>
+              <span className="truncate">{transaction.name || transaction.description}</span>
               {transaction.notes && (
                 <span className="text-xs text-muted-foreground truncate">{transaction.notes}</span>
               )}
@@ -287,7 +318,6 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                   setEditedTransaction({
                     ...editedTransaction,
                     description: e.target.value,
-                    category_name: e.target.value,
                   })
                 }
                 className="col-span-3"
@@ -315,6 +345,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                   setEditedTransaction({
                     ...editedTransaction,
                     category_type: value,
+                    category_name: ''
                   })
                 }
               >
@@ -331,29 +362,88 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
               <Label htmlFor="category_name" className="text-right">
                 Category
               </Label>
-              <Select
-                value={editedTransaction.category_name}
-                onValueChange={(value) =>
-                  setEditedTransaction({
-                    ...editedTransaction,
-                    category_name: value,
-                    description: value,
-                  })
-                }
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select or enter category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories
-                    .filter(cat => cat.type === editedTransaction.category_type)
-                    .map(category => (
-                      <SelectItem key={category.category_id} value={category.name}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={categoryPopoverOpen}
+                    className="col-span-3 justify-between font-normal"
+                  >
+                    {editedTransaction.category_name || "Select category..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                   <Command
+                     onValueChange={(searchValue) => {
+                       setEditedTransaction(prevState => ({
+                         ...prevState,
+                         category_name: searchValue 
+                       }));
+                     }}
+                   >
+                    <CommandInput placeholder="Search or type new category..." />
+                    <CommandList>
+                      <CommandEmpty>No category found.</CommandEmpty>
+                      <CommandGroup>
+                        {filteredCategoriesByType.map((category) => (
+                            <CommandItem
+                              key={category.category_id}
+                              value={category.category_name}
+                              onSelect={(currentValue) => {
+                                setEditedTransaction({
+                                  ...editedTransaction,
+                                  category_name: category.category_name, 
+                                })
+                                setCategoryPopoverOpen(false)
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  editedTransaction.category_name.toLowerCase() === category.category_name.toLowerCase()
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                              {category.category_name}
+                            </CommandItem>
+                          ))}
+                        {showCreateOption && (
+                           <CommandItem
+                             key={currentCategorySearch}
+                             value={currentCategorySearch}
+                             onSelect={(selectedValue) => {
+                               const newCategoryName = selectedValue.trim();
+                               const currentCategoryType = editedTransaction.category_type;
+                               
+                               if (newCategoryName) {
+                                 const newCategoryObj = {
+                                   category_id: `temp-${Date.now()}`,
+                                   category_name: newCategoryName,
+                                   category_type: currentCategoryType
+                                 };
+                                 setCategories(prev => [...prev, newCategoryObj]);
+                                 
+                                 setEditedTransaction(prevState => ({
+                                   ...prevState,
+                                   category_name: newCategoryName
+                                 }));
+                               }
+                               console.log(`Optimistically adding: ${newCategoryName} (${currentCategoryType})`);
+                               setCategoryPopoverOpen(false);
+                             }}
+                           >
+                             <span className="mr-2 h-4 w-4"></span>
+                             Create "{currentCategorySearch}"
+                           </CommandItem>
+                         )}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="date" className="text-right">
