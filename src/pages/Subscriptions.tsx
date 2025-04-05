@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchSubscriptions, deleteSubscription, convertSubscriptionToTransaction, createSubscription, updateSubscription } from '@/services/subscriptionService';
+import { fetchSubscriptions, deleteSubscription, convertSubscriptionToTransaction, createSubscription, updateSubscription, getUpcomingSubscriptions } from '@/services/subscriptionService';
 import { Subscription, SubscriptionFrequency } from '@/types/subscription';
 import PageLayout from '@/components/dashboard/PageLayout';
 import { formatNaira } from '@/utils/formatters';
@@ -32,6 +32,7 @@ const SubscriptionsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('all');
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [dueSoonCount, setDueSoonCount] = useState<number>(0);
   
   const adjustBillingDateIfNeeded = (billingDate: string, frequency: string): string => {
     const today = new Date();
@@ -203,6 +204,10 @@ const SubscriptionsPage: React.FC = () => {
       setError(null);
       const data = await fetchSubscriptions();
       setSubscriptions(data);
+
+      const upcomingSubs = await getUpcomingSubscriptions(7);
+      setDueSoonCount(upcomingSubs.length);
+
     } catch (err) {
       setError('Failed to load subscriptions');
       console.error(err);
@@ -508,7 +513,7 @@ const SubscriptionsPage: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {subscriptions.filter(sub => sub.is_active && isDueSoon(sub.next_billing_date)).length}
+                {dueSoonCount}
               </div>
             </CardContent>
           </Card>
@@ -534,93 +539,68 @@ const SubscriptionsPage: React.FC = () => {
           Object.entries(subscriptionsByCategory).map(([category, subs]) => (
             <div key={category} className="mb-8">
               <h2 className="text-xl font-semibold mb-4">{category}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {subs.map(subscription => {
-                  const { bgClass, textClass } = getSubscriptionIconColors(subscription.name);
+                  const formatFrequency = (freq: string) => freq.charAt(0) + freq.slice(1).toLowerCase();
+                  
                   return (
                     <Card 
                       key={subscription.subscription_id} 
-                      className={`p-6 hover:shadow-lg transition-shadow duration-200 w-full ${!subscription.is_active ? 'opacity-60' : ''}`}
+                      className={`w-full flex flex-col hover:shadow-md transition-shadow duration-200 overflow-hidden border ${!subscription.is_active ? 'opacity-70 bg-muted/40' : 'bg-card'}`}
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-center mb-3">
-                            <p className="text-sm font-medium text-muted-foreground/80 truncate">{subscription.name}</p>
-                            <div className="flex gap-2 flex-shrink-0">
-                              {!subscription.is_active && (
-                                <Badge variant="outline" className="bg-red-50 text-red-800 border-red-200">
-                                  Cancelled
-                                </Badge>
-                              )}
-                              <Badge className={getFrequencyColor(subscription.frequency)}>
-                                {subscription.frequency.charAt(0) + subscription.frequency.slice(1).toLowerCase()}
-                              </Badge>
-                            </div>
-                          </div>
-                          
-                          <div className="text-center mb-3">
-                            <h3 className="text-2xl font-bold tracking-tight">
-                              {formatNaira(subscription.amount)}
-                            </h3>
-                          </div>
-                          
-                          <div className="flex flex-col items-center mb-3">
-                            <div className="flex items-center justify-center w-full">
-                              <span className="text-sm text-muted-foreground">Next payment:</span>
-                              <span className="text-sm font-medium ml-1">{formatDate(subscription.next_billing_date)}</span>
-                              {isDueSoon(subscription.next_billing_date) && (
-                                <Badge variant="outline" className="ml-2 bg-amber-50 text-amber-800 border-amber-200 text-xs">
-                                  Due soon
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {subscription.description && (
-                            <p className="text-sm text-muted-foreground truncate text-center mb-3">{subscription.description}</p>
-                          )}
-                          
-                          <div className="flex justify-center space-x-2">
-                            {subscription.is_active && (
-                              <>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  onClick={() => handleConfirmPayment(subscription)}
-                                  className="text-xs"
-                                >
-                                  <CheckCircle className="mr-1 h-3 w-3" /> Confirm Payment
-                                </Button>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  onClick={() => handleCancelSubscription(subscription)}
-                                  className="text-xs text-red-500 border-red-200 hover:bg-red-50"
-                                >
-                                  <XCircle className="mr-1 h-3 w-3" /> Cancel
-                                </Button>
-                              </>
-                            )}
-                            {!subscription.is_active && (
-                              <span className="text-xs text-muted-foreground italic">Subscription cancelled</span>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="flex flex-col items-end space-y-2">
-                          <div className={`${bgClass} p-3 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm`}>
-                            <CreditCard className={`w-6 h-6 ${textClass}`} />
-                          </div>
-                          <div className="flex space-x-1">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditSubscription(subscription)}>
+                      <CardContent className="p-4 flex flex-col flex-grow">
+                        <div className="flex justify-between items-center mb-4">
+                          <Badge variant="outline" className={`text-xs whitespace-nowrap ${getFrequencyColor(subscription.frequency)}`}>
+                            {formatFrequency(subscription.frequency)}
+                          </Badge>
+                          <div className="flex">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditSubscription(subscription)} title="Edit">
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteSubscription(subscription.subscription_id)}>
-                              <Trash2 className="h-4 w-4 text-red-500" />
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteSubscription(subscription.subscription_id)} title="Delete">
+                              <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
                         </div>
-                      </div>
+                        <div className="flex-grow flex flex-col justify-center items-center text-center space-y-1.5 mb-4">
+                          <h3 className="text-base font-semibold leading-tight" title={subscription.name}>{subscription.name}</h3>
+                          <p className="text-xl font-bold">{formatNaira(subscription.amount)}</p>
+                          <div className="flex items-center text-xs text-muted-foreground whitespace-nowrap">
+                            <CalendarIcon className="w-3 h-3 mr-1 flex-shrink-0" />
+                            <span>Next payment is on {formatDate(subscription.next_billing_date)}</span>
+                          </div>
+                        </div>
+                        <div className="mt-auto pt-3 border-t flex justify-center items-center">
+                          {subscription.is_active ? (
+                            <div className="flex items-center space-x-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 px-3 text-xs"
+                                onClick={() => handleEditSubscription(subscription)}
+                                title="Manage Subscription"
+                              >
+                                Manage Subscription 
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 px-3 text-xs text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => handleCancelSubscription(subscription)}
+                                title="Cancel Plan"
+                              >
+                                Cancel Plan
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex justify-center w-full">
+                              <Badge variant="outline" className="border-destructive/50 text-destructive text-xs px-1.5 py-0.5">
+                                Cancelled
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
                     </Card>
                   );
                 })}

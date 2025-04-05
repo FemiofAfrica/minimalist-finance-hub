@@ -186,14 +186,24 @@ export const createTransaction = async (transaction: TransactionInput): Promise<
     // This logic might set categoryId
     if (transaction.category_name && !categoryId) {
         const categoryTypeLower = (transaction.type ?? 'expense').toLowerCase() as 'income' | 'expense' | 'transfer';
-        const { data: existingCategory } = await supabase.from('categories').select('category_id').eq('name', transaction.category_name).eq('user_id', userId).eq('type', categoryTypeLower).maybeSingle();
+        const { data: existingCategory } = await supabase.from('categories').select('category_id').eq('category_name', transaction.category_name).eq('user_id', userId).eq('type', categoryTypeLower).maybeSingle();
         if (existingCategory) { categoryId = existingCategory.category_id; }
-        else { /* ... create category ... */ const { data: newCategory, error: insertCatError } = await supabase.from('categories').insert({ name: transaction.category_name, user_id: userId, type: categoryTypeLower }).select('category_id').single(); if (insertCatError) throw insertCatError; categoryId = newCategory.category_id; }
-    } else if (!categoryId && transaction.description) {
+        else { 
+            const { data: newCategory, error: insertCatError } = await supabase.from('categories').insert({ category_name: transaction.category_name, user_id: userId, type: categoryTypeLower }).select('category_id').single(); 
+            if (insertCatError) throw insertCatError; 
+            categoryId = newCategory.category_id; 
+        }
+    }
+    // Check if category should be created based on description (also use category_name)
+    else if (!categoryId && transaction.description) { // Added check to avoid overwriting if category_name was provided but didn't match
         const categoryTypeLower = (transaction.type ?? 'expense').toLowerCase() as 'income' | 'expense' | 'transfer';
-        const { data: existingCategory } = await supabase.from('categories').select('category_id').eq('name', transaction.description).eq('user_id', userId).eq('type', categoryTypeLower).maybeSingle();
-        if (existingCategory) { categoryId = existingCategory.category_id; }
-        else { /* ... create category ... */ const { data: newCategory, error: insertCatError } = await supabase.from('categories').insert({ name: transaction.description, user_id: userId, type: categoryTypeLower }).select('category_id').single(); if (insertCatError) throw insertCatError; categoryId = newCategory.category_id; }
+        const { data: existingCategory } = await supabase.from('categories').select('category_id').eq('category_name', transaction.description).eq('user_id', userId).eq('type', categoryTypeLower).maybeSingle();
+        if (existingCategory) { categoryId = existingCategory.category_id; } 
+        else { 
+            const { data: newCategory, error: insertCatError } = await supabase.from('categories').insert({ category_name: transaction.description, user_id: userId, type: categoryTypeLower }).select('category_id').single(); 
+            if (insertCatError) throw insertCatError; 
+            categoryId = newCategory.category_id; 
+        }
     }
 
 
