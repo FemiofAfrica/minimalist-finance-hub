@@ -18,7 +18,7 @@ export const searchTransactionsByDescription = async (query: string): Promise<Tr
       .from('transactions')
       .select(`
         *,
-        accounts:account_id(account_name)
+        accounts:account_id(name)
       `)
       .ilike('description', `%${query}%`)
       .order('date', { ascending: false })
@@ -49,7 +49,7 @@ export const searchTransactionsByDescription = async (query: string): Promise<Tr
       
       // Add account and card name information if available
       if (transaction.accounts) {
-        processedTransaction.account_name = transaction.accounts.account_name;
+        processedTransaction.account_name = transaction.accounts.name;
       }
       
       return processedTransaction;
