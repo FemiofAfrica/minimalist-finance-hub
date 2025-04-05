@@ -9,8 +9,8 @@ const PageLayout = ({ children }: PageLayoutProps) => {
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-neutral-950">
       <DashboardSidebar />
-      <main className="flex-1 p-6 flex flex-col md:ml-64">
-        <div className="max-w-7xl mx-auto space-y-6 flex-1 w-full">
+      <main className="flex-1 p-6 flex flex-col md:ml-56">
+        <div className="max-w-xl mx-auto space-y-6 flex-1 w-full">
           {children}
         </div>
       </main>

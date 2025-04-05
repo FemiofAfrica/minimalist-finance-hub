@@ -24,7 +24,7 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./app/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["app", "app/types/**/*.d.ts", "src"]

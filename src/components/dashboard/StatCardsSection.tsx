@@ -42,7 +42,7 @@ const StatCardsSection = ({
   const formattedTotalExpense = convertNgnToUsd(totalExpense);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {isLoading || formattedTotalBalance === null ? (
         <Skeleton className="h-32 w-full" />
       ) : (
