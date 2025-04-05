@@ -9,9 +9,10 @@ type SpeechSDKType = any;
 interface VoiceInputProps {
   onTextCaptured: (text: string) => void;
   disabled?: boolean;
+  onProvisionalTextUpdate?: (text: string | null) => void;
 }
 
-const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
+const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate }: VoiceInputProps) => {
   const { toast } = useToast();
   const [isListening, setIsListening] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -426,6 +427,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
           recognizerRef.current = null;
           setIsListening(false);
           setProvisionalText(null);
+          onProvisionalTextUpdate?.(null);
         }
       );
     } catch (error) {
@@ -439,6 +441,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
       recognizerRef.current = null;
       setIsListening(false);
       setProvisionalText(null);
+      onProvisionalTextUpdate?.(null);
     }
   };
 
@@ -616,6 +619,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
         setIsListening(false);
         setProvisionalText(null);
         setRetryCount(0);
+        onProvisionalTextUpdate?.(null);
       };
 
       recognition.onerror = async (event: SpeechRecognitionErrorEvent) => {
@@ -674,6 +678,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
         setIsListening(false);
         setProvisionalText(null);
         setRetryCount(0);
+        onProvisionalTextUpdate?.(null);
       };
 
       recognition.onend = () => {
@@ -681,6 +686,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
         isIntentionalAbortRef.current = false;
         setIsListening(false);
         setProvisionalText(null);
+        onProvisionalTextUpdate?.(null);
       };
 
       isIntentionalAbortRef.current = false;
@@ -695,6 +701,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
       });
       setIsListening(false);
       setProvisionalText(null);
+      onProvisionalTextUpdate?.(null);
     }
   };
 
@@ -808,14 +815,16 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
       console.log('[confirmSubmission] Submitting text:', provisionalText);
       onTextCaptured(provisionalText);
       setProvisionalText(null);
+      onProvisionalTextUpdate?.(null);
       setIsListening(false);
     }
-  }, [provisionalText, onTextCaptured]);
+  }, [provisionalText, onTextCaptured, onProvisionalTextUpdate]);
 
   const handleProvisionalCapture = useCallback((text: string) => {
     if (!text) return;
     console.log('[handleProvisionalCapture] Provisionally captured:', text);
     setProvisionalText(text);
+    onProvisionalTextUpdate?.(text);
     setIsListening(false);
 
     if (autoSubmitTimerRef.current) {
@@ -827,7 +836,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false }: VoiceInputProps) => {
       console.log('[handleProvisionalCapture] Auto-submit timer expired.');
       confirmSubmission();
     }, 3000);
-  }, [confirmSubmission]);
+  }, [confirmSubmission, onProvisionalTextUpdate]);
 
   return (
     <Button

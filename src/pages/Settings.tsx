@@ -41,23 +41,78 @@ export default function Settings() {
     }
   }, [user]);
   
+  // Load user profile data from the database
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (user) {
+        // Set email from auth (remains unchanged)
+        setEmail(user.email || '');
+
+        // Fetch profile from the 'profiles' table
+        try {
+          const { data: profileData, error } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', user.id)
+            .maybeSingle(); // Use maybeSingle to handle cases where profile might not exist yet
+
+          if (error) {
+            console.error('Error fetching profile:', error);
+            // Optionally show a toast error here
+            return;
+          }
+
+          if (profileData) {
+            setFirstName(profileData.first_name || '');
+            setLastName(profileData.last_name || '');
+          } else {
+            // If no profile exists, initialize with empty strings
+            setFirstName('');
+            setLastName('');
+            // Optionally, check user_metadata as a fallback for initial population?
+            // if (user.user_metadata) {
+            //   setFirstName(user.user_metadata.first_name || '');
+            //   setLastName(user.user_metadata.last_name || '');
+            // }
+          }
+        } catch (fetchError) {
+          console.error('Exception fetching profile:', fetchError);
+          toast({
+            title: 'Error loading profile',
+            description: 'Could not load your profile data.',
+            variant: 'destructive',
+          });
+        }
+      }
+    };
+
+    fetchProfile();
+  }, [user, supabase, toast]); // Add supabase and toast to dependencies
+  
   // Handle profile update
   const handleProfileUpdate = async () => {
+    if (!user) return; // Should not happen if user is on settings page, but good practice
+
     try {
       setLoading(true);
-      
-      // Update user metadata
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-          full_name: `${firstName} ${lastName}`.trim(),
-          updated_at: new Date().toISOString()
-        }
-      });
-      
+
+      const profileUpdate = {
+        id: user.id, // Link to the auth user
+        email: user.email, // Email is required in profiles table
+        first_name: firstName,
+        last_name: lastName,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Upsert data into the 'profiles' table
+      const { error } = await supabase
+        .from('profiles')
+        .upsert(profileUpdate, { onConflict: 'id' }) // Specify conflict column if needed, usually primary key 'id'
+        .select() // Optionally select to confirm write, not strictly needed for upsert
+        .single(); // Expect single row back
+
       if (error) throw error;
-      
+
       toast({
         title: 'Profile updated',
         description: 'Your profile information has been updated successfully.',

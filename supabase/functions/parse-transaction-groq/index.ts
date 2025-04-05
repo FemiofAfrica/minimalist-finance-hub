@@ -221,8 +221,9 @@ function useFallbackParser(text: string): Response {
         desc = desc.replace(amountMatch[0].trim(), '').trim();
     }
     desc = desc.replace(/(?:yesterday|today|last week|last month|on \\d{4}-\\d{2}-\\d{2})/i, '').trim();
-    // Capitalize only the first letter
-    fallbackData.description = desc.charAt(0).toUpperCase() + desc.slice(1);
+    // Force lowercase then capitalize first letter
+    const lowerDesc = desc.toLowerCase();
+    fallbackData.description = lowerDesc.charAt(0).toUpperCase() + lowerDesc.slice(1);
   } else {
     // Basic fallback: use the first few words, removing amount/date if possible
     let desc = text.split(" ").slice(0, 5).join(" ");
@@ -230,8 +231,9 @@ function useFallbackParser(text: string): Response {
       desc = desc.replace(amountMatch[0].trim(), "").trim();
     }
      desc = desc.replace(/(?:yesterday|today|last week|last month|on \\d{4}-\\d{2}-\\d{2})/i, '').trim();
-    // Capitalize only the first letter
-    fallbackData.description = desc ? desc.charAt(0).toUpperCase() + desc.slice(1) : "Unknown Transaction"; // Ensure not empty
+    // Force lowercase then capitalize first letter
+    const lowerDescElse = desc.toLowerCase();
+    fallbackData.description = desc ? lowerDescElse.charAt(0).toUpperCase() + lowerDescElse.slice(1) : "Unknown Transaction"; // Ensure not empty
   }
 
   // Determine Category Name
@@ -380,16 +382,18 @@ async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
         }
         // If parsing failed or type was wrong, validatedAmount remains 0
 
-        // Validate description and apply minimal capitalization
+        // Validate description and apply sentence case
         let validatedDescription = "Unknown Transaction";
         if (typeof parsedData.description === 'string' && parsedData.description.trim()) {
             const trimmedDesc = parsedData.description.trim();
-            validatedDescription = trimmedDesc.charAt(0).toUpperCase() + trimmedDesc.slice(1);
+            // Force lowercase then capitalize first letter
+            const lowerDesc = trimmedDesc.toLowerCase();
+            validatedDescription = lowerDesc.charAt(0).toUpperCase() + lowerDesc.slice(1);
         }
 
         const validatedData: LocalParsedTransaction = {
-            description: validatedDescription, // Use validated & minimally capitalized description
-            amount: validatedAmount, // Use the validated amount
+            description: validatedDescription, // Use validated & sentence-cased description
+            amount: validatedAmount,
             category_name: typeof parsedData.category_name === 'string' && parsedData.category_name.trim()
                 ? parsedData.category_name.trim()
                 : "Uncategorized",

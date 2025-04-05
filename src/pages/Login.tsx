@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,7 +47,7 @@ const Login = () => {
       <div className="w-full max-w-md space-y-6 px-8">
         <div className="text-center space-y-2">
           <div className="flex justify-center mb-6">
-            <img src="/assets/logo.svg" alt="Logo" className="h-12 w-12" />
+            <h1 className="text-4xl font-bold text-white">SayFin</h1>
           </div>
           <h2 className="text-2xl font-bold text-white">
             {isSignUp ? 'Create an account' : 'Welcome Back!'}
@@ -57,8 +56,6 @@ const Login = () => {
             Please enter your details to sign in to your account
           </p>
         </div>
-
-
 
         <form onSubmit={handleSubmit} className="space-y-4 bg-[#00695C] rounded-lg p-6">
           <div className="space-y-4">
@@ -114,13 +111,11 @@ const Login = () => {
                 </div>
               </>
             )}
-
           </div>
 
           <Button 
             type="submit" 
             className="w-full h-11 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent"
-
           >
             {isSignUp ? 'Sign Up' : 'Sign In'}
           </Button>

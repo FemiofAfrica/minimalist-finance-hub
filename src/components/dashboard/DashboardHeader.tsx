@@ -1,20 +1,79 @@
-
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { CurrencySelector } from "@/components/CurrencySelector";
+import { supabase } from '@/integrations/supabase/client';
 
 interface DashboardHeaderProps {
   userEmail?: string | null;
 }
 
+// List of greeting templates
+const GREETING_TEMPLATES = [
+  "Hope you're having a great day, {name}!",
+  "Good to see you again, {name}!",
+  "Welcome back, {name}!",
+  "Hello {name}, ready to manage your finances?",
+  "Hey {name}, let's check your dashboard!",
+  "Hi {name}, what's new?",
+  "Glad you're here, {name}!",
+];
+
 const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
-  const { signOut } = useAuth();
-  
+  const { user, signOut } = useAuth();
+  const [greeting, setGreeting] = useState('');
+  const [isLoadingGreeting, setIsLoadingGreeting] = useState(true);
+
+  useEffect(() => {
+    const generateGreeting = async () => {
+      if (!user) {
+        setGreeting('Welcome!');
+        setIsLoadingGreeting(false);
+        return;
+      }
+
+      setIsLoadingGreeting(true);
+      let nameToUse = 'there';
+
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('first_name')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error fetching profile for greeting:', error);
+          nameToUse = user.email?.split('@')[0] || 'there';
+        } else if (profile?.first_name) {
+          nameToUse = profile.first_name;
+        } else {
+          nameToUse = user.email?.split('@')[0] || 'there';
+        }
+
+      } catch (fetchError) {
+        console.error('Exception fetching profile:', fetchError);
+        nameToUse = user.email?.split('@')[0] || 'there';
+      }
+
+      const randomIndex = Math.floor(Math.random() * GREETING_TEMPLATES.length);
+      const selectedTemplate = GREETING_TEMPLATES[randomIndex];
+
+      const formattedGreeting = selectedTemplate.replace('{name}', nameToUse);
+      setGreeting(formattedGreeting);
+      setIsLoadingGreeting(false);
+    };
+
+    generateGreeting();
+  }, [user]);
+
   return (
     <header className="flex items-center justify-start gap-4">
       <div className="flex-1">
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50 text-left">Dashboard</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 text-left">Welcome back, {userEmail}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 text-left">
+          {isLoadingGreeting ? 'Loading greeting...' : greeting}
+        </p>
       </div>
       <CurrencySelector />
     </header>

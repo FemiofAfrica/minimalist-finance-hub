@@ -43,7 +43,6 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
   const { formatPossiblyConvertedCurrency, exchangeRates } = useCurrency();
   const [editedTransaction, setEditedTransaction] = useState({
     description: transaction.description ?? '',
-    name: transaction.name || transaction.description,
     amount: transaction.amount,
     category_name: transaction.category_name ?? '',
     category_type: transaction.category_type?.toLowerCase() || 'expense',
@@ -240,7 +239,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
               )}
             </div>
             <div className="flex flex-col">
-              <span className="truncate">{transaction.name || transaction.description}</span>
+              <span className="truncate">{transaction.description}</span>
               {transaction.notes && (
                 <span className="text-xs text-muted-foreground truncate">{transaction.notes}</span>
               )}
@@ -291,22 +290,6 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
             <DialogTitle>Edit Transaction</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Name
-              </Label>
-              <Input
-                id="name"
-                value={editedTransaction.name}
-                onChange={(e) => 
-                  setEditedTransaction({
-                    ...editedTransaction,
-                    name: e.target.value,
-                  })
-                }
-                className="col-span-3"
-              />
-            </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="description" className="text-right">
                 Description

@@ -71,7 +71,8 @@ export function DashboardSidebar() {
       <div className="flex-1">
         <div className="p-6">
           <Link to="/" className="flex items-center gap-2">
-            <img src="/assets/logo.svg" alt="SayFin Logo" className="h-6 w-6" />
+            {/* Remove the logo image */}
+            {/* <img src="/assets/logo.svg" alt="SayFin Logo" className="h-6 w-6" /> */}
             <span className="text-xl font-semibold">SayFin</span>
           </Link>
         </div>
@@ -185,7 +186,7 @@ export function DashboardSidebar() {
   }
   
   return (
-    <div className="hidden border-r bg-background w-64 h-[calc(100vh-20px)] overflow-hidden md:flex flex-col fixed top-0 left-0">
+    <div className="hidden border-r bg-secondary w-64 h-[calc(100vh-20px)] overflow-hidden md:flex flex-col fixed top-0 left-0">
       {navigation}
     </div>
   );

@@ -26,7 +26,6 @@ async function getUserId(): Promise<string> {
 }
 
 // --- Helper Function to Map Supabase Data to Application Type ---
-// [ Keep the mapSupabaseDataToTransaction function from previous version here ]
 function mapSupabaseDataToTransaction(dbData: any): Transaction {
     if (!dbData || typeof dbData !== 'object') {
         console.error("Invalid data received for mapping:", dbData);
@@ -35,8 +34,7 @@ function mapSupabaseDataToTransaction(dbData: any): Transaction {
     const accountsData = dbData.accounts;
     const categoriesData = dbData.categories;
     const categoryName = categoriesData?.category_name ?? 'Uncategorized';
-    const categoryTypeRaw = categoriesData?.category_type ?? dbData.type;
-    const categoryType = categoryTypeRaw?.toUpperCase() as "INCOME" | "EXPENSE" | "TRANSFER" | undefined ?? 'EXPENSE';
+    const categoryType = categoriesData?.category_type?.toUpperCase() as Transaction['category_type'] ?? (dbData.type === 'income' ? 'INCOME' : 'EXPENSE');
     const accountName = accountsData?.name ?? null;
     const amount = typeof dbData.amount === 'number' ? dbData.amount : parseFloat(String(dbData.amount ?? 0));
 
@@ -45,7 +43,6 @@ function mapSupabaseDataToTransaction(dbData: any): Transaction {
         user_id: dbData.user_id,
         account_id: dbData.account_id,
         category_id: dbData.category_id,
-        name: dbData.description ?? '',
         description: dbData.description ?? '',
         amount: isNaN(amount) ? 0 : amount,
         currency: dbData.currency,

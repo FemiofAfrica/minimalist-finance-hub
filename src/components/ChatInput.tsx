@@ -157,7 +157,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
 
       // --- Category Handling ---
       // Check if the category exists in the database
-      const categoryTypeLower = parsedData.category_type.toLowerCase();
+      const categoryTypeLower = parsedData.category_type.toLowerCase() as Database['public']['Enums']['transaction_type'];
       const { data: existingCategory, error: categoryError } = await supabase
         .from('categories')
         .select('category_id') // Only select the ID
@@ -227,8 +227,10 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       const transactionToInsert = {
         description: parsedData.description,
         amount: Number(parsedData.amount),
-        type: categoryTypeLower as Database['public']['Enums']['transaction_type'],
+        type: categoryTypeLower,
         category_id: categoryId as string,
+        category_name: parsedData.category_name,
+        category_type: parsedData.category_type,
         date: parsedData.date,
         user_id: userResponse.user.id,
         account_id: defaultAccount.account_id,

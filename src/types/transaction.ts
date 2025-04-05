@@ -1,4 +1,3 @@
-
 // Define the base transaction types
 export type TransactionType = "income" | "expense" | "transfer";
 
@@ -68,11 +67,22 @@ export interface TransactionInput {
   name?: string;
 }
 
-// Combine all interfaces using intersection types for better type handling
-export type Transaction = TransactionBase & {
-  type: TransactionType;
-  category_type?: "INCOME" | "EXPENSE" | "TRANSFER";
-} & Partial<TransactionAccountInfo> 
-  & Partial<TransactionCardInfo>
-  & Partial<TransactionCategoryInfo>
-  & Partial<TransactionLegacyInfo>;
+// Base Transaction interface - aligns closer to DB + needed UI fields
+export interface Transaction {
+  transaction_id: string;
+  user_id?: string | null; // Made optional as it might not always be needed client-side
+  account_id: string; 
+  category_id?: string | null;
+  description: string | null; // Use description as the primary field
+  amount: number;
+  currency: string;
+  date: string;
+  type: 'income' | 'expense' | 'transfer'; // Use the enum type
+  notes?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  // Fields derived from joins or needed for UI
+  account_name?: string | null; 
+  category_name?: string | null;
+  category_type?: "INCOME" | "EXPENSE" | "TRANSFER"; // Keep category_type if used
+}
