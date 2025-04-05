@@ -1,8 +1,8 @@
 // supabase/functions/send-subscription-reminders/index.ts
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 // Import Supabase client library (use Admin client for elevated access)
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, User } from "https://esm.sh/@supabase/supabase-js@2";
 // REMOVED: Resend import
 
 // Define CORS headers (adjust origin as needed for security)
@@ -13,18 +13,32 @@ const corsHeaders = {
 };
 
 // --- Interfaces (Optional but helpful for clarity) ---
+// Type for data selected from subscriptions table
+type SubscriptionSelect = {
+  subscription_id: string;
+  name: string;
+  amount: number;
+  next_billing_date: string; // YYYY-MM-DD
+  reminder_days: number;
+  user_id: string | null; // User ID might be null if there's an issue?
+}
+
+// Keep existing reminder info interface
 interface SubscriptionReminderInfo {
   subscription_id: string;
   name: string;
   amount: number;
   next_billing_date: string; // YYYY-MM-DD
   reminder_days: number;
-  user_id: string;
+  user_id: string; // Ensure user_id is non-null here
 }
 
 interface UserInfo {
   email?: string;
 }
+
+// Type for expected Brevo success/error shape in Promise.allSettled
+type BrevoResult = { messageId: string } | { error: unknown }; 
 
 // --- Main Function Logic ---
 serve(async (req: Request) => {
@@ -74,7 +88,8 @@ serve(async (req: Request) => {
       .from("subscriptions")
       .select("subscription_id, name, amount, next_billing_date, reminder_days, user_id")
       .eq("is_active", true)
-      .gt("reminder_days", 0);
+      .gt("reminder_days", 0)
+      .returns<SubscriptionSelect[]>();
 
     if (fetchError) {
       console.error("Error fetching subscriptions:", fetchError);
@@ -89,12 +104,16 @@ serve(async (req: Request) => {
     }
 
     console.log(`Fetched ${subscriptions.length} active subscriptions with reminders.`);
-    const emailsToSend: Promise<any>[] = [];
+    const emailsToSend: Promise<BrevoResult>[] = [];
     const usersToFetch = new Set<string>();
     const remindersDueToday: SubscriptionReminderInfo[] = [];
 
     // --- Filter Subscriptions Due for Reminder Today ---
-    subscriptions.forEach((sub) => {
+    subscriptions.forEach((sub: SubscriptionSelect) => {
+      if (!sub.user_id) {
+         console.warn(`Subscription ${sub.subscription_id} missing user_id, skipping.`);
+         return; 
+      }
       try {
         const nextBilling = new Date(sub.next_billing_date + "T00:00:00Z");
         const reminderDays = sub.reminder_days;
@@ -106,9 +125,7 @@ serve(async (req: Request) => {
         if (reminderDate.getTime() === today.getTime()) {
           console.log(`Subscription due for reminder: ${sub.name} (ID: ${sub.subscription_id})`);
           remindersDueToday.push(sub as SubscriptionReminderInfo);
-          if (sub.user_id) {
-            usersToFetch.add(sub.user_id);
-          }
+          usersToFetch.add(sub.user_id);
         }
       } catch (dateError) {
         console.error(`Error processing date for subscription ${sub.subscription_id}:`, dateError);
@@ -129,7 +146,7 @@ serve(async (req: Request) => {
        if (usersError) {
          console.error("Error fetching users:", usersError);
        } else {
-         usersData?.users.forEach(user => {
+         usersData?.users.forEach((user: User) => {
             if (usersToFetch.has(user.id) && user.email) {
               userEmailMap.set(user.id, user.email);
             }
@@ -183,8 +200,7 @@ serve(async (req: Request) => {
           },
           body: JSON.stringify(payload),
         })
-        .then(async (response) => {
-          // Check if response is ok (status 2xx)
+        .then(async (response): Promise<BrevoResult> => {
           if (!response.ok) {
             // Try to parse error details from Brevo
             let errorData = { status: response.status, statusText: response.statusText };
@@ -194,15 +210,21 @@ serve(async (req: Request) => {
             } catch (parseError) {
               // Ignore if response body isn't valid JSON
             }
-            throw errorData; // Throw an object containing error info
+            throw errorData;
           }
-          return response.json(); // Return Brevo's success response (e.g., { messageId: '...' })
+          const successData = await response.json();
+          return { messageId: successData.messageId || 'Unknown Success' };
         })
-        .catch(emailError => ({ // Catch fetch errors or thrown errors
-            subscription_id: sub.subscription_id,
-            user_id: sub.user_id,
-            error: emailError instanceof Error ? emailError.message : emailError // Store error message or object
-        }))
+        .catch(emailError => {
+            const errorObject = emailError instanceof Error ? { message: emailError.message } : emailError;
+            return { 
+                error: { 
+                    subscription_id: sub.subscription_id,
+                    user_id: sub.user_id,
+                    details: errorObject
+                }
+            } as BrevoResult;
+        })
       );
     });
 
@@ -213,13 +235,14 @@ serve(async (req: Request) => {
 
     results.forEach((result, index) => {
         const subInfo = remindersDueToday[index];
-        // Check if fulfilled AND if the resolved value doesn't contain our 'error' property
-        if (result.status === 'fulfilled' && !result.value?.error) {
+        if (result.status === 'fulfilled' && 'messageId' in result.value) {
             console.log(`Successfully sent reminder via Brevo for subscription ${subInfo.subscription_id} to user ${subInfo.user_id}. Response:`, result.value);
             successCount++;
         } else {
             failureCount++;
-            const errorReason = result.status === 'rejected' ? result.reason : result.value?.error;
+            const errorReason = result.status === 'rejected' 
+                ? result.reason 
+                : (result.value as { error: unknown })?.error;
             console.error(`Failed to send reminder via Brevo for subscription ${subInfo.subscription_id} to user ${subInfo.user_id}:`, errorReason);
         }
     });
@@ -233,7 +256,8 @@ serve(async (req: Request) => {
 
   } catch (error) {
     console.error("Error in send-subscription-reminders function:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: corsHeaders,
     });
