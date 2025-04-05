@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
@@ -99,7 +98,6 @@ const Index = () => {
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-8 pb-8">
-        <DashboardHeader userEmail={user?.email} />
         <StatCardsSection 
           totalBalance={dashboardData.totalBalance} 
           totalIncome={dashboardData.totalIncome} 

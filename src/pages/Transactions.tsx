@@ -5,7 +5,7 @@ import PaginatedTransactionsTable from "@/components/transactions/PaginatedTrans
 import { ArrowDownRight, ArrowUpRight, Calendar, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import PageLayout from "@/components/dashboard/PageLayout";
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
 
 // Define the Transaction interface reflecting the actual DB schema
 interface Transaction {
@@ -117,7 +117,7 @@ const Transactions = () => {
   }, [toast]);
   
   return (
-    <PageLayout>
+    <DashboardLayout>
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Transactions</h1>
         <p className="text-muted-foreground">Manage and review all your financial transactions.</p>
@@ -165,7 +165,7 @@ const Transactions = () => {
         <h2 className="text-xl font-bold mb-4">All Transactions</h2>
         <PaginatedTransactionsTable />
       </div>
-    </PageLayout>
+    </DashboardLayout>
   );
 };
 

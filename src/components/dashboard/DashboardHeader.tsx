@@ -3,6 +3,10 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { CurrencySelector } from "@/components/CurrencySelector";
 import { supabase } from '@/integrations/supabase/client';
+import { Menu } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useSidebar } from "@/components/ui/sidebar";
+import { useLocation } from 'react-router-dom';
 
 interface DashboardHeaderProps {
   userEmail?: string | null;
@@ -23,6 +27,34 @@ const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
   const { user, signOut } = useAuth();
   const [greeting, setGreeting] = useState('');
   const [isLoadingGreeting, setIsLoadingGreeting] = useState(true);
+  const isMobile = useIsMobile();
+  const { toggleSidebar } = useSidebar();
+  const location = useLocation();
+
+  // Function to get page title from path
+  const getPageTitle = (pathname: string): string => {
+    switch (pathname) {
+      case '/':
+        return 'Dashboard';
+      case '/transactions':
+        return 'Transactions';
+      case '/subscriptions':
+        return 'Subscriptions';
+      case '/reports':
+        return 'Reports';
+      case '/settings':
+        return 'Settings';
+      // Add other paths as needed
+      default:
+        // Attempt to capitalize the path segment
+        const pathSegment = pathname.substring(1).split('/')[0];
+        return pathSegment
+          ? pathSegment.charAt(0).toUpperCase() + pathsegment.slice(1)
+          : 'Page';
+    }
+  };
+
+  const pageTitle = getPageTitle(location.pathname);
 
   useEffect(() => {
     const generateGreeting = async () => {
@@ -68,15 +100,30 @@ const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
   }, [user]);
 
   return (
-    <header className="flex items-center justify-start gap-4">
-      <div className="flex-1">
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50 text-left">Dashboard</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 text-left">
+    <>
+      {/* Mobile Menu Button */}
+      {isMobile && (
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={toggleSidebar}
+          className="shrink-0 mr-4"
+        >
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Toggle Menu</span>
+        </Button>
+      )}
+      {/* Main Header Content */}
+      <div className="flex-1 min-w-0">
+        <h1 className="text-xl md:text-2xl font-semibold text-slate-900 dark:text-slate-50 text-left truncate">
+          {pageTitle}
+        </h1>
+        <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 text-left truncate">
           {isLoadingGreeting ? 'Loading greeting...' : greeting}
         </p>
       </div>
       <CurrencySelector />
-    </header>
+    </>
   );
 };
 

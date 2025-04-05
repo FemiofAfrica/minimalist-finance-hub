@@ -772,6 +772,12 @@ const Budgeting = () => {
                <Button>Setup Budget Wizard</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[800px]">
+              <DialogHeader>
+                <DialogTitle>Budget Setup Wizard</DialogTitle>
+                <DialogDescription>
+                  Let's set up your budget categories and allocations based on your income and spending patterns.
+                </DialogDescription>
+              </DialogHeader>
                <BudgetingWizard 
                  onComplete={handleWizardComplete} 
                  monthlyIncome={monthlyIncome}

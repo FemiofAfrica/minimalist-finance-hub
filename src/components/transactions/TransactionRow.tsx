@@ -4,7 +4,7 @@ import { Transaction } from "@/types/transaction";
 import { formatDate } from "@/utils/formatters";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -288,6 +288,9 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit Transaction</DialogTitle>
+            <DialogDescription>
+              Make changes to your transaction details below.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
@@ -477,10 +480,10 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this transaction? This action cannot be undone.
+            </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <p>Are you sure you want to delete this transaction? This action cannot be undone.</p>
-          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
               Cancel

@@ -14,10 +14,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 const links = [
   { 
@@ -68,14 +69,14 @@ export function DashboardSidebar() {
   
   const navigation = (
     <div className="flex h-full flex-col">
-      <div className="flex-1">
-        <div className="p-6">
-          <Link to="/" className="flex items-center gap-2">
-            {/* Remove the logo image */}
-            {/* <img src="/assets/logo.svg" alt="SayFin Logo" className="h-6 w-6" /> */}
-            <span className="text-xl font-semibold">SayFin</span>
-          </Link>
-        </div>
+      <div className="p-6">
+        <Link to="/" className="flex items-center gap-2">
+          {/* Remove the logo image */}
+          {/* <img src="/assets/logo.svg" alt="SayFin Logo" className="h-6 w-6" /> */}
+          <span className="text-xl font-semibold">SayFin</span>
+        </Link>
+      </div>
+      <div className="flex flex-1 flex-col overflow-hidden">
         <ScrollArea className="flex-1 px-6">
           <nav className="flex flex-col gap-1">
             {links.map((link) => (
@@ -93,101 +94,39 @@ export function DashboardSidebar() {
             ))}
           </nav>
         </ScrollArea>
-      </div>
-      <div className="border-t border-border p-3">
-        <div className="flex flex-col gap-2">
-          <Button 
-            className="w-full justify-start" 
-            variant="ghost" 
-            onClick={toggleTheme} 
-            size="sm"
-          >
-            {theme === "light" ? (
-              <>
-                <Moon className="mr-2 h-4 w-4" />
-                Dark Mode
-              </>
-            ) : (
-              <>
-                <Sun className="mr-2 h-4 w-4" />
-                Light Mode
-              </>
-            )}
-          </Button>
-          <Button className="w-full justify-start" variant="ghost" onClick={signOut} size="sm">
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
+        <div className="border-t border-border p-3">
+          <div className="flex flex-col gap-2">
+            <Button 
+              className="w-full justify-start" 
+              variant="ghost" 
+              onClick={toggleTheme} 
+              size="sm"
+            >
+              {theme === "light" ? (
+                <>
+                  <Moon className="mr-2 h-4 w-4" />
+                  Dark Mode
+                </>
+              ) : (
+                <>
+                  <Sun className="mr-2 h-4 w-4" />
+                  Light Mode
+                </>
+              )}
+            </Button>
+            <Button className="w-full justify-start" variant="ghost" onClick={signOut} size="sm">
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   );
   
-  if (isMobile) {
-    return (
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button size="sm" variant="outline">
-            Menu
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="p-0">
-          <SheetHeader className="p-6 text-left">
-            <SheetTitle>SayFin</SheetTitle>
-          </SheetHeader>
-          <Separator />
-          <ScrollArea className="h-[calc(100vh-10rem)]">
-            <nav className="flex flex-col gap-1 p-4">
-              {links.map((link) => (
-                <Button
-                  key={link.href}
-                  variant={location.pathname === link.href ? "secondary" : "ghost"}
-                  className="justify-start hover:bg-primary hover:text-primary-foreground"
-                  asChild
-                >
-                  <Link to={link.href}>
-                    {link.icon}
-                    {link.label}
-                  </Link>
-                </Button>
-              ))}
-            </nav>
-          </ScrollArea>
-          <Separator />
-          <div className="p-4">
-            <div className="flex flex-col gap-2">
-              <Button 
-                className="w-full justify-start" 
-                variant="ghost" 
-                onClick={toggleTheme} 
-                size="sm"
-              >
-                {theme === "light" ? (
-                  <>
-                    <Moon className="mr-2 h-4 w-4" />
-                    Dark Mode
-                  </>
-                ) : (
-                  <>
-                    <Sun className="mr-2 h-4 w-4" />
-                    Light Mode
-                  </>
-                )}
-              </Button>
-              <Button className="w-full justify-start" variant="ghost" onClick={signOut} size="sm">
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-    );
-  }
-  
   return (
-    <div className="hidden border-r bg-secondary w-64 h-[calc(100vh-20px)] overflow-hidden md:flex flex-col fixed top-0 left-0">
+    <Sidebar>
       {navigation}
-    </div>
+    </Sidebar>
   );
 }

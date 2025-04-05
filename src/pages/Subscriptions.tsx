@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchSubscriptions, deleteSubscription, convertSubscriptionToTransaction, createSubscription, updateSubscription, getUpcomingSubscriptions } from '@/services/subscriptionService';
 import { Subscription, SubscriptionFrequency } from '@/types/subscription';
-import PageLayout from '@/components/dashboard/PageLayout';
+import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { formatNaira } from '@/utils/formatters';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -459,23 +459,25 @@ const SubscriptionsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <PageLayout>
-        <div className="flex-1 p-8">
-          <h1 className="text-2xl font-bold mb-6">Subscriptions</h1>
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      <DashboardLayout>
+        <div className="container mx-auto p-4 md:p-6">
+          <div className="flex-1 p-8">
+            <h1 className="text-2xl font-bold mb-6">Subscriptions</h1>
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+            </div>
           </div>
         </div>
-      </PageLayout>
+      </DashboardLayout>
     );
   }
 
   return (
-    <PageLayout>
-      <div className="flex-1 p-8">
+    <DashboardLayout>
+      <div className="container mx-auto p-4 md:p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Subscriptions</h1>
-          <Button onClick={handleAddSubscription}>
+          <Button onClick={handleAddSubscription} className="flex items-center">
             <PlusCircle className="mr-2 h-4 w-4" /> Add Subscription
           </Button>
         </div>
@@ -1066,7 +1068,7 @@ const SubscriptionsPage: React.FC = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </PageLayout>
+    </DashboardLayout>
   );
 };
 
