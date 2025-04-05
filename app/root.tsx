@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import {
   Links,
   LiveReload,
@@ -13,8 +12,9 @@ import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import ErrorBoundaryComponent from "@/components/ErrorBoundary";
 import stylesheet from "@/styles/tailwind.css";
 import { Toaster } from "@/components/ui/toaster";
-import { injectSpeedInsights } from '@vercel/speed-insights';
 import React from 'react';
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 export const links = () => [
   { rel: "stylesheet", href: stylesheet },
@@ -22,10 +22,6 @@ export const links = () => [
 ];
 
 export default function App() {
-  useEffect(() => {
-    injectSpeedInsights();
-  }, []);
-
   return (
     <html lang="en">
       <head>
@@ -48,6 +44,8 @@ export default function App() {
             </CurrencyProvider>
           </AuthProvider>
         </ThemeProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
