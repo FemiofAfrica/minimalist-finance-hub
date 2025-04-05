@@ -171,9 +171,9 @@ function useFallbackParser(text: string): Response {
   // --- Regex Patterns for Extraction ---
   const patterns = {
     // Capture description (more robust pattern)
-    description: /(?:for|on|at|:|bought|paid|spent|received)\\s+(.+?)(?:\\s+(?:₦|\\$|[\\d.,]+)|yesterday|today|last week|last month|$)/i,
+    description: /(?:for|on|at|:|bought|paid|spent|received)\\s+(.+?)(?:\\s+(?:₦|\\$|\d+(?:\.\d{1,2})?)|yesterday|today|last week|last month|$)/i,
     // Capture amount, allowing for currency symbols (optional) and commas/dots
-    amount: /[₦$]?\\s*(\\d+(?:[,.]\\d{1,2})?)/,
+    amount: /(\d+(?:\.\d{1,2})?)/, // Simplified pattern - focusing on digits and optional dot+digits
     // Keywords indicating income
     income: /(?:received|earned|got paid|salary|bonus|gift|refund|income|deposit)/i,
     // Keywords indicating expense (used if income keywords aren't found)
@@ -201,9 +201,13 @@ function useFallbackParser(text: string): Response {
   // --- Extraction Logic ---
   // Extract Amount
   const amountMatch = text.match(patterns.amount);
+  console.log("Fallback Parser - Amount Match:", amountMatch); // DEBUG LOG
   if (amountMatch && amountMatch[1]) {
     // Remove commas and parse as float, ensure positive
     fallbackData.amount = Math.abs(parseFloat(amountMatch[1].replace(/,/g, "")));
+    console.log("Fallback Parser - Extracted Amount:", fallbackData.amount); // DEBUG LOG
+  } else {
+    console.log("Fallback Parser - Amount pattern did not match or capture group 1 was empty.");
   }
 
   // Determine Category Type (Income/Expense)
@@ -213,28 +217,53 @@ function useFallbackParser(text: string): Response {
     fallbackData.category_type = "EXPENSE";
   } // Defaults to EXPENSE if neither is strongly indicated
 
-  // Extract Description
-  const descriptionMatch = text.match(patterns.description);
-  if (descriptionMatch && descriptionMatch[1]) {
-    let desc = descriptionMatch[1].trim();
-    if (amountMatch && amountMatch[0]) {
-        desc = desc.replace(amountMatch[0].trim(), '').trim();
+  // --- Refactored Description Extraction ---
+  let textWithoutAmountAndDate = text;
+  let matchedDateKeyword = "";
+
+  // Remove Amount
+  if (amountMatch && amountMatch[0]) {
+    textWithoutAmountAndDate = textWithoutAmountAndDate.replace(amountMatch[0], "").trim();
+    console.log("Fallback Parser - Text after removing amount:", textWithoutAmountAndDate); // DEBUG LOG
+  }
+
+  // Identify and Remove Date Keyword
+  const dateKeywords = ["yesterday", "today", "last week", "last month"];
+  for (const keyword of dateKeywords) {
+    const regex = new RegExp(`\\b${keyword}\\b`, 'i'); // Match whole word, case-insensitive
+    if (regex.test(textWithoutAmountAndDate)) {
+      matchedDateKeyword = keyword; // Store the keyword if needed later, though date is already parsed
+      textWithoutAmountAndDate = textWithoutAmountAndDate.replace(regex, "").trim();
+      console.log(`Fallback Parser - Text after removing date keyword '${keyword}':`, textWithoutAmountAndDate); // DEBUG LOG
+      break; // Stop after finding the first keyword
     }
-    desc = desc.replace(/(?:yesterday|today|last week|last month|on \\d{4}-\\d{2}-\\d{2})/i, '').trim();
-    // Force lowercase then capitalize first letter
-    const lowerDesc = desc.toLowerCase();
+  }
+  // Also attempt to remove explicit date format if present and wasn't part of amount
+   const dateRegex = /(\d{4})-(\d{2})-(\d{2})/;
+   if (dateRegex.test(textWithoutAmountAndDate)) {
+       textWithoutAmountAndDate = textWithoutAmountAndDate.replace(dateRegex, "").trim();
+       console.log("Fallback Parser - Text after removing explicit date:", textWithoutAmountAndDate); // DEBUG LOG
+   }
+
+
+  // --- Final Description Assignment from Cleaned Text ---
+  let finalDesc = textWithoutAmountAndDate.trim();
+  console.log("Fallback Parser - Cleaned text before final processing:", finalDesc); // DEBUG LOG
+
+  // Remove common trailing keywords/prepositions that might be left after cleaning
+  const trailingKeywordsRegex = /\s+(?:at|for|on|paid|spent|bought|received)$/i;
+  finalDesc = finalDesc.replace(trailingKeywordsRegex, "").trim();
+  console.log("Fallback Parser - Cleaned text after removing trailing keywords:", finalDesc); // DEBUG LOG
+
+  // Capitalize
+  if (finalDesc) {
+    const lowerDesc = finalDesc.toLowerCase();
     fallbackData.description = lowerDesc.charAt(0).toUpperCase() + lowerDesc.slice(1);
   } else {
-    // Basic fallback: use the first few words, removing amount/date if possible
-    let desc = text.split(" ").slice(0, 5).join(" ");
-    if (amountMatch && amountMatch[0]) {
-      desc = desc.replace(amountMatch[0].trim(), "").trim();
-    }
-     desc = desc.replace(/(?:yesterday|today|last week|last month|on \\d{4}-\\d{2}-\\d{2})/i, '').trim();
-    // Force lowercase then capitalize first letter
-    const lowerDescElse = desc.toLowerCase();
-    fallbackData.description = desc ? lowerDescElse.charAt(0).toUpperCase() + lowerDescElse.slice(1) : "Unknown Transaction"; // Ensure not empty
+      // If somehow everything got removed, use default
+       fallbackData.description = "Unknown Transaction";
   }
+  console.log("Fallback Parser - Final Description Assigned:", fallbackData.description); // DEBUG LOG
 
   // Determine Category Name
   for (const category of patterns.categories) {
@@ -278,7 +307,7 @@ async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
     2. 'amount' MUST be a positive number (integer or float). Do not include currency symbols.
     3. 'category_type' MUST be exactly "INCOME" or "EXPENSE". Determine this based on keywords like 'spent', 'paid', 'bought' (EXPENSE) or 'received', 'salary', 'deposit' (INCOME). Default to EXPENSE if unsure.
     4. 'category_name' should be one of the suggested categories if possible. Use 'Utilities' for electricity, water, internet, phone bills, airtime/data recharge. Use 'Transport' for fuel, ride-sharing, public transit. Use 'Shopping' for general goods, clothes, electronics. Use 'Insurance' for premium payments. If unsure, use a sensible alternative or 'Uncategorized'.
-    5. 'description' should be concise. Extract the core item/service, omitting generic phrases like 'payment for', 'spent on', 'bought at' unless essential for clarity. Do not include dates (like 'yesterday') in the description. Capitalize only the first letter unless it's a proper noun.
+    5. 'description' should be concise. Extract the core item/service. Omit generic phrases ('payment for', 'spent on', 'bought at') and implied actions ('renewal', 'charge', 'fee', 'payment') unless essential for clarity. Do not include dates ('yesterday'). Capitalize only the first letter unless it's a proper noun.
     6. DO NOT include a 'date' field in the JSON output.
 
     EXAMPLES:
@@ -293,6 +322,9 @@ async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
 
     Text: "Bought airtime recharge online 1000 NGN"
     JSON: { "description": "Airtime recharge online", "amount": 1000.00, "category_name": "Utilities", "category_type": "EXPENSE" }
+
+    Text: "Google One subscription renewal 19.99"
+    JSON: { "description": "Google One subscription", "amount": 19.99, "category_name": "Entertainment", "category_type": "EXPENSE" }
 
     Transaction Text: "${text}"
   `;
@@ -352,23 +384,40 @@ async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
 
     // Nested try-catch for parsing and validation of the successful response
     try {
-        // Clean up potential markdown code blocks
-        const cleanContent = rawContent.includes('```json')
-            ? rawContent.split('```json')[1].split('```')[0].trim()
-            : rawContent.includes('```')
-                ? rawContent.split('```')[1].split('```')[0].trim()
-                : rawContent.trim(); // Trim whitespace regardless
+        // Step 1: Parse the entire Groq API response
+        const groqResponseObject = JSON.parse(rawContent);
 
-        // Parse the JSON content from the API response
+        // Step 2: Extract the nested content string
+        const contentString = groqResponseObject?.choices?.[0]?.message?.content;
+
+        if (!contentString || typeof contentString !== 'string') {
+            console.error("Error: Groq response content string not found or invalid.", groqResponseObject);
+            throw new Error("Groq response content string not found or invalid.");
+        }
+        console.log("Groq Parser - Extracted Content String:", contentString); // DEBUG LOG
+
+        // Step 3: Clean up potential markdown code blocks from the *content string*
+        const cleanContent = contentString.includes('```json')
+            ? contentString.split('```json')[1].split('```')[0].trim()
+            : contentString.includes('```')
+                ? contentString.split('```')[1].split('```')[0].trim()
+                : contentString.trim(); // Trim whitespace regardless
+         console.log("Groq Parser - Cleaned Content String:", cleanContent); // DEBUG LOG
+
+        // Step 4: Parse the *cleaned content string* into the transaction data object
         const parsedData: Partial<LocalParsedTransaction> = JSON.parse(cleanContent);
+        console.log("Groq Parser - Parsed final transaction data:", parsedData); // Renamed previous log
 
         // --- Validate and structure the data ---
 
         // Validate Amount: Check if number or string, parse if string, ensure positive
         let validatedAmount = 0;
+        console.log(`Groq Parser - Checking amount: Type=${typeof parsedData.amount}, Value=${parsedData.amount}`); // DEBUG LOG
         if (typeof parsedData.amount === 'number') {
             validatedAmount = Math.abs(parsedData.amount); // Ensure positive
+            console.log("Groq Parser - Amount validated (Number):", validatedAmount); // DEBUG LOG
         } else if (typeof parsedData.amount === 'string') {
+            console.log("Groq Parser - Amount is string, attempting parse:", parsedData.amount); // DEBUG LOG
             // *** FIX START ***
             // Assign to a new variable after type check to ensure TS narrows the type correctly.
             const amountString: string = parsedData.amount;
@@ -378,17 +427,26 @@ async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
             const parsedFloat = parseFloat(numericString);
             if (!isNaN(parsedFloat)) {
                 validatedAmount = Math.abs(parsedFloat); // Ensure positive
+                console.log("Groq Parser - Amount validated (String Parsed):", validatedAmount); // DEBUG LOG
             }
         }
         // If parsing failed or type was wrong, validatedAmount remains 0
+        if (validatedAmount === 0 && parsedData.amount !== 0) {
+             console.warn("Groq Parser - Amount validation failed or resulted in 0, original was:", parsedData.amount); // DEBUG LOG
+        }
 
         // Validate description and apply sentence case
         let validatedDescription = "Unknown Transaction";
+        console.log(`Groq Parser - Checking description: Type=${typeof parsedData.description}, Value='${parsedData.description}'`); // DEBUG LOG
         if (typeof parsedData.description === 'string' && parsedData.description.trim()) {
             const trimmedDesc = parsedData.description.trim();
             // Force lowercase then capitalize first letter
             const lowerDesc = trimmedDesc.toLowerCase();
             validatedDescription = lowerDesc.charAt(0).toUpperCase() + lowerDesc.slice(1);
+            console.log("Groq Parser - Description validated:", validatedDescription); // DEBUG LOG
+        }
+         if (validatedDescription === "Unknown Transaction" && parsedData.description) {
+             console.warn("Groq Parser - Description validation failed, original was:", parsedData.description); // DEBUG LOG
         }
 
         const validatedData: LocalParsedTransaction = {
@@ -456,6 +514,9 @@ async function serve(req: Request): Promise<Response> {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Read API Key from environment variables (secure method)
+  const apiKey = Deno.env.get("GROQ_API_KEY");
+
   let text: string | undefined; // Define text variable outside try block
 
   try {
@@ -469,7 +530,6 @@ async function serve(req: Request): Promise<Response> {
 
     // Parse the request body
     const requestData = await req.json();
-    const { apiKey } = requestData;
     text = requestData.text; // Assign text here
 
     // Validate required parameters

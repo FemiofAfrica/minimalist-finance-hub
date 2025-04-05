@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Subscription, SubscriptionProvider, SubscriptionFrequency } from "@/types/subscription";
+import { createTransaction } from "./transactionService"; // Import createTransaction
 
 // Fetch all subscriptions for the current user
 export const fetchSubscriptions = async (): Promise<Subscription[]> => {
@@ -124,6 +125,150 @@ export const createSubscription = async (subscription: Omit<Subscription, 'subsc
     }
     
     console.log("Created subscription:", data);
+
+    // --- BEGIN: Auto-create initial transaction ---
+    // Run this asynchronously in the background
+    (async () => {
+      try {
+        const userId = user.id;
+        // 1. Fetch the account named 'Default Account'
+        const { data: defaultAccount, error: defaultAccountError } = await supabase
+          .from('accounts')
+          .select('account_id, currency') // Select currency too
+          .eq('user_id', userId)
+          .eq('name', 'Default Account') // Find account by name
+          .limit(1)
+          .maybeSingle(); // Use maybeSingle as there might be no default
+
+        if (defaultAccountError) {
+          console.error("Error fetching default account:", defaultAccountError);
+          return; // Don't proceed if fetching failed
+        }
+
+        if (defaultAccount && defaultAccount.account_id) {
+          console.log(`Found default account ${defaultAccount.account_id} for auto-creating transaction.`);
+          // 2. Prepare transaction data
+          const transactionInput = {
+            account_id: defaultAccount.account_id,
+            amount: data.amount, // Amount from the subscription
+            currency: defaultAccount.currency || 'NGN', // Use account currency or default
+            type: data.category_type?.toLowerCase() === 'income' ? 'income' : 'expense', // Match subscription type (default expense)
+            date: data.next_billing_date, // Use the first billing date as the transaction date
+            description: data.name, // Use subscription name as description
+            category_id: data.category_id,
+            notes: "Automatically created for new subscription.",
+            subscription_id: data.subscription_id // Link it immediately
+            // user_id is added by createTransaction
+          };
+
+          // 3. Create the transaction
+          console.log("Attempting to auto-create transaction:", transactionInput);
+          await createTransaction(transactionInput); // Call the imported function
+          console.log("Successfully auto-created initial transaction.");
+
+        } else {
+          console.log("No default account found, skipping auto-creation of initial transaction.");
+        }
+      } catch (autoCreateError) {
+        console.error("Error during auto-creation of initial transaction:", autoCreateError);
+      }
+    })();
+    // --- END: Auto-create initial transaction ---
+
+    // --- BEGIN: Link existing transactions ---
+    // Run this asynchronously in the background, don't block the response
+    (async () => {
+      try {
+        const newSubscriptionId = data.subscription_id;
+        const subscriptionName = data.name;
+        const userId = user.id; // Already fetched earlier
+
+        if (!newSubscriptionId || !subscriptionName || !userId) {
+          console.error("Missing data needed for transaction linking.", { newSubscriptionId, subscriptionName, userId });
+          return; // Exit if essential data is missing
+        }
+
+        console.log(`Starting background transaction linking for subscription: ${subscriptionName} (ID: ${newSubscriptionId})`);
+
+        // 1. Define keywords (simple split, lowercase, ignore short words)
+        const keywords = subscriptionName
+          .toLowerCase()
+          .split(/\s+/)
+          .filter(word => word.length > 2); // Ignore words with 2 or fewer characters
+        
+        if (keywords.length === 0) {
+          console.log("No suitable keywords found for linking, skipping.");
+          return;
+        }
+        console.log("Linking keywords:", keywords);
+
+        // 2. Fetch unlinked transactions for the user
+        const { data: transactions, error: fetchError } = await supabase
+          .from('transactions')
+          .select('transaction_id, description')
+          .eq('user_id', userId)
+          .is('subscription_id', null);
+
+        if (fetchError) {
+          console.error('Error fetching transactions for linking:', fetchError);
+          return; // Exit if fetching fails
+        }
+
+        if (!transactions || transactions.length === 0) {
+          console.log("No unlinked transactions found for user.");
+          return;
+        }
+
+        console.log(`Found ${transactions.length} unlinked transactions to check.`);
+        
+        // 3. Loop and update matching transactions
+        let linkedCount = 0;
+        const updates: Promise<any>[] = [];
+
+        for (const transaction of transactions) {
+          if (transaction.description) {
+            const lowerDescription = transaction.description.toLowerCase();
+            // Check if description contains ALL keywords
+            const isMatch = keywords.every(keyword => lowerDescription.includes(keyword));
+
+            if (isMatch) {
+              console.log(`Found match: Transaction ID ${transaction.transaction_id} matches keywords.`);
+              linkedCount++;
+              // Add update promise to the list
+              updates.push(
+                supabase
+                  .from('transactions')
+                  .update({ 
+                    subscription_id: newSubscriptionId,
+                    amount: data.amount // Update amount to match subscription
+                   })
+                  .eq('transaction_id', transaction.transaction_id)
+              );
+            }
+          }
+        }
+
+        // 4. Execute all updates in parallel
+        if (updates.length > 0) {
+          console.log(`Attempting to link ${linkedCount} transactions...`);
+          const results = await Promise.allSettled(updates);
+          results.forEach((result, index) => {
+            if (result.status === 'rejected') {
+              console.error(`Failed to update transaction ${transactions[index].transaction_id}:`, result.reason);
+            }
+          });
+          console.log(`Finished linking attempts for ${linkedCount} transactions.`);
+        } else {
+            console.log("No matching transactions found to link.");
+        }
+
+      } catch (linkError) {
+        // Log errors but don't throw to avoid breaking the main function flow
+        console.error('Error during background transaction linking:', linkError);
+      }
+    })();
+    // --- END: Link existing transactions ---
+
     return {
       ...data,
       frequency: data.frequency as SubscriptionFrequency

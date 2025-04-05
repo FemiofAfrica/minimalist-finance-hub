@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Transaction } from "@/types/transaction";
 
@@ -19,8 +18,7 @@ export const searchTransactionsByDescription = async (query: string): Promise<Tr
       .from('transactions')
       .select(`
         *,
-        accounts:account_id(account_name),
-        cards:card_id(card_name)
+        accounts:account_id(account_name)
       `)
       .ilike('description', `%${query}%`)
       .order('date', { ascending: false })
@@ -40,15 +38,18 @@ export const searchTransactionsByDescription = async (query: string): Promise<Tr
     const enrichedTransactions = transactionsData.map(transaction => {
       const processedTransaction: Transaction = {
         ...transaction,
+        transaction_id: transaction.transaction_id,
+        user_id: transaction.user_id,
+        account_id: transaction.account_id,
+        amount: transaction.amount,
+        currency: transaction.currency,
+        date: transaction.date,
+        type: transaction.type,
       };
       
       // Add account and card name information if available
       if (transaction.accounts) {
         processedTransaction.account_name = transaction.accounts.account_name;
-      }
-      
-      if (transaction.cards) {
-        processedTransaction.card_name = transaction.cards.card_name;
       }
       
       return processedTransaction;

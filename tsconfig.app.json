@@ -5,6 +5,7 @@
     "lib": ["ES2020", "DOM", "DOM.Iterable", "WebWorker"],
     "module": "ESNext",
     "skipLibCheck": true,
+    "types": ["vite/client"],
 
     /* Bundler mode */
     "moduleResolution": "bundler",
@@ -26,5 +27,5 @@
       "@/*": ["./app/*"]
     }
   },
-  "include": ["app", "app/types/**/*.d.ts"]
+  "include": ["app", "app/types/**/*.d.ts", "src"]
 }

@@ -1,4 +1,5 @@
 import { Groq } from 'groq-sdk';
+import { Transaction } from '@/types/transaction';
 
 // Initialize Groq client with API key
 const apiKey = import.meta.env.VITE_GROQ_API_KEY;
@@ -34,7 +35,7 @@ export async function analyzeBudgetGoals({
   targetAmount: number;
   targetDate: string;
   monthlyIncome: number;
-  transactions: any[];
+  transactions: Transaction[];
 }) {
   // If API key is not configured or client initialization failed, return default response
   if (!apiKey || !groq) {
