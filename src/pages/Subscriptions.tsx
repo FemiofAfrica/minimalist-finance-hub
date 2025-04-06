@@ -475,7 +475,8 @@ const SubscriptionsPage: React.FC = () => {
   return (
     <DashboardLayout>
       <div className="container mx-auto py-6">
-        <div className="grid gap-4 md:grid-cols-3 mb-6">
+        {/* Stats Cards */}
+        <div className="grid gap-4 md:grid-cols-3 mb-8">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Total Monthly Cost</CardTitle>
@@ -508,14 +509,18 @@ const SubscriptionsPage: React.FC = () => {
           </Card>
         </div>
         
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mb-6">
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="active">Active</TabsTrigger>
-            <TabsTrigger value="inactive">Inactive</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* Filter and Actions */}
+        <div className="flex flex-col space-y-4 mb-8">
+          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full max-w-md grid-cols-3 mx-auto">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="active">Active</TabsTrigger>
+              <TabsTrigger value="inactive">Inactive</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
         
+        {/* Subscription List */}
         {Object.keys(subscriptionsByCategory).length === 0 ? (
           <div className="text-center py-12">
             <h3 className="text-lg font-medium text-gray-500">No subscriptions found</h3>
@@ -527,7 +532,12 @@ const SubscriptionsPage: React.FC = () => {
         ) : (
           Object.entries(subscriptionsByCategory).map(([category, subs]) => (
             <div key={category} className="mb-8">
-              <h2 className="text-xl font-semibold mb-4">{category}</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">SUBSCRIPTIONS</h2>
+                <Button onClick={handleAddSubscription} className="bg-green-600 hover:bg-green-700">
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Subscription
+                </Button>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {subs.map(subscription => {
                   const formatFrequency = (freq: string) => freq.charAt(0) + freq.slice(1).toLowerCase();

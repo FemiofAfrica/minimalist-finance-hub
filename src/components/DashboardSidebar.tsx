@@ -9,7 +9,8 @@ import {
   Wallet,
   PiggyBank,
   Moon,
-  Sun
+  Sun,
+  Target
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -50,9 +51,9 @@ const links = [
   //   icon: <PiggyBank className="mr-2 h-4 w-4" />
   // },
   { 
-    href: "/reports", 
-    label: "Reports", 
-    icon: <BookOpenText className="mr-2 h-4 w-4" />
+    href: "/insights",
+    label: "Insights",
+    icon: <Target className="mr-2 h-4 w-4" />
   },
   { 
     href: "/settings", 

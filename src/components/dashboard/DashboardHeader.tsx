@@ -40,8 +40,8 @@ const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
         return 'Transactions';
       case '/subscriptions':
         return 'Subscriptions';
-      case '/reports':
-        return 'Reports';
+      case '/insights':
+        return 'Insights';
       case '/settings':
         return 'Settings';
       // Add other paths as needed

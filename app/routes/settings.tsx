@@ -38,7 +38,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const firstName = user.user_metadata?.first_name || null;
 
   // Return the authenticated user along with headers
-  return json({
+  return json({ 
     email: user.email,
     firstName: user.user_metadata?.first_name || '',
     lastName: user.user_metadata?.last_name || '',
@@ -50,17 +50,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   console.log("🚀 Starting settings action...");
   try {
-    const response = new Response();
+  const response = new Response();
 
     // Initialize Supabase client with error boundary
     let supabase;
     try {
       console.log("📡 Initializing Supabase client...");
       supabase = createServerClient(
-        process.env.SUPABASE_URL!,
-        process.env.SUPABASE_ANON_KEY!,
-        { request, response }
-      );
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+    { request, response }
+  );
       console.log("✅ Supabase client initialized");
     } catch (initError) {
       console.error("❌ Failed to initialize Supabase client:", initError);
@@ -86,7 +86,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     // Process form data
     console.log("📝 Processing form data...");
-    const formData = await request.formData();
+  const formData = await request.formData();
     const firstName = formData.get("firstName") as string;
     const lastName = formData.get("lastName") as string;
 
@@ -157,9 +157,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           .insert({
             id: user.id,
             email: user.email,
-            first_name: firstName,
-            last_name: lastName,
-            updated_at: new Date().toISOString(),
+    first_name: firstName,
+    last_name: lastName,
+    updated_at: new Date().toISOString(),
             created_at: new Date().toISOString()
           });
 
