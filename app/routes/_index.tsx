@@ -13,15 +13,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     { request, response }
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-  // If no session, redirect to login
-  if (!session) {
+  // If no user or error getting user, redirect to login
+  if (userError || !user) {
     return redirect("/login", { headers: response.headers });
   }
 
-  // Return the user if session exists
-  return { user: session.user, headers: response.headers };
+  // Return the authenticated user along with headers
+  return { user, headers: response.headers };
 };
 
 
