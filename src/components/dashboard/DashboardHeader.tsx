@@ -68,21 +68,33 @@ const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
       let nameToUse = 'there';
 
       try {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('first_name')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Error fetching profile for greeting:', error);
-          nameToUse = user.email?.split('@')[0] || 'there';
-        } else if (profile?.first_name) {
-          nameToUse = profile.first_name;
+        console.log('Fetching profile for user:', user.id);
+        // First try to get name from user metadata
+        if (user.user_metadata?.first_name) {
+          console.log('Found first_name in user metadata:', user.user_metadata.first_name);
+          nameToUse = user.user_metadata.first_name;
         } else {
-          nameToUse = user.email?.split('@')[0] || 'there';
-        }
+          // If not in metadata, try profiles table
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('first_name')
+            .eq('id', user.id)
+            .maybeSingle();
 
+          console.log('Profile data:', profile);
+          console.log('Profile error:', error);
+
+          if (error) {
+            console.error('Error fetching profile for greeting:', error);
+            nameToUse = user.email?.split('@')[0] || 'there';
+          } else if (profile && profile.first_name) {
+            console.log('Using first_name from profile:', profile.first_name);
+            nameToUse = profile.first_name;
+          } else {
+            console.log('No profile or first_name found, using email fallback');
+            nameToUse = user.email?.split('@')[0] || 'there';
+          }
+        }
       } catch (fetchError) {
         console.error('Exception fetching profile:', fetchError);
         nameToUse = user.email?.split('@')[0] || 'there';
@@ -90,6 +102,7 @@ const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
 
       const randomIndex = Math.floor(Math.random() * GREETING_TEMPLATES.length);
       const selectedTemplate = GREETING_TEMPLATES[randomIndex];
+      console.log('Selected name for greeting:', nameToUse);
 
       const formattedGreeting = selectedTemplate.replace('{name}', nameToUse);
       setGreeting(formattedGreeting);

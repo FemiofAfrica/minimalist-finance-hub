@@ -474,21 +474,8 @@ const SubscriptionsPage: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto p-4 md:p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Subscriptions</h1>
-          <Button onClick={handleAddSubscription} className="flex items-center">
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Subscription
-          </Button>
-        </div>
-        
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="container mx-auto py-6">
+        <div className="grid gap-4 md:grid-cols-3 mb-6">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Total Monthly Cost</CardTitle>

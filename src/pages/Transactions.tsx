@@ -118,11 +118,6 @@ const Transactions = () => {
   
   return (
     <DashboardLayout>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Transactions</h1>
-        <p className="text-muted-foreground">Manage and review all your financial transactions.</p>
-      </div>
-      
       <div className="grid gap-6 md:grid-cols-3 mb-8">
         <Card>
           <CardHeader className="pb-2">
