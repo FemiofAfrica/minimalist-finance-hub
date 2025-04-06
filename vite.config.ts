@@ -1,5 +1,5 @@
 import { vitePlugin as remix } from "@remix-run/dev";
-import { vercelPreset } from "@vercel/remix/vite";
+// import { vercelPreset } from "@vercel/remix/vite"; // Remove this import
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 // import react from "@vitejs/plugin-react"; // No longer needed, Remix plugin handles it
@@ -9,9 +9,7 @@ export default defineConfig({
     port: 8080,
   },
   plugins: [
-    remix({
-      presets: [vercelPreset()],
-    }),
+    remix(), // Revert to simple remix() call
     // react(), // Removed redundant React plugin
     tsconfigPaths(),
   ],
