@@ -1,3 +1,4 @@
+import type { LinksFunction } from "@remix-run/node";
 import {
   Links,
   LiveReload,
@@ -23,7 +24,7 @@ export const links: LinksFunction = () => [
 
 export default function App() {
   return (
-    <html lang="en" className="light">
+    <html lang="en" className="light" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -39,12 +40,12 @@ export default function App() {
                 <Toaster />
                 <ScrollRestoration />
                 <Scripts />
+                <Analytics />
+                <SpeedInsights />
               </ErrorBoundaryComponent>
             </CurrencyProvider>
           </AuthProvider>
         </ThemeProvider>
-        <Analytics />
-        <SpeedInsights />
       </body>
     </html>
   );
