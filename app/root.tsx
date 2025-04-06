@@ -10,20 +10,20 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import ErrorBoundaryComponent from "@/components/ErrorBoundary";
-import stylesheet from "@/styles/tailwind.css";
+import stylesheet from "@/index.css?url";
 import { Toaster } from "@/components/ui/toaster";
 import React from 'react';
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
-export const links = () => [
+export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
   // ... other links
 ];
 
 export default function App() {
   return (
-    <html lang="en">
+    <html lang="en" className="light">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -39,7 +39,6 @@ export default function App() {
                 <Toaster />
                 <ScrollRestoration />
                 <Scripts />
-                <LiveReload />
               </ErrorBoundaryComponent>
             </CurrencyProvider>
           </AuthProvider>

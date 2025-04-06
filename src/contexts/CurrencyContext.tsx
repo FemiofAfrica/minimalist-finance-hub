@@ -46,20 +46,32 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined
 const LIVE_CONVERSION_STORAGE_KEY = 'liveCurrencyConversionEnabled';
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
-  // Initialize currency from localStorage or default
-  const [currentCurrency, setCurrentCurrencyInternal] = useState<Currency>(() => {
-      const storedCurrencyCode = localStorage.getItem('selectedCurrencyCode');
-      return supportedCurrencies.find(c => c.code === storedCurrencyCode) || defaultCurrency;
-  });
+  // Initialize with default values, localStorage check happens client-side
+  const [currentCurrency, setCurrentCurrencyInternal] = useState<Currency>(defaultCurrency);
   
   // Initialize rates relative to BASE_CURRENCY_CODE (USD)
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ [BASE_CURRENCY_CODE]: 1 }); 
   
-  // Initialize live conversion preference from localStorage or default (false)
-  const [isLiveConversionEnabled, setIsLiveConversionEnabled] = useState<boolean>(() => {
-      const storedValue = localStorage.getItem(LIVE_CONVERSION_STORAGE_KEY);
-      return storedValue === 'true'; // Default to false if not found or not 'true'
-  });
+  // Initialize live conversion preference with default (false)
+  const [isLiveConversionEnabled, setIsLiveConversionEnabled] = useState<boolean>(false);
+
+  // Effect to load settings from localStorage on initial client mount
+  useEffect(() => {
+    // Load selected currency
+    const storedCurrencyCode = localStorage.getItem('selectedCurrencyCode');
+    const savedCurrency = supportedCurrencies.find(c => c.code === storedCurrencyCode);
+    if (savedCurrency) {
+        setCurrentCurrencyInternal(savedCurrency);
+    }
+
+    // Load live conversion preference
+    const storedLiveConversion = localStorage.getItem(LIVE_CONVERSION_STORAGE_KEY);
+    if (storedLiveConversion === 'true') {
+        setIsLiveConversionEnabled(true);
+    }
+    // Run only once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch rates relative to BASE_CURRENCY_CODE on initial load
   useEffect(() => {

@@ -20,6 +20,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Helper to safely get the client-side origin
+  const getClientSideRedirectUrl = () => {
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/`;
+    }
+    return undefined; // Or a default server-side URL if needed
+  };
+
   useEffect(() => {
     setLoading(true);
     // getSession() can be used to potentially get session data faster
@@ -67,7 +75,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
           data: userMetadata
         }
       });
@@ -105,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/`
+        redirectTo: getClientSideRedirectUrl()
       }
     });
     if (error) throw error;
@@ -115,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'twitter',
       options: {
-        redirectTo: `${window.location.origin}/`
+        redirectTo: getClientSideRedirectUrl()
       }
     });
     if (error) throw error;
@@ -132,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signInWithGoogle,
       signInWithTwitter
     }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }

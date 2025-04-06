@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { Form, useActionData, useLoaderData } from '@remix-run/react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,121 +13,77 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import { Separator } from '@/components/ui/separator';
+import type { User } from "@supabase/auth-helpers-remix";
+
+// Type for loader data
+type LoaderData = {
+  user: User | null;
+  firstName: string | null;
+};
+
+// Define type for action data returned from settings action
+type SettingsActionData = {
+  success?: boolean;
+  message?: string;
+  error?: string;
+  detail?: string;
+};
 
 export default function Settings() {
-  const { user } = useAuth();
+  // Get user and firstName from loader
+  const { user, firstName: loadedFirstName } = useLoaderData<LoaderData>(); 
   const { currentCurrency, setCurrentCurrency, supportedCurrencies, isLiveConversionEnabled, toggleLiveConversion } = useCurrency();
   const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
+  const actionData = useActionData<SettingsActionData>();
   
   const [loading, setLoading] = useState(false);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
+  // Initialize state from loader data where possible
+  const [firstName, setFirstName] = useState(loadedFirstName || ''); 
+  const [lastName, setLastName] = useState(''); // Needs profile fetch for lastName
+  const [email, setEmail] = useState(user?.email || ''); // Get email from loader user
   const [currency, setCurrency] = useState(currentCurrency.code);
   const [darkMode, setDarkMode] = useState(theme === 'dark');
   
-  // Load user data
+  // Effect to show toast based on action result
+  useEffect(() => {
+    if (actionData?.message) {
+      toast({ title: 'Success', description: actionData.message });
+    }
+    if (actionData?.error) {
+      toast({ title: 'Error', description: actionData.error, variant: 'destructive' });
+    }
+    // Reset loading state if needed, though Remix handles form state automatically
+    setLoading(false); 
+  }, [actionData, toast]);
+  
+  // Effect to load profile details not loaded by loader (like lastName)
   useEffect(() => {
     if (user) {
-      // Set email from auth
-      setEmail(user.email || '');
-      
-      // Set name from user metadata if available
-      if (user.user_metadata) {
-        setFirstName(user.user_metadata.first_name || '');
-        setLastName(user.user_metadata.last_name || '');
-      }
-    }
-  }, [user]);
-  
-  // Load user profile data from the database
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (user) {
-        // Set email from auth (remains unchanged)
-        setEmail(user.email || '');
-
-        // Fetch profile from the 'profiles' table
+      // Email is already set from loader data
+      // Fetch only lastName now
+      const fetchLastName = async () => {
         try {
           const { data: profileData, error } = await supabase
             .from('profiles')
-            .select('first_name, last_name')
+            .select('last_name') // Only fetch lastName
             .eq('id', user.id)
-            .maybeSingle(); // Use maybeSingle to handle cases where profile might not exist yet
+            .maybeSingle();
 
           if (error) {
-            console.error('Error fetching profile:', error);
-            // Optionally show a toast error here
+            console.error('Error fetching last name:', error);
             return;
           }
-
           if (profileData) {
-            setFirstName(profileData.first_name || '');
             setLastName(profileData.last_name || '');
-          } else {
-            // If no profile exists, initialize with empty strings
-            setFirstName('');
-            setLastName('');
-            // Optionally, check user_metadata as a fallback for initial population?
-            // if (user.user_metadata) {
-            //   setFirstName(user.user_metadata.first_name || '');
-            //   setLastName(user.user_metadata.last_name || '');
-            // }
           }
         } catch (fetchError) {
-          console.error('Exception fetching profile:', fetchError);
-          toast({
-            title: 'Error loading profile',
-            description: 'Could not load your profile data.',
-            variant: 'destructive',
-          });
+          console.error('Exception fetching last name:', fetchError);
         }
-      }
-    };
-
-    fetchProfile();
-  }, [user, supabase, toast]); // Add supabase and toast to dependencies
-  
-  // Handle profile update
-  const handleProfileUpdate = async () => {
-    if (!user) return; // Should not happen if user is on settings page, but good practice
-
-    try {
-      setLoading(true);
-
-      const profileUpdate = {
-        id: user.id, // Link to the auth user
-        email: user.email, // Email is required in profiles table
-        first_name: firstName,
-        last_name: lastName,
-        updated_at: new Date().toISOString(),
       };
-
-      // Upsert data into the 'profiles' table
-      const { error } = await supabase
-        .from('profiles')
-        .upsert(profileUpdate, { onConflict: 'id' }) // Specify conflict column if needed, usually primary key 'id'
-        .select() // Optionally select to confirm write, not strictly needed for upsert
-        .single(); // Expect single row back
-
-      if (error) throw error;
-
-      toast({
-        title: 'Profile updated',
-        description: 'Your profile information has been updated successfully.',
-      });
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast({
-        title: 'Update failed',
-        description: 'There was an error updating your profile. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
+      fetchLastName();
     }
-  };
+  }, [user]); // Removed toast dependency here unless needed for errors
   
   // Handle preferences update
   const handlePreferencesUpdate = async () => {
@@ -165,11 +121,13 @@ export default function Settings() {
   };
   
   return (
-    <DashboardLayout>
+    <DashboardLayout userName={firstName || undefined}>
       <div className="container mx-auto py-6">
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Settings</h1>
-          <p className="text-muted-foreground">Manage your account settings and preferences</p>
+          <p className="text-muted-foreground">
+            {loadedFirstName ? `Hope you're having a great day, ${loadedFirstName}!` : "Manage your account settings and preferences"}
+          </p>
         </div>
         
         <Tabs defaultValue="profile" className="w-full">
@@ -180,55 +138,59 @@ export default function Settings() {
           </TabsList>
           
           <TabsContent value="profile">
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile Information</CardTitle>
-                <CardDescription>
-                  Update your personal information
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input 
-                      id="firstName" 
-                      value={firstName} 
-                      onChange={(e) => setFirstName(e.target.value)} 
-                      placeholder="Enter your first name"
-                    />
+            <Form method="post">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Profile Information</CardTitle>
+                  <CardDescription>
+                    Update your personal information
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input 
+                        id="firstName" 
+                        name="firstName"
+                        value={firstName} 
+                        onChange={(e) => setFirstName(e.target.value)} 
+                        placeholder="Enter your first name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input 
+                        id="lastName" 
+                        name="lastName"
+                        value={lastName} 
+                        onChange={(e) => setLastName(e.target.value)} 
+                        placeholder="Enter your last name"
+                      />
+                    </div>
                   </div>
+                  
                   <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
+                    <Label htmlFor="email">Email</Label>
                     <Input 
-                      id="lastName" 
-                      value={lastName} 
-                      onChange={(e) => setLastName(e.target.value)} 
-                      placeholder="Enter your last name"
+                      id="email" 
+                      name="email"
+                      value={email} 
+                      disabled 
+                      placeholder="Your email address"
                     />
+                    <p className="text-sm text-muted-foreground">Your email address cannot be changed</p>
                   </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email" 
-                    value={email} 
-                    disabled 
-                    placeholder="Your email address"
-                  />
-                  <p className="text-sm text-muted-foreground">Your email address cannot be changed</p>
-                </div>
-                
-                <Button 
-                  onClick={handleProfileUpdate} 
-                  disabled={loading}
-                  className="mt-4"
-                >
-                  {loading ? 'Updating...' : 'Update Profile'}
-                </Button>
-              </CardContent>
-            </Card>
+                  
+                  <Button 
+                    type="submit"
+                    className="mt-4"
+                  >
+                    Update Profile
+                  </Button>
+                </CardContent>
+              </Card>
+            </Form>
           </TabsContent>
           
           <TabsContent value="preferences">
@@ -289,14 +251,6 @@ export default function Settings() {
                     onCheckedChange={toggleLiveConversion}
                   />
                 </div>
-                
-                <Button 
-                  onClick={handlePreferencesUpdate} 
-                  disabled={loading}
-                  className="mt-4"
-                >
-                  {loading ? 'Updating...' : 'Save Preferences'}
-                </Button>
               </CardContent>
             </Card>
           </TabsContent>
