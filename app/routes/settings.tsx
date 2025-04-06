@@ -10,27 +10,23 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     process.env.SUPABASE_ANON_KEY!,
     { request, response }
   );
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
+  
+  // Securely get the authenticated user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  // If no user or error getting user, redirect to login
+  if (userError || !user) {
+    console.error("Error getting user or no user in loader:", userError);
     return redirect("/login", { headers: response.headers });
   }
 
-  // Fetch profile data
-  const { data: profileData, error: profileError } = await supabase
-    .from('profiles')
-    .select('first_name')
-    .eq('id', session.user.id)
-    .single(); // Use single() as profile should exist for logged-in user
+  // Extract first name from user metadata
+  const firstName = user.user_metadata?.first_name || null;
 
-  if (profileError) {
-    console.error("Error fetching profile in loader:", profileError);
-    // Handle error appropriately - maybe return null or default name
-  }
-
-  // Return profile data along with headers
+  // Return user data and firstName along with headers
   return json({ 
-    user: session.user, // Pass user object if needed by page
-    firstName: profileData?.first_name || null // Pass firstName or null
+    user: user, // Pass the authenticated user object
+    firstName: firstName 
   }, { headers: response.headers }); 
 };
 
