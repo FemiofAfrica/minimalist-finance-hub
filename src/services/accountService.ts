@@ -219,6 +219,50 @@ export const createAccount = async (userId: string, accountData: Omit<AccountIns
 };
 
 /**
+ * Fetches a single account by its ID for the current user.
+ */
+export const getAccountById = async (userId: string, accountId: string): Promise<Account | null> => {
+  try {
+    if (!userId) throw new Error('User ID must be provided');
+    if (!accountId) throw new Error('Account ID must be provided');
+
+    console.log(`Fetching account ${accountId} for user ${userId}`);
+
+    const { data: account, error } = await supabase
+      .from('accounts')
+      .select('*')
+      .eq('user_id', userId)    // Ensure user owns the account
+      .eq('account_id', accountId)
+      .maybeSingle();          // Use maybeSingle to return null if not found
+
+    if (error) {
+      console.error(`Error fetching account ${accountId}:`, error);
+      // Don't throw if it's just not found (PGRST116), return null instead
+      if (error.code !== 'PGRST116') { 
+          throw new Error('Failed to fetch account: ' + error.message);
+      }
+      // For PGRST116 (not found), fall through to return null
+    }
+
+    if (!account) {
+        console.log(`Account ${accountId} not found for user ${userId}`);
+        return null;
+    }
+
+    console.log("Account fetched successfully:", account.account_id);
+    // Map the AccountRow back to the application Account type
+    return {
+      ...account,
+      type: account.type as Account['type']
+    } as Account;
+
+  } catch (error) {
+    console.error("Error in getAccountById:", error);
+    throw error; // Re-throw other unexpected errors
+  }
+};
+
+/**
  * Deletes an account for the user.
  */
 export const deleteAccount = async (userId: string, accountId: string): Promise<void> => {
