@@ -1,58 +1,26 @@
 import { useEffect, useState } from "react";
 import { Table, TableBody } from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
 import { Transaction } from "@/types/transaction";
 import TransactionRow from "@/components/transactions/TransactionRow";
 import TransactionTableHeader from "@/components/transactions/TransactionTableHeader";
 import TransactionEmptyState from "@/components/transactions/TransactionEmptyState";
 import TransactionLoading from "@/components/transactions/TransactionLoading";
-import { fetchTransactions } from "@/services/transactionService";
 
 interface TransactionsTableProps {
-  limit?: number;
+  initialTransactions: Transaction[];
 }
 
-const TransactionsTable = ({ limit }: TransactionsTableProps) => {
-  const [transactions, setTransactions] = useState<Transaction[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-
-  const loadTransactions = async () => {
-    try {
-      console.log("Fetching transactions...");
-      const data = await fetchTransactions(limit);
-      setTransactions(data.transactions);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch transactions",
-        variant: "destructive",
-      });
-      console.error('Error in fetchTransactions:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+const TransactionsTable = ({ initialTransactions }: TransactionsTableProps) => {
+  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions || []);
+  const [loading, setLoading] = useState(!initialTransactions);
 
   useEffect(() => {
-    loadTransactions();
-    
-    // Set up event listener for the custom refresh event
-    const handleRefresh = () => {
-      console.log("Refresh event triggered in TransactionsTable");
-      loadTransactions();
-    };
-
-    document.addEventListener('refresh', handleRefresh);
-    
-    // Clean up the event listener when component unmounts
-    return () => {
-      document.removeEventListener('refresh', handleRefresh);
-    };
-  }, []);
+    setTransactions(initialTransactions || []);
+    setLoading(!initialTransactions);
+  }, [initialTransactions]);
 
   const handleTransactionUpdate = () => {
-    loadTransactions();
+    console.warn("Transaction update/delete refresh not implemented in Table.");
   };
 
   if (loading) {

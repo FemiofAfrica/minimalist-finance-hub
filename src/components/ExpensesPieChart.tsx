@@ -3,6 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 import { Loader2 } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { fetchCategoryExpenses } from '@/services/dashboardService';
+import { supabase } from '@/integrations/supabase/client';
 
 type ExpenseCategory = {
   name: string;
@@ -20,7 +21,12 @@ const COLORS = [
 // Define the original base currency of the incoming chart data
 const PROPS_BASE_CURRENCY = "NGN";
 
-const ExpensesPieChart = () => {
+// Add userId prop to the component's props type
+interface ExpensesPieChartProps {
+  userId: string;
+}
+
+const ExpensesPieChart: React.FC<ExpensesPieChartProps> = ({ userId }) => {
   const [loading, setLoading] = useState(true);
   const [expensesByCategory, setExpensesByCategory] = useState<ExpenseCategory[]>([]);
   // Get necessary values from context
@@ -39,11 +45,23 @@ const ExpensesPieChart = () => {
   };
 
   const loadCategoryExpenses = async () => {
+    // Check if userId prop is valid before fetching
+    if (!userId) {
+        console.error('UserId prop is missing, cannot fetch expenses.');
+        setLoading(false);
+        return;
+    }
     try {
       setLoading(true);
       
-      // Use the centralized service to fetch category expenses
-      const chartData = await fetchCategoryExpenses();
+      // Remove the supabase.auth.getUser() call here
+      // const { data: { user } } = await supabase.auth.getUser();
+      // const localUserId = user?.id; // No longer needed
+      // if (!localUserId) { ... } // This check is removed
+
+      // Use the userId prop directly
+      console.log(`Fetching category expenses for user (from prop): ${userId}`);
+      const chartData = await fetchCategoryExpenses(userId); // Use the prop
       
       // Add colors to the data for the pie chart
       const formattedData: ExpenseCategory[] = chartData.map((item, index) => ({
@@ -61,7 +79,14 @@ const ExpensesPieChart = () => {
   };
 
   useEffect(() => {
-    loadCategoryExpenses();
+    // Only load if userId is available
+    if (userId) {
+        loadCategoryExpenses();
+    } else {
+        // Handle the case where userId is initially null/undefined if necessary
+        console.warn("ExpensesPieChart mounted without a userId.");
+        setLoading(false); // Avoid infinite loading state
+    }
     
     // Listen for refresh events from the transaction table
     const handleRefresh = () => {
@@ -76,7 +101,7 @@ const ExpensesPieChart = () => {
       document.removeEventListener('refresh', handleRefresh);
       document.removeEventListener('refresh-transactions', handleRefresh);
     };
-  }, []);
+  }, [userId]); // Add userId as a dependency
 
   if (loading) {
     return (

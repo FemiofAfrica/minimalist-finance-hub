@@ -8,7 +8,6 @@ import {
   ScrollRestoration,
 } from "@remix-run/react";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { AuthProvider } from "@/contexts/AuthContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import ErrorBoundaryComponent from "@/components/ErrorBoundary";
 import stylesheet from "@/index.css?url";
@@ -17,6 +16,7 @@ import React from 'react';
 import { Analytics } from "@vercel/analytics/remix";
 import { SpeedInsights } from "@vercel/speed-insights/remix";
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
   // ... other links
@@ -33,18 +33,16 @@ export default function App() {
       </head>
       <body>
         <ThemeProvider>
-          <AuthProvider>
-            <CurrencyProvider>
-              <ErrorBoundaryComponent>
-                <Outlet />
-                <Toaster />
-                <ScrollRestoration />
-                <Scripts />
-                <Analytics />
-                <SpeedInsights />
-              </ErrorBoundaryComponent>
-            </CurrencyProvider>
-          </AuthProvider>
+          <CurrencyProvider>
+            <ErrorBoundaryComponent>
+              <Outlet />
+              <Toaster />
+              <ScrollRestoration />
+              <Scripts />
+              <Analytics />
+              <SpeedInsights />
+            </ErrorBoundaryComponent>
+          </CurrencyProvider>
         </ThemeProvider>
       </body>
     </html>

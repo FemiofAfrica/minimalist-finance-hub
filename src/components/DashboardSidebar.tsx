@@ -16,10 +16,10 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Sidebar } from "@/components/ui/sidebar";
-import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { Form } from "@remix-run/react";
 
 const links = [
   { 
@@ -64,7 +64,6 @@ const links = [
 
 export function DashboardSidebar() {
   const location = useLocation();
-  const { signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
   
@@ -115,10 +114,12 @@ export function DashboardSidebar() {
                 </>
               )}
             </Button>
-            <Button className="w-full justify-start" variant="ghost" onClick={signOut} size="sm">
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
+            <Form method="post" action="/logout">
+              <Button type="submit" className="w-full justify-start" variant="ghost" size="sm">
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            </Form>
           </div>
         </div>
       </div>

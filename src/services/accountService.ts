@@ -1,4 +1,4 @@
-import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 // Assuming generated types are here:
 import { Database } from "@/integrations/supabase/database.types";
 import { Account } from "@/types/account"; // Your application's Account type
@@ -9,16 +9,6 @@ type AccountInsert = Database['public']['Tables']['accounts']['Insert'];
 // Define the type for a row returned from the accounts table
 type AccountRow = Database['public']['Tables']['accounts']['Row'];
 
-
-// Helper function to get user ID safely
-async function getUserId(): Promise<string> {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    throw new Error("User not authenticated.");
-  }
-  return userId;
-}
-
 // Other functions (fetchAccounts, createAccount, etc.) would go here...
 // Assume they are defined as in previous versions ('supabase_accounts_api_fix')
 
@@ -26,9 +16,9 @@ async function getUserId(): Promise<string> {
 /**
  * Gets the default account for the user. Creates one if it doesn't exist.
  */
-export const getDefaultAccount = async (): Promise<Account> => { // Returns application Account type
+export const getDefaultAccount = async (userId: string): Promise<Account> => { // Returns application Account type
   try {
-    const userId = await getUserId();
+    if (!userId) throw new Error('User ID must be provided');
     const defaultAccountName = 'Default Account'; // Define default name
 
     console.log(`Getting or creating default account for user ${userId}`);
@@ -108,9 +98,9 @@ export const getDefaultAccount = async (): Promise<Account> => { // Returns appl
 /**
  * Fetches all accounts for the current user.
  */
-export const fetchAccounts = async (): Promise<Account[]> => {
+export const fetchAccounts = async (userId: string): Promise<Account[]> => {
   try {
-    const userId = await getUserId();
+    if (!userId) throw new Error('User ID must be provided');
     
     const { data, error } = await supabase
       .from('accounts')

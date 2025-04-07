@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Form, useActionData } from '@remix-run/react';
+import { Form, Link, useActionData } from '@remix-run/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -80,6 +80,18 @@ const Login = () => {
             Sign In
           </Button>
         </Form>
+
+        {/* Add Sign Up and Forgot Password links */}
+        <div className="mt-4 text-center text-sm space-x-2">
+          <Link to="/signup" className="font-medium text-gray-200 hover:text-white">
+            Don't have an account? Sign Up
+          </Link>
+          <span className="text-gray-300">|</span>
+          <Link to="/forgot-password" className="font-medium text-gray-200 hover:text-white">
+            Forgot Password?
+          </Link>
+        </div>
+
       </div>
     </div>
   );

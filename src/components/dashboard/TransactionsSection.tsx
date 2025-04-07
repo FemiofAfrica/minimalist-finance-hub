@@ -1,31 +1,36 @@
-
-import { Card } from "@/components/ui/card";
-import TransactionsTable from "@/components/TransactionsTable";
-import { useNavigate } from "react-router-dom";
-import TransactionInput from "@/components/dashboard/TransactionInput";
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import PaginatedTransactionsTable from "@/components/transactions/PaginatedTransactionsTable";
+import { AddTransactionDialog } from "@/components/AddTransactionDialog";
+import { Transaction } from "@/types/transaction";
+import { Button } from "@/components/ui/button";
 
 interface TransactionsSectionProps {
-  onTransactionAdded: () => void;
+  initialTransactions: Transaction[];
+  userId: string;
 }
 
-const TransactionsSection = ({ onTransactionAdded }: TransactionsSectionProps) => {
-  const navigate = useNavigate();
-  
+const TransactionsSection: React.FC<TransactionsSectionProps> = ({ initialTransactions, userId }) => {
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+
+  const handleTransactionAdded = () => {
+    document.dispatchEvent(new CustomEvent('refresh'));
+  };
+
   return (
-    <Card className="p-6 h-full min-h-[600px] flex flex-col">
-      <TransactionInput onTransactionAdded={onTransactionAdded} />
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold">Recent Transactions</h3>
-        <button 
-          className="text-sm text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
-          onClick={() => navigate('/transactions')}
-        >
-          View All Transactions
-        </button>
-      </div>
-      <div className="flex-1 overflow-auto">
-        <TransactionsTable limit={10} />
-      </div>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Recent Transactions</CardTitle>
+        <Button onClick={() => setIsAddDialogOpen(true)}>Add Transaction</Button>
+      </CardHeader>
+      <CardContent>
+        <PaginatedTransactionsTable userId={userId} />
+      </CardContent>
+      <AddTransactionDialog 
+        isOpen={isAddDialogOpen}
+        onClose={() => setIsAddDialogOpen(false)}
+        onTransactionAdded={handleTransactionAdded}
+      />
     </Card>
   );
 };

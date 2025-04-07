@@ -19,7 +19,7 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
   const [sdkReady, setSdkReady] = useState(false);
   const [useBrowserFallback, setUseBrowserFallback] = useState(false);
   const [azureKeyValid, setAzureKeyValid] = useState<boolean | null>(null);
-  const [networkConnected, setNetworkConnected] = useState(navigator.onLine);
+  const [networkConnected, setNetworkConnected] = useState(true);
   const [speechServiceConnected, setSpeechServiceConnected] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
   const recognizerRef = useRef<any>(null);
@@ -147,8 +147,14 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
     };
   };
 
-  // Set up network status listener
+  // --- useEffect to set initial network status from navigator --- 
   useEffect(() => {
+    // Check and set the actual network status only on the client
+    if (typeof navigator !== 'undefined') {
+      setNetworkConnected(navigator.onLine);
+    }
+    
+    // Network status listener setup (can stay here)
     const handleNetworkChange = () => {
       checkNetworkConnectivity().then(isConnected => {
         setNetworkConnected(isConnected);
@@ -156,8 +162,11 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
       });
     };
     
-    window.addEventListener('online', handleNetworkChange);
-    window.addEventListener('offline', handleNetworkChange);
+    // Add listeners only on the client
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', handleNetworkChange);
+      window.addEventListener('offline', handleNetworkChange);
+    }
 
     return () => {
       // Clean up recognizer if active
@@ -178,18 +187,21 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
         recognizerRef.current = null;
       }
       
-      // Remove event listeners
-      window.removeEventListener('online', handleNetworkChange);
-      window.removeEventListener('offline', handleNetworkChange);
+      // Remove listeners only on the client
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('online', handleNetworkChange);
+        window.removeEventListener('offline', handleNetworkChange);
+      }
     };
+    // Empty dependency array ensures this runs once on mount
   }, []);
 
   // Enhanced network connectivity check with multiple endpoints
   const checkNetworkConnectivity = async (): Promise<boolean> => {
-    // First check navigator.onLine
+    // First check navigator.onLine (only if navigator exists)
     const isOnline = typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean' 
       ? navigator.onLine 
-      : true; // Assume online if we can't detect status
+      : true; // Assume online if we can't detect status (server or old browser)
     
     if (!isOnline) {
       console.log('Device reports offline status');

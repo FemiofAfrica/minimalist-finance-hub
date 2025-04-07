@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Form, useNavigation, useLoaderData, useActionData } from '@remix-run/react';
 import React from 'react';
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -199,13 +199,8 @@ export default function SettingsRoute() {
   const { email, firstName, lastName } = useLoaderData<typeof loader>();
   const isSubmitting = navigation.state === "submitting";
   const [showSuccess, setShowSuccess] = useState(false);
-  const { currentCurrency, setCurrentCurrency, supportedCurrencies, isLiveConversionEnabled, toggleLiveConversion } = useCurrency();
-  const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
   
-  const [currency, setCurrency] = useState(currentCurrency.code);
-  const [darkMode, setDarkMode] = useState(theme === 'dark');
-
   // Show success message when form submission completes
   React.useEffect(() => {
     if (actionData?.success && !isSubmitting) {
@@ -215,226 +210,65 @@ export default function SettingsRoute() {
     }
   }, [actionData, isSubmitting]);
 
-  // Handle preferences update
-  const handlePreferencesUpdate = async () => {
-    try {
-      // Update currency preference
-      const selectedCurrency = supportedCurrencies.find(c => c.code === currency);
-      if (selectedCurrency && selectedCurrency.code !== currentCurrency.code) {
-        setCurrentCurrency(selectedCurrency);
-      }
-      
-      // Update theme preference
-      if (darkMode !== (theme === 'dark')) {
-        toggleTheme();
-      }
-      
-      toast({
-        title: 'Success',
-        description: 'Your preferences have been updated successfully.',
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update preferences. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  };
-
   return (
-    <DashboardLayout>
-      <div className="container mx-auto py-6">
-        <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="preferences">Preferences</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="profile">
-            <Form method="post">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Profile Information</CardTitle>
-                  <CardDescription>
-                    Update your personal information
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input 
-                        id="firstName" 
-                        name="firstName"
-                        defaultValue={firstName}
-                        placeholder="Enter your first name"
-                        required
-                        disabled={isSubmitting}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input 
-                        id="lastName" 
-                        name="lastName"
-                        defaultValue={lastName}
-                        placeholder="Enter your last name"
-                        required
-                        disabled={isSubmitting}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input 
-                      id="email" 
-                      name="email"
-                      value={email}
-                      disabled 
-                      placeholder="Your email address"
-                    />
-                    <p className="text-sm text-muted-foreground">Your email address cannot be changed</p>
-                  </div>
-                  
-                  <Button 
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="mt-4"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                        Updating...
-                      </>
-                    ) : (
-                      'Update Profile'
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            </Form>
-          </TabsContent>
-          
-          <TabsContent value="preferences">
-            <Card>
-              <CardHeader>
-                <CardTitle>Preferences</CardTitle>
-                <CardDescription>
-                  Customize your application experience
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="currency">Currency</Label>
-                  <Select 
-                    value={currency} 
-                    onValueChange={setCurrency}
-                  >
-                    <SelectTrigger id="currency" className="w-full md:w-[240px]">
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {supportedCurrencies.map((c) => (
-                        <SelectItem key={c.code} value={c.code}>
-                          {`${c.name} (${c.symbol})`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">Choose your preferred currency for displaying amounts</p>
-                </div>
-                
-                <Separator />
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="darkMode" className="text-base">Dark Mode</Label>
-                    <p className="text-sm text-muted-foreground">Toggle between light and dark theme</p>
-                  </div>
-                  <Switch 
-                    id="darkMode" 
-                    checked={darkMode}
-                    onCheckedChange={setDarkMode}
-                  />
-                </div>
-                
-                <Separator />
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="liveConversion" className="text-base">Live Currency Conversion</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Automatically convert amounts to the selected currency using live rates
-                    </p>
-                  </div>
-                  <Switch 
-                    id="liveConversion" 
-                    checked={isLiveConversionEnabled}
-                    onCheckedChange={toggleLiveConversion}
-                  />
-                </div>
-
-                <Button 
-                  onClick={handlePreferencesUpdate}
-                  className="mt-4"
-                >
-                  Save Preferences
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="security">
-            <Card>
-              <CardHeader>
-                <CardTitle>Security Settings</CardTitle>
-                <CardDescription>
-                  Manage your account security
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium">Password</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Change your password to keep your account secure
-                  </p>
-                  <Form action="/auth/reset-password" method="post">
-                    <Button type="submit" variant="outline">
-                      Reset Password
-                    </Button>
-                  </Form>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium">Two-Factor Authentication</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Add an extra layer of security to your account
-                  </p>
-                  <Button variant="outline" disabled>
-                    Enable 2FA (Coming Soon)
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-        
-        {showSuccess && (
-          <div className="fixed bottom-4 right-4 flex items-center bg-green-50 px-4 py-2 rounded-lg text-green-700 text-sm shadow-lg">
-            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            Profile updated successfully
-          </div>
-        )}
+    <DashboardLayout firstName={firstName}>
+      <div className="space-y-6">
+        <div className="flex justify-center">
+           <Tabs defaultValue="profile" className="w-[400px]">
+             <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="profile">Profile</TabsTrigger>
+              <TabsTrigger value="preferences" disabled>Preferences</TabsTrigger>
+              <TabsTrigger value="security" disabled>Security</TabsTrigger>
+            </TabsList>
+            <TabsContent value="profile">
+               <Form method="post">
+                 <Card>
+                   <CardHeader>
+                     <CardTitle>Profile</CardTitle>
+                     <CardDescription>Update your personal information.</CardDescription>
+                   </CardHeader>
+                   <CardContent className="space-y-4">
+                      {showSuccess && (
+                        <div className="p-3 bg-green-100 border border-green-400 text-green-700 rounded-md text-sm">
+                          Profile updated successfully!
+                        </div>
+                      )}
+                      {actionData?.error && (
+                        <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
+                          Error: {actionData.error} {actionData.details ? `(${actionData.details})` : ''}
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <Label htmlFor="firstName">First Name</Label>
+                          <Input id="firstName" name="firstName" defaultValue={firstName ?? ''} required />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="lastName">Last Name</Label>
+                          <Input id="lastName" name="lastName" defaultValue={lastName ?? ''} required />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="email">Email</Label>
+                        <Input id="email" name="email" type="email" value={email ?? ''} readOnly disabled />
+                      </div>
+                   </CardContent>
+                   <CardFooter>
+                     <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? "Saving..." : "Save Changes"}
+                     </Button>
+                   </CardFooter>
+                 </Card>
+              </Form>
+            </TabsContent>
+            <TabsContent value="preferences">
+               {/* Preferences content here (e.g., currency, theme) */}
+            </TabsContent>
+             <TabsContent value="security">
+                {/* Security content here (e.g., password change) */}
+            </TabsContent>
+           </Tabs>
+        </div>
       </div>
     </DashboardLayout>
   );

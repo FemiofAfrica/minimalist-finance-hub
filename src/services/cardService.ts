@@ -1,12 +1,10 @@
-
-import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/types/card";
 
-export const fetchCards = async (): Promise<Card[]> => {
+export const fetchCards = async (userId: string): Promise<Card[]> => {
   try {
+    if (!userId) throw new Error('User ID must be provided');
     console.log("Fetching cards...");
-    const userId = await getCurrentUserId();
-    
     const { data, error } = await supabase
       .from('cards')
       .select('*')
@@ -25,16 +23,15 @@ export const fetchCards = async (): Promise<Card[]> => {
   }
 };
 
-export const createCard = async (card: Omit<Card, 'card_id'>): Promise<Card> => {
+export const createCard = async (userId: string, card: Omit<Card, 'card_id' | 'user_id'>): Promise<Card> => {
   try {
-    const userId = await getCurrentUserId();
+    if (!userId) throw new Error('User ID must be provided');
+    console.log("Creating card with user_id:", card);
     
     const cardWithUserId = {
       ...card,
       user_id: userId
     };
-    
-    console.log("Creating card with user_id:", cardWithUserId);
     
     const { data, error } = await supabase
       .from('cards')
@@ -54,12 +51,14 @@ export const createCard = async (card: Omit<Card, 'card_id'>): Promise<Card> => 
   }
 };
 
-export const updateCard = async (cardId: string, updates: Partial<Card>): Promise<Card> => {
+export const updateCard = async (userId: string, cardId: string, updates: Partial<Card>): Promise<Card> => {
   try {
+    if (!userId) throw new Error('User ID must be provided');
     const { data, error } = await supabase
       .from('cards')
       .update(updates)
       .eq('card_id', cardId)
+      .eq('user_id', userId)
       .select()
       .single();
 
@@ -75,12 +74,14 @@ export const updateCard = async (cardId: string, updates: Partial<Card>): Promis
   }
 };
 
-export const deleteCard = async (cardId: string): Promise<void> => {
+export const deleteCard = async (userId: string, cardId: string): Promise<void> => {
   try {
+    if (!userId) throw new Error('User ID must be provided');
     const { error } = await supabase
       .from('cards')
       .delete()
-      .eq('card_id', cardId);
+      .eq('card_id', cardId)
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Error deleting card:', error);
@@ -112,10 +113,10 @@ export const getCardById = async (cardId: string): Promise<Card | null> => {
   }
 };
 
-export const getCardsByAccount = async (accountId: string): Promise<Card[]> => {
+export const getCardsByAccount = async (userId: string, accountId: string): Promise<Card[]> => {
   try {
-    const userId = await getCurrentUserId();
-    
+    if (!userId) throw new Error('User ID must be provided');
+    console.log("Fetching cards by account...");
     const { data, error } = await supabase
       .from('cards')
       .select('*')

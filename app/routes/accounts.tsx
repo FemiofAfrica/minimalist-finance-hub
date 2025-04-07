@@ -1,11 +1,10 @@
 import { redirect, type LoaderFunctionArgs, json } from "@remix-run/node";
-import { createServerClient } from "@supabase/auth-helpers-remix";
-import InsightsPage from "@/pages/Insights";
-import type { MetaFunction } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
+import { createServerClient } from "@supabase/auth-helpers-remix";
+import AccountsAndCardsPage from "@/pages/AccountsAndCards";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 
-// Loader function to enforce authentication (same as other routes)
+// Loader function to enforce authentication
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const response = new Response();
   const supabase = createServerClient(
@@ -15,28 +14,24 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   );
 
   const { data: { user }, error: userError } = await supabase.auth.getUser();
+
   if (userError || !user) {
     throw redirect("/login");
   }
 
+  // Return user with firstName
   return json({ 
     user, 
     firstName: user.user_metadata?.first_name || null 
   }, { headers: response.headers });
 };
 
-export const meta: MetaFunction = () => {
-  return [
-    { title: "Insights - FinTrack" },
-    { name: "description", content: "View detailed insights into your financial activities" },
-  ];
-};
-
-export default function InsightsRoute() {
+// Route component renders the actual page
+export default function AccountsRoute() {
   const { firstName } = useLoaderData<typeof loader>();
   return (
     <DashboardLayout firstName={firstName}>
-      <InsightsPage />
+      <AccountsAndCardsPage />
     </DashboardLayout>
   );
 } 

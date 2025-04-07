@@ -1,6 +1,8 @@
-import { redirect, type LoaderFunctionArgs } from "@remix-run/node";
+import { redirect, type LoaderFunctionArgs, json } from "@remix-run/node";
 import { createServerClient } from "@supabase/auth-helpers-remix";
 import SubscriptionsPage from "@/pages/Subscriptions";
+import { useLoaderData } from "@remix-run/react";
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
 
 // Loader function to enforce authentication (same as other routes)
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -15,14 +17,22 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   // If no user or error getting user, redirect to login
   if (userError || !user) {
-    return redirect("/login", { headers: response.headers });
+    throw redirect("/login");
   }
 
-  // Return the authenticated user along with headers
-  return { user, headers: response.headers };
+  // Return user with firstName
+  return json({ 
+    user, 
+    firstName: user.user_metadata?.first_name || null 
+  }, { headers: response.headers });
 };
 
 // Route component renders the actual page
 export default function SubscriptionsRoute() {
-  return <SubscriptionsPage />;
+  const { firstName } = useLoaderData<typeof loader>();
+  return (
+    <DashboardLayout firstName={firstName}>
+      <SubscriptionsPage />
+    </DashboardLayout>
+  );
 } 

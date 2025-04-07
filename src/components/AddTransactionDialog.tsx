@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useFetcher } from "@remix-run/react";
 import {
   Dialog,
   DialogContent,
@@ -12,242 +13,94 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { fetchAccounts, getDefaultAccount } from "@/services/accountService";
 import { fetchCards } from "@/services/cardService";
 import { Account } from "@/types/account";
 import { Card } from "@/types/card";
-import { createTransaction } from "@/services/transactionService";
+import { TransactionInput } from "@/types/transaction";
 import { TransactionFlowType } from "@/types/transaction";
 
 const AddTransactionDialog = () => {
   const [open, setOpen] = useState(false);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<{
-    description: string;
-    amount: string;
-    type: string;
-    category: string;
-    date: string;
-    account_id: string;
-    transaction_type: TransactionFlowType;
-  }>({
-    description: '',
-    amount: '',
-    type: 'expense',
-    category: 'uncategorized',
-    date: new Date().toISOString().split('T')[0],
-    account_id: '',
-    transaction_type: 'REGULAR' as TransactionFlowType
-  });
+  const fetcher = useFetcher();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (open) {
-      loadAccountsAndSetDefault();
+  const [formData, setFormData] = useState<Partial<TransactionInput>>({
+    type: 'expense',
+    date: new Date().toISOString().split('T')[0],
+    amount: 0,
+    account_id: '',
+    category_name: '',
+    description: '',
+    notes: '',
+    currency: ''
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleDateChange = (date: Date | undefined) => {
+    if (date) {
+      setFormData(prev => ({ ...prev, date: date.toISOString().split('T')[0] }));
     }
-  }, [open]);
+  };
 
-  const loadAccountsAndSetDefault = async () => {
-    setLoading(true);
-    try {
-      // Fetch all accounts for the dropdown
-      const accountsData = await fetchAccounts();
-      if (Array.isArray(accountsData)) {
-        setAccounts(accountsData);
-      } else {
-        console.error("fetchAccounts did not return an array.");
-        setAccounts([]); // Reset accounts on error
-        // Optionally throw or show toast
-      }
-
-      // Get the default account (service handles creation if needed)
-      const defaultAccount = await getDefaultAccount();
-      
-      // Set the default account in the form state
-      if (defaultAccount && defaultAccount.account_id) {
-        setFormData(prev => ({
-          ...prev,
-          account_id: defaultAccount.account_id 
-        }));
-      } else {
-        // Handle case where getDefaultAccount failed unexpectedly
-        console.error("Failed to get or create default account from service.");
-        setFormData(prev => ({ ...prev, account_id: '' })); 
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data) {
+      if (fetcher.data.success) {
+        toast({
+          title: "Success",
+          description: "Transaction added successfully!",
+        });
+        setOpen(false);
+        setFormData({ });
+      } else if (fetcher.data.error) {
         toast({
           title: "Error",
-          description: "Could not set default account.",
-          variant: "destructive"
+          description: fetcher.data.error,
+          variant: "destructive",
         });
       }
-
-    } catch (error) {
-      // Catch errors from either fetchAccounts or getDefaultAccount
-      console.error('Error loading accounts and setting default:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load account information",
-        variant: "destructive"
-      });
-      setAccounts([]); // Clear accounts list on error
-      setFormData(prev => ({ ...prev, account_id: '' })); 
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [fetcher.state, fetcher.data, toast]);
 
-  const loadAccounts = async () => {
-    try {
-      setLoading(true);
-      const accountsData = await fetchAccounts();
-      setAccounts(accountsData);
-    } catch (error) {
-      console.error('Error loading accounts:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load accounts",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault(); 
+    console.log("Submitting transaction via fetcher:", formData);
 
-  const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-
-    // Update transaction_type based on selected options
-    if (field === 'account_id' || field === 'type') {
-      const accountSelected = field === 'account_id' ? value : formData.account_id;
-      const transactionType = field === 'type' ? value : formData.type;
-      
-      updateTransactionType(accountSelected, transactionType);
-    }
-  };
-
-  const updateTransactionType = (accountId: string, type: string) => {
-    let transactionType: TransactionFlowType = 'REGULAR';
-
-    if (accountId) {
-      if (type === 'expense') {
-        transactionType = 'ACCOUNT_TO_EXTERNAL';
-      } else {
-        transactionType = 'REGULAR';
+    const submitData = new FormData();
+    submitData.append("intent", "createTransaction"); 
+    Object.entries(formData).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+          submitData.append(key, String(value));
       }
-    }
+    });
 
-    setFormData(prev => ({
-      ...prev,
-      transaction_type: transactionType
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.description || !formData.amount || !formData.date || !formData.type) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill all required fields",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      
-      const transaction = {
-        description: formData.description,
-        amount: parseFloat(formData.amount),
-        category_type: formData.type.toUpperCase(),
-        category_name: formData.category || 'Uncategorized',
-        date: new Date(formData.date).toISOString(),
-        account_id: formData.account_id === 'none' ? null : formData.account_id,
-
-        transaction_type: formData.transaction_type
-      };
-      
-      await createTransaction(transaction);
-      
-      toast({
-        title: "Success",
-        description: "Transaction added successfully"
-      });
-      
-      // Reset form
-      setFormData({
-        description: '',
-        amount: '',
-        type: 'expense',
-        category: 'uncategorized',
-        date: new Date().toISOString().split('T')[0],
-        account_id: 'none',
-
-        transaction_type: 'REGULAR'
-      });
-      
-      // Dispatch refresh event
-      const refreshEvent = new Event('refresh');
-      document.dispatchEvent(refreshEvent);
-      
-      setOpen(false);
-    } catch (error) {
-      console.error('Error creating transaction:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add transaction",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
+    fetcher.submit(submitData, { 
+        method: "post", 
+        action: "/"
+    });
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors">
-          Add Manually
-        </Button>
+        <Button variant="default">Add Manually</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add New Transaction</DialogTitle>
           <DialogDescription>
-            Enter the details of your transaction below.
+            Enter the details for your new transaction.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="description">Transaction Name</Label>
-            <Input 
-              id="description" 
-              placeholder="Enter transaction name"
-              value={formData.description}
-              onChange={(e) => handleChange('description', e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount</Label>
-            <Input 
-              id="amount" 
-              type="number" 
-              step="0.01" 
-              placeholder="0.00"
-              value={formData.amount}
-              onChange={(e) => handleChange('amount', e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="type">Type</Label>
-            <Select name="type" value={formData.type} onValueChange={(value) => handleChange('type', value)}>
+        <fetcher.Form onSubmit={handleSubmit} className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="type" className="text-right">Type</Label>
+            <Select name="type" value={formData.type} onValueChange={(value) => setFormData(prev => ({...prev, type: value as any}))}>
               <SelectTrigger>
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
@@ -257,12 +110,28 @@ const AddTransactionDialog = () => {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
-            <Select
-              value={formData.category}
-              onValueChange={(value) => handleChange('category', value)}
-            >
+          <div className="grid grid-cols-4 items-center gap-4">
+             <Label htmlFor="amount" className="text-right">Amount</Label>
+             <Input id="amount" name="amount" type="number" step="0.01" value={formData.amount} onChange={handleInputChange} required className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+             <Label htmlFor="date" className="text-right">Date</Label>
+             <Input id="date" name="date" type="date" value={formData.date} onChange={handleDateChange} required className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="account_id" className="text-right">Account</Label>
+            <Select name="account_id" value={formData.account_id} onValueChange={(value) => setFormData(prev => ({...prev, account_id: value as any}))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select account" />
+              </SelectTrigger>
+              <SelectContent>
+                {/* TODO: Populate from fetched accounts */}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="category_name" className="text-right">Category</Label>
+            <Select name="category_name" value={formData.category_name} onValueChange={(value) => setFormData(prev => ({...prev, category_name: value as any}))}>
               <SelectTrigger>
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
@@ -277,43 +146,24 @@ const AddTransactionDialog = () => {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
-            <Input 
-              id="date" 
-              type="date"
-              value={formData.date}
-              onChange={(e) => handleChange('date', e.target.value)}
-              required
-            />
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="description" className="text-right">Description</Label>
+            <Input id="description" name="description" value={formData.description} onChange={handleInputChange} required className="col-span-3" />
           </div>
-          
-          {/* Account Selection */}
-          <div className="pt-2 border-t border-gray-200">
-            <h4 className="text-sm font-medium mb-2">Link to Account</h4>
-            <div className="space-y-2">
-              <Label htmlFor="account">Account</Label>
-              <Select name="account_id" value={formData.account_id} onValueChange={(value) => handleChange('account_id', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select account" />
-                </SelectTrigger>
-                <SelectContent>
-                  {accounts.map((account) => (
-                    <SelectItem key={account.account_id} value={account.account_id}>
-                      {account.account_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="notes" className="text-right">Notes</Label>
+            <textarea id="notes" name="notes" value={formData.notes} onChange={handleInputChange} className="col-span-3" />
           </div>
-          
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="currency" className="text-right">Currency</Label>
+            <Input id="currency" name="currency" value={formData.currency} onChange={handleInputChange} className="col-span-3" />
+          </div>
           <DialogFooter>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Adding...' : 'Add Transaction'}
+            <Button type="submit" disabled={fetcher.state !== 'idle'}>
+              {fetcher.state !== 'idle' ? "Adding..." : "Add Transaction"}
             </Button>
           </DialogFooter>
-        </form>
+        </fetcher.Form>
       </DialogContent>
     </Dialog>
   );

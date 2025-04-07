@@ -1,4 +1,4 @@
-import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { Transaction } from "@/types/transaction";
 
 // Type for category expenses used in the pie chart
@@ -20,12 +20,16 @@ export type DashboardAnalytics = {
 
 /**
  * Fetches expense data grouped by category for the pie chart
+ * @param userId The ID of the user whose expenses to fetch.
  * @returns Promise<CategoryExpense[]> Array of category expenses
  */
-export const fetchCategoryExpenses = async (): Promise<CategoryExpense[]> => {
+export const fetchCategoryExpenses = async (userId: string): Promise<CategoryExpense[]> => {
   try {
-    console.log("Fetching category expenses...");
-    const userId = await getCurrentUserId();
+    console.log("Fetching category expenses for user:", userId);
+    if (!userId) {
+      console.error("User ID must be provided to fetchCategoryExpenses");
+      return []; // Return empty array or throw error if ID is missing
+    }
     
     // Get current month's start and end dates
     const now = new Date();
@@ -83,10 +87,10 @@ export const fetchCategoryExpenses = async (): Promise<CategoryExpense[]> => {
  * Fetches analytics data for the dashboard
  * @returns Promise<DashboardAnalytics> Dashboard analytics data
  */
-export const fetchDashboardAnalytics = async (): Promise<DashboardAnalytics> => {
+export const fetchDashboardAnalytics = async (userId: string): Promise<DashboardAnalytics> => {
   try {
     console.log("Fetching dashboard analytics...");
-    const userId = await getCurrentUserId();
+    if (!userId) throw new Error('User ID must be provided');
     
     // Get current and previous month date ranges
     const now = new Date();
@@ -191,15 +195,6 @@ export const fetchDashboardAnalytics = async (): Promise<DashboardAnalytics> => 
     return analytics;
   } catch (error) {
     console.error('Error in fetchDashboardAnalytics:', error);
-    // Return default values in case of error
-    return {
-      totalBalance: 0,
-      totalIncome: 0,
-      totalExpense: 0,
-      monthlyTransactionCount: 0,
-      incomeChange: 0,
-      expenseChange: 0,
-      balanceChange: 0
-    };
+    throw error;
   }
 };

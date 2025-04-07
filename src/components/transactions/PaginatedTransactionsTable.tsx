@@ -13,11 +13,17 @@ import { Button } from "@/components/ui/button";
 
 interface PaginatedTransactionsTableProps {
   limit?: number;
+  userId: string;
+  initialTransactions?: Transaction[];
 }
 
-const PaginatedTransactionsTable = ({ limit: initialLimit }: PaginatedTransactionsTableProps) => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
+const PaginatedTransactionsTable: React.FC<PaginatedTransactionsTableProps> = ({ 
+  limit: initialLimit, 
+  userId, 
+  initialTransactions = []
+}) => {
+  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const [loading, setLoading] = useState<boolean>(initialTransactions.length === 0);
   const [pageSize, setPageSize] = useState(initialLimit || 10);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,10 +50,22 @@ const PaginatedTransactionsTable = ({ limit: initialLimit }: PaginatedTransactio
 
   const totalPages = Math.ceil(filteredTransactions.length / pageSize);
 
-  const loadTransactions = async () => {
+  const loadTransactions = async (forceRefresh = false) => {
+    if (!userId) {
+      console.error("PaginatedTransactionsTable: userId prop is missing.");
+      setLoading(false);
+      return;
+    }
+    if (!forceRefresh && initialTransactions.length > 0 && transactions === initialTransactions) {
+      console.log("Using initial transactions, skipping fetch.")
+      setLoading(false);
+      return;
+    }
+    
     try {
-      console.log("Fetching transactions...");
-      const data = await fetchTransactions();
+      setLoading(true);
+      console.log(`Fetching transactions for user: ${userId}`);
+      const data = await fetchTransactions(userId);
       setTransactions(data.transactions);
     } catch (error) {
       toast({
@@ -62,11 +80,21 @@ const PaginatedTransactionsTable = ({ limit: initialLimit }: PaginatedTransactio
   };
 
   useEffect(() => {
-    loadTransactions();
+    if (userId && initialTransactions.length === 0) {
+        console.log("Initial transactions empty, loading from useEffect...");
+        loadTransactions();
+    } else if (!userId) {
+        console.warn("PaginatedTransactionsTable mounted without userId.");
+        setLoading(false);
+    } else {
+        setLoading(false);
+    }
     
     const handleRefresh = () => {
       console.log("Refresh event triggered in PaginatedTransactionsTable");
-      loadTransactions();
+      if (userId) { 
+          loadTransactions(true);
+      }
     };
 
     document.addEventListener('refresh', handleRefresh);
@@ -74,7 +102,7 @@ const PaginatedTransactionsTable = ({ limit: initialLimit }: PaginatedTransactio
     return () => {
       document.removeEventListener('refresh', handleRefresh);
     };
-  }, []);
+  }, [userId]);
 
   const handleTransactionUpdate = () => {
     loadTransactions();

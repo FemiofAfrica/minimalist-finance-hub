@@ -1,4 +1,4 @@
-import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/database.types"; // Assuming types are generated
 import { Category } from "@/types/category";
 import { Transaction, TransactionInput } from "@/types/transaction";
@@ -14,16 +14,6 @@ type TransactionWithRelations = TransactionRow & {
   accounts: Pick<Database['public']['Tables']['accounts']['Row'], 'name'> | null;
   categories: Pick<Database['public']['Tables']['categories']['Row'], 'name' | 'type'> | null;
 };
-
-
-// Helper function to get user ID safely
-async function getUserId(): Promise<string> {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    throw new Error("User not authenticated.");
-  }
-  return userId;
-}
 
 // --- Helper Function to Map Supabase Data to Application Type ---
 function mapSupabaseDataToTransaction(dbData: any): Transaction {
@@ -57,13 +47,11 @@ function mapSupabaseDataToTransaction(dbData: any): Transaction {
     };
 }
 
-
 // --- Fetching Functions ---
-export const fetchTransactions = async (limit?: number): Promise<{ transactions: Transaction[], totalIncome: number, totalExpenses: number, netBalance: number }> => {
+export const fetchTransactions = async (userId: string, limit?: number): Promise<{ transactions: Transaction[], totalIncome: number, totalExpenses: number, netBalance: number }> => {
   try {
-    const userId = await getUserId();
     if (!userId) {
-      throw new Error('User must be authenticated to fetch transactions');
+      throw new Error('User ID must be provided to fetch transactions');
     }
 
     // Build the query with proper joins and filters
@@ -103,11 +91,10 @@ export const fetchTransactions = async (limit?: number): Promise<{ transactions:
   }
 };
 
-export const fetchTransactionsByAccount = async (accountId: string): Promise<Transaction[]> => {
+export const fetchTransactionsByAccount = async (userId: string, accountId: string): Promise<Transaction[]> => {
   try {
-    const userId = await getUserId();
     if (!userId) {
-      throw new Error('User must be authenticated to fetch transactions');
+      throw new Error('User ID must be provided to fetch transactions');
     }
 
     const { data, error } = await supabase
@@ -133,11 +120,10 @@ export const fetchTransactionsByAccount = async (accountId: string): Promise<Tra
   }
 };
 
-export const fetchTransactionsByCard = async (cardId: string): Promise<Transaction[]> => {
+export const fetchTransactionsByCard = async (userId: string, cardId: string): Promise<Transaction[]> => {
   try {
-    const userId = await getUserId();
     if (!userId) {
-      throw new Error('User must be authenticated to fetch transactions');
+      throw new Error('User ID must be provided to fetch transactions');
     }
 
     const { data, error } = await supabase
@@ -166,9 +152,11 @@ export const fetchTransactionsByCard = async (cardId: string): Promise<Transacti
 
 // --- createTransaction (Corrected) ---
 
-export const createTransaction = async (transaction: TransactionInput): Promise<Transaction> => {
+export const createTransaction = async (userId: string, transaction: TransactionInput): Promise<Transaction> => {
   try {
-    const userId = await getUserId();
+    if (!userId) {
+      throw new Error("User ID is required to create a transaction.");
+    }
 
     // --- Validate required inputs ---
     // Ensure essential fields from the input are present before proceeding

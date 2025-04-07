@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { retryWithBackoff } from '../../utils/networkUtils';
@@ -20,7 +19,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   }
 });
 
-// Set user ID from auth when making database requests with retry logic
+// REMOVE getCurrentUserId function
+/*
 export const getCurrentUserId = async (): Promise<string | null> => {
   try {
     const { data } = await retryWithBackoff(() => supabase.auth.getSession());
@@ -30,3 +30,4 @@ export const getCurrentUserId = async (): Promise<string | null> => {
     return null;
   }
 };
+*/

@@ -1,124 +1,40 @@
-import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import PaginatedTransactionsTable from "@/components/transactions/PaginatedTransactionsTable";
-import { ArrowDownRight, ArrowUpRight, Calendar, DollarSign } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { ArrowDownRight, ArrowUpRight, DollarSign } from "lucide-react";
+import { Transaction } from "@/types/transaction"; // Keep transaction type if needed elsewhere, maybe remove if only table uses it
+import { formatCurrency } from "@/lib/utils"; // Assuming a utility for formatting
 
-// Define the Transaction interface reflecting the actual DB schema
-interface Transaction {
-  transaction_id: string;
-  description: string | null; // Allow null based on schema
-  amount: number;
-  type: 'income' | 'expense' | 'transfer'; // Use the correct type field
-  category_id?: string | null;
-  date: string;
-  created_at?: string | null;
-  updated_at?: string | null;
-  notes?: string | null;
-  account_id: string; // Add account_id if used/needed
-  user_id?: string | null;
-  currency: string; // Add currency if used/needed
+// Define props based on loader data
+interface TransactionsPageProps {
+  userId: string;
+  initialTransactions: Transaction[];
+  totalIncome: number;
+  totalExpenses: number;
+  netBalance: number;
 }
 
-// Format number to Nigerian Naira
-const formatNaira = (amount: number) => {
-  return new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-  }).format(amount);
-};
+// Remove internal state and useEffect for fetching
+// const Transactions = () => { ...
+const TransactionsPage: React.FC<TransactionsPageProps> = ({ 
+  userId, 
+  initialTransactions, 
+  totalIncome, 
+  totalExpenses, 
+  netBalance 
+}) => {
 
-const Transactions = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [totalIncome, setTotalIncome] = useState(0);
-  const [totalExpense, setTotalExpense] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [isCalculating, setIsCalculating] = useState(false);
-  const { toast } = useToast();
+  // Remove the redundant DashboardLayout wrapper here
+  // return (
+  //   <DashboardLayout>
+  //     ...
+  //   </DashboardLayout>
+  // );
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchTransactionsAndCalculateTotals = async () => {
-      if (isCalculating) return;
-      setIsCalculating(true);
-      try {
-        const { data, error } = await supabase
-          .from('transactions')
-          .select('*')
-          .order('date', { ascending: false });
-
-        if (error) {
-          console.error('Error fetching transactions:', error);
-          throw error;
-        }
-
-        if (!isMounted) return;
-
-        if (!data || data.length === 0) {
-          setTransactions([]);
-          setTotalIncome(0);
-          setTotalExpense(0);
-          return;
-        }
-
-        // Cast the data as Transaction[]
-        const typedTransactions = data as Transaction[];
-        
-        // Set the transactions state
-        setTransactions(typedTransactions);
-
-        // Calculate totals
-        let incomeTotal = 0;
-        let expenseTotal = 0;
-
-        typedTransactions.forEach((transaction) => {
-          if (transaction.type === "income") {
-            incomeTotal += Number(transaction.amount);
-          } else if (transaction.type === "expense") {
-            expenseTotal += Number(transaction.amount);
-          }
-        });
-
-        if (isMounted) {
-          setTotalIncome(incomeTotal);
-          setTotalExpense(expenseTotal);
-        }
-      } catch (error) {
-        console.error('Error fetching transactions:', error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch transactions",
-          variant: "destructive",
-        });
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-          setIsCalculating(false);
-        }
-      }
-    };
-
-    fetchTransactionsAndCalculateTotals();
-    
-    // Set up refresh event listener
-    const handleRefresh = () => {
-      console.log("Refresh event triggered in Transactions page");
-      fetchTransactionsAndCalculateTotals();
-    };
-
-    document.addEventListener('refresh', handleRefresh);
-    return () => {
-      isMounted = false;
-      document.removeEventListener('refresh', handleRefresh);
-    };
-  }, [toast]);
-  
+  // Directly return the content structure
   return (
-    <DashboardLayout>
-      <div className="grid gap-6 md:grid-cols-3 mb-8">
+    <div className="flex flex-col gap-8">
+      {/* Summary Cards using props from loader */}
+      <div className="grid gap-6 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Income</CardTitle>
@@ -126,7 +42,8 @@ const Transactions = () => {
           <CardContent>
             <div className="flex items-center">
               <ArrowUpRight className="w-5 h-5 mr-2 text-emerald-500" />
-              <div className="text-2xl font-bold">{formatNaira(totalIncome)}</div>
+              {/* Use formatCurrency util or keep formatNaira if specific */}
+              <div className="text-2xl font-bold">{formatCurrency(totalIncome)}</div> 
             </div>
           </CardContent>
         </Card>
@@ -138,7 +55,7 @@ const Transactions = () => {
           <CardContent>
             <div className="flex items-center">
               <ArrowDownRight className="w-5 h-5 mr-2 text-red-500" />
-              <div className="text-2xl font-bold">{formatNaira(totalExpense)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(totalExpenses)}</div>
             </div>
           </CardContent>
         </Card>
@@ -150,18 +67,23 @@ const Transactions = () => {
           <CardContent>
             <div className="flex items-center">
               <DollarSign className="w-5 h-5 mr-2 text-primary" />
-              <div className="text-2xl font-bold">{formatNaira(totalIncome - totalExpense)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(netBalance)}</div>
             </div>
           </CardContent>
         </Card>
       </div>
       
-      <div className="mb-8">
+      {/* Transactions Table Section */}
+      <div> 
         <h2 className="text-xl font-bold mb-4">All Transactions</h2>
-        <PaginatedTransactionsTable />
+        {/* Pass userId and initialTransactions to the table */}
+        <PaginatedTransactionsTable 
+          userId={userId} 
+          initialTransactions={initialTransactions} 
+        />
       </div>
-    </DashboardLayout>
+    </div>
   );
 };
 
-export default Transactions;
+export default TransactionsPage;

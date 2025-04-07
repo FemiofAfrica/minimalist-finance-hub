@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import RevenueChart from "@/components/RevenueChart";
@@ -12,7 +11,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const ChartsSection = () => {
+interface ChartsSectionProps {
+  userId: string;
+}
+
+const ChartsSection: React.FC<ChartsSectionProps> = ({ userId }) => {
   const [period, setPeriod] = useState<TimePeriod>("7days");
 
   const handlePeriodChange = (value: string) => {
@@ -45,7 +48,11 @@ const ChartsSection = () => {
           <h3 className="text-lg font-semibold">Expenses by Category</h3>
         </div>
         <div className="h-[300px] w-full flex items-center justify-center">
-          <ExpensesPieChart />
+          {userId ? (
+            <ExpensesPieChart userId={userId} />
+          ) : (
+            <div className="text-muted-foreground">Loading user data...</div>
+          )}
         </div>
       </Card>
     </div>

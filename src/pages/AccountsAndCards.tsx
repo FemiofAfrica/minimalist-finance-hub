@@ -1,32 +1,36 @@
-
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+// Remove navigation imports if Link is used or navigate isn't needed
+// import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AccountsList from "@/components/accounts/AccountsList";
 import CardsList from "@/components/cards/CardsList";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+// Remove useAuth import
+// import { useAuth } from "@/contexts/AuthContext";
+// Remove useToast if not used for other purposes
+// import { useToast } from "@/hooks/use-toast"; 
 
 const AccountsAndCards = () => {
   const [activeTab, setActiveTab] = useState("accounts");
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
+  // Remove useAuth hook
+  // const { user } = useAuth();
+  // const navigate = useNavigate();
+  // const { toast } = useToast();
 
+  // REMOVE useEffect for authentication check - Loader handles this
+  /*
   useEffect(() => {
     if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to view accounts and cards",
-        variant: "destructive",
-      });
+      toast({ ... });
       navigate("/login");
     }
   }, [user, navigate, toast]);
+  */
 
+  // Component now assumes user is authenticated because the loader ensures it
   return (
-    <DashboardLayout>
+    // DashboardLayout is now applied by the route component
+    // <DashboardLayout> 
       <div className="flex flex-col gap-8 container mx-auto px-4 pb-8 max-w-7xl">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold">Accounts & Cards</h1>
@@ -48,7 +52,7 @@ const AccountsAndCards = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
+    // </DashboardLayout>
   );
 };
 
