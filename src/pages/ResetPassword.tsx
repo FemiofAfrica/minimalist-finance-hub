@@ -7,11 +7,9 @@ import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@supabase/supabase-js'; // Use standard client for client-side
 
 // IMPORTANT: Client-side Supabase instance
-// We need environment variables exposed client-side for this
-// Ensure SUPABASE_URL and SUPABASE_ANON_KEY are prefixed with VITE_ (or your framework's prefix)
-// and loaded correctly in your client-side environment.
-const supabaseUrl = process.env.VITE_SUPABASE_URL!;
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY!;
+// Access VITE variables via import.meta.env
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
 
 // Create a separate client-side Supabase client instance
 // DO NOT use auth helpers here, as we need the standard client behavior for hash parsing
