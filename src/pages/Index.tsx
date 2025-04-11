@@ -1,36 +1,35 @@
-import { useEffect, useState } from "react";
-import { type User } from "@supabase/auth-helpers-remix";
+import { type User } from "@supabase/supabase-js";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import StatCardsSection from "@/components/dashboard/StatCardsSection";
 import TransactionsSection from "@/components/dashboard/TransactionsSection";
 import ChartsSection from "@/components/dashboard/ChartsSection";
-import { fetchDashboardAnalytics, DashboardAnalytics } from "@/services/dashboardService";
+import { DashboardAnalytics } from "@/types/dashboard";
 import { Transaction } from "@/types/transaction";
 
+type UserWithMetadata = User & {
+  user_metadata: {
+    first_name?: string;
+    [key: string]: unknown;
+  };
+};
+
 interface IndexPageProps {
-  user: User | null;
+  user: UserWithMetadata | null;
   initialTransactionsData: {
     transactions: Transaction[];
     totalIncome: number;
     totalExpenses: number;
     netBalance: number;
   } | null;
+  dashboardData: DashboardAnalytics;
+  loading: boolean;
 }
 
-const Index = ({ user, initialTransactionsData }: IndexPageProps) => {
-  const [dashboardData, setDashboardData] = useState<DashboardAnalytics>({
-    totalBalance: 0,
-    totalIncome: 0,
-    totalExpense: 0,
-    monthlyTransactionCount: 0,
-    incomeChange: 0,
-    expenseChange: 0,
-    balanceChange: 0
-  });
-  const [isLoading, setIsLoading] = useState(!user);
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactionsData?.transactions || []);
+const Index = ({ user, initialTransactionsData, dashboardData, loading }: IndexPageProps) => {
+  const transactions: Transaction[] = initialTransactionsData?.transactions || [];
 
+  if(loading) return <div>Loading...</div>
+/*
   const fetchDashboardData = async () => {
     if (!user?.id) {
       console.error("User ID not available, cannot fetch dashboard data.");
@@ -62,45 +61,14 @@ const Index = ({ user, initialTransactionsData }: IndexPageProps) => {
         balanceChange: 0
       });
     } finally {
-      setIsLoading(false);
+     
     }
   };
+*/
 
-  useEffect(() => {
-    if (user) {
-      fetchDashboardData();
-      setTransactions(initialTransactionsData?.transactions || []);
-      
-      const handleRefresh = () => {
-        fetchDashboardData();
-      };
-      
-      document.addEventListener('refresh', handleRefresh);
-      document.addEventListener('refresh-transactions', handleRefresh);
-      
-      return () => {
-        document.removeEventListener('refresh', handleRefresh);
-        document.removeEventListener('refresh-transactions', handleRefresh);
-      };
-    } else {
-      setDashboardData({
-        totalBalance: 0,
-        totalIncome: 0,
-        totalExpense: 0,
-        monthlyTransactionCount: 0,
-        incomeChange: 0,
-        expenseChange: 0,
-        balanceChange: 0
-      });
-      setTransactions([]);
-      setIsLoading(false);
-    }
-  }, [user, initialTransactionsData]);
-
-  // Extract firstName and userId
   const firstName = user?.user_metadata?.first_name || null;
   const userId = user?.id;
-
+  
   return (
     <DashboardLayout firstName={firstName}>
       <div className="flex flex-col gap-8 pb-8">
@@ -112,7 +80,7 @@ const Index = ({ user, initialTransactionsData }: IndexPageProps) => {
           balanceChange={dashboardData.balanceChange}
           incomeChange={dashboardData.incomeChange}
           expenseChange={dashboardData.expenseChange}
-          isLoading={isLoading}
+          isLoading={loading}
         />
         <div className="flex flex-col gap-8">
           <div className="w-full">

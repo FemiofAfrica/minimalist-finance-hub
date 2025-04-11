@@ -171,7 +171,6 @@ function useFallbackParser(text: string): Response {
   // --- Regex Patterns for Extraction ---
   const patterns = {
     // Capture description (more robust pattern)
-    description: /(?:for|on|at|:|bought|paid|spent|received)\\s+(.+?)(?:\\s+(?:₦|\\$|\d+(?:\.\d{1,2})?)|yesterday|today|last week|last month|$)/i,
     // Capture amount, allowing for currency symbols (optional) and commas/dots
     amount: /(\d+(?:\.\d{1,2})?)/, // Simplified pattern - focusing on digits and optional dot+digits
     // Keywords indicating income
@@ -201,20 +200,16 @@ function useFallbackParser(text: string): Response {
   // --- Extraction Logic ---
   // Extract Amount
   const amountMatch = text.match(patterns.amount);
-  console.log("Fallback Parser - Amount Match:", amountMatch); // DEBUG LOG
   if (amountMatch && amountMatch[1]) {
     // Remove commas and parse as float, ensure positive
     fallbackData.amount = Math.abs(parseFloat(amountMatch[1].replace(/,/g, "")));
-    console.log("Fallback Parser - Extracted Amount:", fallbackData.amount); // DEBUG LOG
   } else {
-    console.log("Fallback Parser - Amount pattern did not match or capture group 1 was empty.");
   }
 
   // Determine Category Type (Income/Expense)
   if (patterns.income.test(lowerText)) {
     fallbackData.category_type = "INCOME";
   } else if (patterns.expense.test(lowerText)) {
-    fallbackData.category_type = "EXPENSE";
   } // Defaults to EXPENSE if neither is strongly indicated
 
   // --- Refactored Description Extraction ---
@@ -224,7 +219,6 @@ function useFallbackParser(text: string): Response {
   // Remove Amount
   if (amountMatch && amountMatch[0]) {
     textWithoutAmountAndDate = textWithoutAmountAndDate.replace(amountMatch[0], "").trim();
-    console.log("Fallback Parser - Text after removing amount:", textWithoutAmountAndDate); // DEBUG LOG
   }
 
   // Identify and Remove Date Keyword
@@ -234,7 +228,6 @@ function useFallbackParser(text: string): Response {
     if (regex.test(textWithoutAmountAndDate)) {
       matchedDateKeyword = keyword; // Store the keyword if needed later, though date is already parsed
       textWithoutAmountAndDate = textWithoutAmountAndDate.replace(regex, "").trim();
-      console.log(`Fallback Parser - Text after removing date keyword '${keyword}':`, textWithoutAmountAndDate); // DEBUG LOG
       break; // Stop after finding the first keyword
     }
   }
@@ -242,14 +235,11 @@ function useFallbackParser(text: string): Response {
    const dateRegex = /(\d{4})-(\d{2})-(\d{2})/;
    if (dateRegex.test(textWithoutAmountAndDate)) {
        textWithoutAmountAndDate = textWithoutAmountAndDate.replace(dateRegex, "").trim();
-       console.log("Fallback Parser - Text after removing explicit date:", textWithoutAmountAndDate); // DEBUG LOG
    }
 
 
   // --- Final Description Assignment from Cleaned Text ---
   let finalDesc = textWithoutAmountAndDate.trim();
-  console.log("Fallback Parser - Cleaned text before final processing:", finalDesc); // DEBUG LOG
-
   // Remove common trailing keywords/prepositions that might be left after cleaning
   const trailingKeywordsRegex = /\s+(?:at|for|on|paid|spent|bought|received)$/i;
   finalDesc = finalDesc.replace(trailingKeywordsRegex, "").trim();
@@ -263,7 +253,6 @@ function useFallbackParser(text: string): Response {
       // If somehow everything got removed, use default
        fallbackData.description = "Unknown Transaction";
   }
-  console.log("Fallback Parser - Final Description Assigned:", fallbackData.description); // DEBUG LOG
 
   // Determine Category Name
   for (const category of patterns.categories) {
@@ -280,9 +269,6 @@ function useFallbackParser(text: string): Response {
     }
   }
 
-  // Log the process and result
-  console.log("Fallback Parser - Input:", text);
-  console.log("Fallback Parser - Result:", fallbackData);
 
   // Return the parsed data as a JSON response
   return new Response(JSON.stringify(fallbackData), { headers: corsHeaders });
@@ -380,7 +366,6 @@ async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
 
     // --- Process Successful Response ---
     const rawContent = await response.text();
-    console.log("Raw Groq Response:", rawContent);
 
     // Nested try-catch for parsing and validation of the successful response
     try {
@@ -394,7 +379,6 @@ async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
             console.error("Error: Groq response content string not found or invalid.", groqResponseObject);
             throw new Error("Groq response content string not found or invalid.");
         }
-        console.log("Groq Parser - Extracted Content String:", contentString); // DEBUG LOG
 
         // Step 3: Clean up potential markdown code blocks from the *content string*
         const cleanContent = contentString.includes('```json')

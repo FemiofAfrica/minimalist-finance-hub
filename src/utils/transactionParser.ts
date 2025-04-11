@@ -201,13 +201,12 @@ export const parseTransaction = (text: string): ParsedTransaction => {
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     lastMonth.setHours(0, 0, 0, 0);
     date = lastMonth;
-    console.log("Setting date to last month:", date.toISOString());
   }
   
   return {
     description,
     amount,
-    category_type: isExpense ? "expense" : "income",
+    category_type: isExpense ? "EXPENSE" : "INCOME",
     category_name: inferredCategory,
     date: date.toISOString()
   };

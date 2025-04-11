@@ -29,16 +29,12 @@ const ResetPassword = () => {
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
-        console.log('Supabase PASSWORD_RECOVERY event received. Session:', session);
-        // You could potentially pre-fill email or do other actions here if needed
-        // The main purpose is knowing Supabase is ready
       } 
-      // Handle other events if necessary
     });
 
     // Check if tokens are present in hash immediately (Supabase might process fast)
     if (window.location.hash.includes('access_token')) {
-      console.log('Access token found in URL hash.');
+
     } else {
        console.warn('No access token found in URL hash. Password reset might fail.');
        // Optionally redirect or show error if no token found after a short delay
@@ -71,7 +67,6 @@ const ResetPassword = () => {
     }
 
     setIsUpdating(true);
-    console.log('Attempting password update...');
 
     // Update password using client-side Supabase
     // Supabase JS automatically uses the tokens from the URL hash fragment
@@ -86,7 +81,6 @@ const ResetPassword = () => {
       setError(updateError.message || "Failed to update password. The link may have expired or been used already.");
       toast({ title: "Update Failed", description: updateError.message || "Could not update password.", variant: "destructive" });
     } else {
-      console.log("Password updated successfully:", data);
       toast({ title: "Success", description: "Password updated successfully! Redirecting to login..." });
       // Redirect to login page after successful update
       setTimeout(() => navigate('/login?reset=success'), 2000); 

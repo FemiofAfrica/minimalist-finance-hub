@@ -38,7 +38,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   // Check if user exists after successful sign-in
   if (signInData.user) {
-    console.log(`👤 User ${signInData.user.id} logged in successfully.`);
     // Check if profile exists for this user
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
@@ -53,7 +52,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     // If profile doesn't exist, create it
     if (!profile) {
-      console.log(`✨ Profile not found for user ${signInData.user.id}. Creating...`);
       const { error: insertError } = await supabase
         .from('profiles')
         .insert({
@@ -70,17 +68,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         // Log the error, but still redirect the user. They might face issues later.
         // Consider returning an error message if profile creation is critical.
       }
-       else {
-         console.log(`✅ Profile created successfully for user ${signInData.user.id}`);
-      }
-    }
-     else {
-       console.log(`👍 Profile already exists for user ${signInData.user.id}`);
     }
   }
- else {
-   console.warn("⚠️ Sign-in successful but no user data returned? This shouldn't happen.");
-}
+  else {
+    console.warn("⚠️ Sign-in successful but no user data returned? This shouldn't happen.");
+  }
 
   // On success, redirect to dashboard, preserving Supabase session cookies
   return redirect("/", { headers: response.headers });

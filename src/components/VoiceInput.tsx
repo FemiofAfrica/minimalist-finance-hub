@@ -58,7 +58,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
 
     try {
       setIsLoading(true);
-      
       // First check network connectivity
       console.log('[loadSpeechSDK] Checking initial network connectivity...');
       const isConnected = await checkNetworkConnectivity();
@@ -73,7 +72,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
       
       // Dynamically import the Speech SDK with explicit error handling
       try {
-        // Add a console log to track SDK loading attempt
         console.log(`[loadSpeechSDK] Attempting dynamic import of 'microsoft-cognitiveservices-speech-sdk'...`);
         const speechModule = await import('microsoft-cognitiveservices-speech-sdk');
         
@@ -84,7 +82,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
         }
         
         // Store in ref and update state
-        speechSDKRef.current = speechModule;
         console.log('[loadSpeechSDK] SDK module loaded successfully. speechSDKRef.current set.');
         setSdkReady(true); // Still set state for other component logic
         localSdkLoaded = true;
@@ -158,7 +155,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
     const handleNetworkChange = () => {
       checkNetworkConnectivity().then(isConnected => {
         setNetworkConnected(isConnected);
-        console.log(`Network status changed: ${isConnected ? 'online' : 'offline'}`);
       });
     };
     
@@ -231,7 +227,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
           signal: AbortSignal.timeout(2000)
         });
         
-        console.log(`Network connectivity test successful with ${testUrl}`);
         return true;
       } catch (error) {
         console.warn(`Network connectivity test failed for ${testUrl}:`, error);
@@ -290,7 +285,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
           
           // For the favicon.ico endpoint, a 404 is expected and means the server is reachable
           // Any response (even an error status) means we successfully contacted the server
-          console.log('Speech service connectivity test successful with status:', corsResponse.status);
           return true;
         } catch (corsError) {
           // Try one more approach - sometimes the HEAD method is blocked but GET works
@@ -304,7 +298,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
             });
             
             // If we get here with any status code, the server is reachable
-            console.log('Speech service connectivity test successful with token endpoint, status:', getResponse.status);
             return true;
           } catch (getError) {
             // All three attempts failed, rethrow to be caught by outer catch
@@ -341,8 +334,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
       return;
     }
     
-    // Log successful connectivity test
-    console.log(`Successfully connected to Azure Speech service in region: ${AZURE_SPEECH_REGION}`);
     
     // Load the SDK if not already loaded
     const SpeechSDK = speechSDKRef.current; // Get from ref
@@ -354,7 +345,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
       return;
     }
     
-    console.log('Azure Speech SDK is ready and key is valid (checked by caller).');
 
     try {
       // Create speech config
@@ -376,7 +366,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
             recognizerRef.current.close();
             recognizerRef.current = null;
           }
-          console.warn('Azure Speech recognition timed out');
           toast({
             title: 'Recognition Timeout',
             description: 'Speech recognition timed out. Please check your internet connection and try again.',
@@ -394,11 +383,9 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
           clearTimeout(recognitionTimeout);
           if (result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
             const recognizedText = result.text;
-            console.log(`Azure recognized: "${recognizedText}"`);
             handleProvisionalCapture(recognizedText);
           } else if (result.reason === SpeechSDK.ResultReason.NoMatch) {
-            console.log('Azure NoMatch: Speech could not be recognized.');
-            toast({
+              toast({
               title: 'Recognition Failed',
               description: 'Could not recognize speech.',
               variant: 'default',
@@ -541,7 +528,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
         if (isSpeaking) {
           console.log('Speech ended, starting 3-second auto-submission timer');
           // Set new timer for 3 seconds of silence
-          silenceTimer = setTimeout(() => {
             console.log('Auto-submitting after 3 seconds of silence');
             try {
               // Store the current recognition object in ref to ensure we can access it later
@@ -576,16 +562,14 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
               recognizerRef.current = null;
             }
           }, 3000);
-        }
-      };
-      
-      // Start silence timer when recognition starts
-      // We don't start the timer immediately, only after speech is detected and then ends
+          }
+        };
       
       // Handle speech detection events
       recognition.onspeechstart = () => {
-        console.log('Speech detected, marking as speaking');
-        isSpeaking = true;
+          console.log('Speech detected, marking as speaking');
+          isSpeaking = true;
+          
         // Clear any existing silence timer when speech starts
         if (silenceTimer) {
           clearTimeout(silenceTimer);
@@ -594,16 +578,13 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
       };
       
       recognition.onspeechend = () => {
-        console.log('Speech ended, starting silence timer');
-        // Only start the silence timer if we've detected speech
-        if (isSpeaking) {
+          console.log('Speech ended, starting silence timer');
           resetSilenceTimer();
-        }
       };
       
       // Also reset timer when audio is detected
       recognition.onaudiostart = () => {
-        console.log('Audio detected, resetting silence timer');
+          console.log('Audio detected, resetting silence timer');
         resetSilenceTimer();
       };
       
@@ -617,7 +598,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
         
         const transcript = event.results[0][0].transcript;
         if (transcript.trim()) {
-          console.log('Browser recognized:', transcript);
           handleProvisionalCapture(transcript);
         } else {
           console.log('Browser NoMatch: No transcript available');
@@ -643,7 +623,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
           isIntentionalAbortRef.current = false;
           if (event.error !== 'aborted') {
             console.warn('Unexpected error type following intentional abort:', event.error, event.message);
-          }
           setIsListening(false);
           return;
         }
@@ -704,7 +683,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
       isIntentionalAbortRef.current = false;
       recognition.start();
       console.log('[Browser Recognition] recognition.start() called');
-    } catch (error) {
       console.error('Error initializing browser speech recognition:', error);
       toast({
         title: 'Recognition Error',
@@ -714,7 +692,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
       setIsListening(false);
       setProvisionalText(null);
       onProvisionalTextUpdate?.(null);
-    }
   };
 
   const toggleListening = async () => {
@@ -727,7 +704,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
     }
 
     if (isListening) {
-      console.log('[toggleListening] Clicked while listening. Stopping.');
       if (recognizerRef.current) {
         try {
           console.log('[toggleListening] Stopping Azure via stopContinuousRecognitionAsync...');
@@ -746,7 +722,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
       setIsListening(false);
     } else {
       console.log('[toggleListening] Clicked while idle. Starting listening...');
-      const isConnected = await checkNetworkConnectivity();
       if (!isConnected) {
         toast({
           title: 'Network Offline',
@@ -780,7 +755,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
         const finalKeyValid = loadResult ? loadResult.keyValid : (azureKeyValid ?? false);
 
         // Now decide which recognition to use based on potentially updated flags
-        if (finalUseFallback || !finalSdkReady || !finalKeyValid) {
           console.log('[toggleListening] Using browser speech recognition (post-load check).');
           startBrowserSpeechRecognition();
         } else {
@@ -823,8 +797,6 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
       clearTimeout(autoSubmitTimerRef.current);
       autoSubmitTimerRef.current = null;
     }
-    if (provisionalText !== null) {
-      console.log('[confirmSubmission] Submitting text:', provisionalText);
       onTextCaptured(provisionalText);
       setProvisionalText(null);
       onProvisionalTextUpdate?.(null);
@@ -833,14 +805,11 @@ const VoiceInput = ({ onTextCaptured, disabled = false, onProvisionalTextUpdate 
   }, [provisionalText, onTextCaptured, onProvisionalTextUpdate]);
 
   const handleProvisionalCapture = useCallback((text: string) => {
-    if (!text) return;
-    console.log('[handleProvisionalCapture] Provisionally captured:', text);
     setProvisionalText(text);
     onProvisionalTextUpdate?.(text);
     setIsListening(false);
 
     if (autoSubmitTimerRef.current) {
-      clearTimeout(autoSubmitTimerRef.current);
     }
 
     console.log('[handleProvisionalCapture] Starting 3-second auto-submit timer...');

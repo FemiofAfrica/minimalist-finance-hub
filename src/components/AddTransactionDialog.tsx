@@ -69,7 +69,6 @@ const AddTransactionDialog = () => {
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault(); 
-    console.log("Submitting transaction via fetcher:", formData);
 
     const submitData = new FormData();
     submitData.append("intent", "createTransaction"); 

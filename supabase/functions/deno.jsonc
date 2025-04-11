@@ -13,7 +13,7 @@
     "strict": false
   },
   "imports": {
-    "std/": "https://deno.land/std@0.168.0/"
+    "std/": "https://deno.land/std@0.224.0/"
   },
   "tasks": {
     "test": "deno test --allow-env --allow-net"

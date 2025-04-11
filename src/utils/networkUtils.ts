@@ -42,7 +42,6 @@ export const checkSupabaseConnectivity = async (): Promise<boolean> => {
       throw new Error(errorMessage);
     }
 
-    console.log('Supabase connectivity test successful');
     return true;
   } catch (error) {
     console.warn('Supabase connectivity test failed:', error);

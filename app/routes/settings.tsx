@@ -30,14 +30,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   // If no user or error getting user, redirect to login
   if (userError || !user) {
-    console.error("Error getting user or no user in loader:", userError);
     return redirect("/login", { headers: response.headers });
   }
 
   // Extract first name from user metadata
   const firstName = user.user_metadata?.first_name || null;
 
-  // Return the authenticated user along with headers
   return json({ 
     email: user.email,
     firstName: user.user_metadata?.first_name || '',
@@ -48,20 +46,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 // Action function to handle profile updates
 export const action = async ({ request }: ActionFunctionArgs) => {
-  console.log("🚀 Starting settings action...");
   try {
-  const response = new Response();
+    const response = new Response();
 
-    // Initialize Supabase client with error boundary
     let supabase;
     try {
-      console.log("📡 Initializing Supabase client...");
       supabase = createServerClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_ANON_KEY!,
     { request, response }
   );
-      console.log("✅ Supabase client initialized");
     } catch (initError) {
       console.error("❌ Failed to initialize Supabase client:", initError);
       return json({ 
@@ -73,12 +67,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     // Get user with error boundary
     let user;
     try {
-      console.log("🔍 Getting authenticated user...");
       const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
       if (!authUser) throw new Error("No authenticated user found");
       user = authUser;
-      console.log("✅ Found authenticated user:", user.id);
     } catch (authError) {
       console.error("❌ Authentication error:", authError);
       return redirect("/login", { headers: response.headers });
@@ -86,14 +78,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     // Process form data
     console.log("📝 Processing form data...");
-  const formData = await request.formData();
+    const formData = await request.formData();
     const firstName = formData.get("firstName") as string;
     const lastName = formData.get("lastName") as string;
 
-    console.log("📋 Form data:", { firstName, lastName });
-
     if (!firstName || !lastName) {
-      console.error("❌ Invalid form data - missing required fields");
       return json({ 
         error: "Invalid form data",
         details: "First name and last name are required"
@@ -102,12 +91,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     // Update user metadata
     try {
-      console.log("🔄 Updating user metadata...");
       const { error: updateError } = await supabase.auth.updateUser({
         data: { first_name: firstName, last_name: lastName }
       });
       if (updateError) throw updateError;
-      console.log("✅ User metadata updated successfully");
     } catch (updateError) {
       console.error("❌ Error updating user metadata:", updateError);
       return json({ 
@@ -118,8 +105,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     // Update or create profile
     try {
-      console.log("🔄 Checking profile existence...");
-      
       // Use the regular client for all operations
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
@@ -134,7 +119,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       if (existingProfile) {
         // Update existing profile
-        console.log("🔄 Updating existing profile...");
         const { error: updateError } = await supabase
           .from('profiles')
           .update({
@@ -148,10 +132,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           console.error("❌ Error updating profile:", updateError);
           throw updateError;
         }
-        console.log("✅ Profile updated successfully");
       } else {
         // Create new profile
-        console.log("🔄 Creating new profile...");
         const { error: insertError } = await supabase
           .from('profiles')
           .insert({
@@ -167,7 +149,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           console.error("❌ Error creating profile:", insertError);
           throw insertError;
         }
-        console.log("✅ Profile created successfully");
       }
     } catch (profileError) {
       console.error("❌ Error managing profile:", profileError);
@@ -177,8 +158,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         errorObject: profileError
       }, { status: 500 });
     }
-
-    console.log("🎉 Settings update completed successfully");
+    
     return json({ success: true }, { 
       headers: response.headers
     });

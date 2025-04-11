@@ -27,3 +27,4 @@ dist-ssr
 .vercel
 .vite/
 .env
+.idx/dev.nix

@@ -90,7 +90,7 @@ const DashboardHeader = ({ firstName, userEmail }: DashboardHeaderProps) => {
       </div>
 
       <div className="flex items-center gap-4">
-        <CurrencySelector />
+          <CurrencySelector />
         {/* Logout button is in Sidebar, no need for signOut here */}
       </div>
     </>

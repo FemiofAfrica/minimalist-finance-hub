@@ -1,9 +1,7 @@
 // supabase/functions/send-subscription-reminders/index.ts
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-// Import Supabase client library (use Admin client for elevated access)
-import { createClient, User } from "https://esm.sh/@supabase/supabase-js@2";
-// REMOVED: Resend import
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Define CORS headers (adjust origin as needed for security)
 const corsHeaders = {
@@ -59,8 +57,6 @@ serve(async (req: Request) => {
       });
     }
 
-    console.log("Starting subscription reminder check...");
-
     // --- Initialize Supabase Admin Client ---
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -68,7 +64,18 @@ serve(async (req: Request) => {
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error("Missing Supabase URL or Service Role Key environment variables.");
     }
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const supabaseAdmin: SupabaseClient = createClient(
+        supabaseUrl,
+        supabaseServiceKey,
+        {
+            global: {
+                headers: {
+                    Authorization: `Bearer ${supabaseServiceKey}`
+                }
+            }
+        }
+    );
 
     // --- Brevo API Key ---
     const brevoApiKey = Deno.env.get("BREVO_API_KEY"); // Store in Function secrets
@@ -97,7 +104,6 @@ serve(async (req: Request) => {
     }
 
     if (!subscriptions || subscriptions.length === 0) {
-      console.log("No active subscriptions with reminders found.");
       return new Response(JSON.stringify({ message: "No subscriptions to check." }), {
         headers: corsHeaders,
       });
@@ -123,7 +129,6 @@ serve(async (req: Request) => {
         reminderDate.setHours(0, 0, 0, 0);
 
         if (reminderDate.getTime() === today.getTime()) {
-          console.log(`Subscription due for reminder: ${sub.name} (ID: ${sub.subscription_id})`);
           remindersDueToday.push(sub as SubscriptionReminderInfo);
           usersToFetch.add(sub.user_id);
         }
@@ -133,7 +138,6 @@ serve(async (req: Request) => {
     });
 
     if (remindersDueToday.length === 0) {
-        console.log("No subscriptions due for reminder today.");
         return new Response(JSON.stringify({ message: "No reminders due today." }), {
             headers: corsHeaders,
         });
@@ -146,15 +150,26 @@ serve(async (req: Request) => {
        if (usersError) {
          console.error("Error fetching users:", usersError);
        } else {
-         usersData?.users.forEach((user: User) => {
+         usersData?.users.forEach((user:{
+            id: string;
+            email: string;
+            app_metadata: { provider: string };
+            aud: string;
+            confirmation_sent_at: string;
+            created_at: string;
+            email_confirmed_at: string;
+            identities: any;
+            last_sign_in_at: string;
+            phone: string;
+            role: string;
+            updated_at: string;
+          }) => {
             if (usersToFetch.has(user.id) && user.email) {
               userEmailMap.set(user.id, user.email);
             }
          });
        }
      }
-
-    console.log(`Attempting to send ${remindersDueToday.length} reminders via Brevo.`);
 
     // --- Prepare and Send Emails using Brevo API ---
     remindersDueToday.forEach((sub) => {
@@ -236,7 +251,6 @@ serve(async (req: Request) => {
     results.forEach((result, index) => {
         const subInfo = remindersDueToday[index];
         if (result.status === 'fulfilled' && 'messageId' in result.value) {
-            console.log(`Successfully sent reminder via Brevo for subscription ${subInfo.subscription_id} to user ${subInfo.user_id}. Response:`, result.value);
             successCount++;
         } else {
             failureCount++;
@@ -246,8 +260,6 @@ serve(async (req: Request) => {
             console.error(`Failed to send reminder via Brevo for subscription ${subInfo.subscription_id} to user ${subInfo.user_id}:`, errorReason);
         }
     });
-
-    console.log(`Brevo reminder process finished. Success: ${successCount}, Failures: ${failureCount}`);
 
     // --- Return Success Response ---
     return new Response(JSON.stringify({ message: `Processed reminders via Brevo. Success: ${successCount}, Failures: ${failureCount}` }), {

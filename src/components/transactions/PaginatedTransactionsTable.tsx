@@ -58,14 +58,12 @@ const PaginatedTransactionsTable: React.FC<PaginatedTransactionsTableProps> = ({
     }
     if (!forceRefresh && initialTransactions.length > 0 && transactions === initialTransactions) {
       console.log("Using initial transactions, skipping fetch.")
-      setLoading(false);
       return;
     }
     
     try {
       setLoading(true);
-      console.log(`Fetching transactions for user: ${userId}`);
-      const data = await fetchTransactions(userId);
+      const {data} = await fetchTransactions(userId);
       setTransactions(data.transactions);
     } catch (error) {
       toast({
@@ -81,7 +79,6 @@ const PaginatedTransactionsTable: React.FC<PaginatedTransactionsTableProps> = ({
 
   useEffect(() => {
     if (userId && initialTransactions.length === 0) {
-        console.log("Initial transactions empty, loading from useEffect...");
         loadTransactions();
     } else if (!userId) {
         console.warn("PaginatedTransactionsTable mounted without userId.");
@@ -91,7 +88,6 @@ const PaginatedTransactionsTable: React.FC<PaginatedTransactionsTableProps> = ({
     }
     
     const handleRefresh = () => {
-      console.log("Refresh event triggered in PaginatedTransactionsTable");
       if (userId) { 
           loadTransactions(true);
       }

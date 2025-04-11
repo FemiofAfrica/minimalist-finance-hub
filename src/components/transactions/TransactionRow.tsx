@@ -1,9 +1,12 @@
-import { ArrowDownRight, ArrowUpRight, Pencil, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
+
+import { useToast } from "@/hooks/use-toast";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Transaction } from "@/types/transaction";
 import { formatDate } from "@/utils/formatters";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { useState, useEffect } from "react";
+import { ArrowDownRight, ArrowUpRight, Pencil, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -22,8 +25,6 @@ import {
   CommandList,
 } from "@/components/ui/command"
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface TransactionRowProps {
@@ -98,7 +99,6 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
     if (ngnRate && typeof ngnRate === 'number' && ngnRate > 0) {
       return amountNgn / ngnRate;
     }
-    console.warn(`Rate for ${PROPS_BASE_CURRENCY} not available for conversion.`);
     return null;
   };
 
@@ -417,7 +417,6 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                                    category_name: newCategoryName
                                  }));
                                }
-                               console.log(`Optimistically adding: ${newCategoryName} (${currentCategoryType})`);
                                setCategoryPopoverOpen(false);
                              }}
                            >

@@ -1,4 +1,5 @@
-import { supabase } from "@/integrations/supabase/client";
+import pkg from '@supabase/supabase-js';
+const { createServerClient } = pkg;
 import { Transaction } from "@/types/transaction";
 
 /**
@@ -10,10 +11,10 @@ export const searchTransactionsByDescription = async (query: string): Promise<Tr
     if (!query || query.trim().length < 2) {
       return [];
     }
-
-    console.log("Searching transactions by description:", query);
+    const supabase = createServerClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
     
     // Search for transactions with a similar description
+
     const { data: transactionsData, error: transactionsError } = await supabase
       .from('transactions')
       .select(`
@@ -30,11 +31,11 @@ export const searchTransactionsByDescription = async (query: string): Promise<Tr
     }
 
     if (!transactionsData || transactionsData.length === 0) {
-      console.log("No matching transactions found");
       return [];
     }
 
     // Process the transactions to include account and card names
+
     const enrichedTransactions = transactionsData.map(transaction => {
       const processedTransaction: Transaction = {
         ...transaction,
@@ -48,20 +49,19 @@ export const searchTransactionsByDescription = async (query: string): Promise<Tr
       };
       
       // Add account and card name information if available
+
       if (transaction.accounts) {
         processedTransaction.account_name = transaction.accounts.name;
       }
       
       return processedTransaction;
     });
-    
     // Return unique transactions based on description
     // This prevents showing multiple entries of the same subscription
     const uniqueTransactions = Array.from(
       new Map(enrichedTransactions.map(item => [item.description, item]))
       .values()
     );
-    
     return uniqueTransactions;
   } catch (error) {
     console.error("Error in searchTransactionsByDescription:", error);
@@ -80,6 +80,8 @@ export const searchAccountsAndCards = async (query: string): Promise<{
     if (!query || query.trim().length < 2) {
       return { accounts: [], cards: [] };
     }
+    const supabase = createServerClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+
 
     // Search for accounts with similar names
     const { data: accountsData, error: accountsError } = await supabase
@@ -92,6 +94,7 @@ export const searchAccountsAndCards = async (query: string): Promise<{
       console.error('Error searching accounts:', accountsError);
       throw accountsError;
     }
+
 
     // Search for cards with similar names
     const { data: cardsData, error: cardsError } = await supabase
