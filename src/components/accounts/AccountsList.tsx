@@ -1,11 +1,12 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Account } from "@/types/account";
-import { fetchAccounts } from "@/services/accountService";
+import { fetchAccounts } from "@/services/accountService.axios";
 import AccountCard from "./AccountCard";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts";
 import AccountDialog from "./AccountDialog";
 
 const AccountsList = () => {
@@ -14,11 +15,21 @@ const AccountsList = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  const loadAccounts = async () => {
+  const loadAccounts = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await fetchAccounts();
+      if (!user?.id) {
+        toast({
+          title: "Error",
+          description: "User ID not available",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+      const data = await fetchAccounts(user.id);
       setAccounts(data);
     } catch (error) {
       toast({
@@ -29,11 +40,11 @@ const AccountsList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, toast]);
 
   useEffect(() => {
     loadAccounts();
-  }, []);
+  }, [user, loadAccounts]);
 
   const handleEditAccount = (account: Account) => {
     setSelectedAccount(account);

@@ -1,11 +1,12 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card as CardType } from "@/types/card";
-import { fetchCards, getCardsByAccount } from "@/services/cardService";
+import { fetchCards, getCardsByAccount } from "@/services/cardService.axios";
 import CardItem from "./CardItem";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts";
 import CardDialog from "./CardDialog";
 
 interface CardsListProps {
@@ -18,13 +19,23 @@ const CardsList = ({ accountId }: CardsListProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  const loadCards = async () => {
+  const loadCards = useCallback(async () => {
     try {
       setLoading(true);
+      if (!user?.id) {
+        toast({
+          title: "Error",
+          description: "User ID not available",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
       const data = accountId 
-        ? await getCardsByAccount(accountId)
-        : await fetchCards();
+        ? await getCardsByAccount(user.id, accountId)
+        : await fetchCards(user.id);
       setCards(data);
     } catch (error) {
       toast({
@@ -35,11 +46,11 @@ const CardsList = ({ accountId }: CardsListProps) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accountId, user, toast]);
 
   useEffect(() => {
     loadCards();
-  }, [accountId]);
+  }, [accountId, user, loadCards]);
 
   const handleEditCard = (card: CardType) => {
     setSelectedCard(card);

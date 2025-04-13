@@ -26,24 +26,17 @@ const StatCardsSection = ({
   expenseChange,
   isLoading = false 
 }: StatCardsSectionProps) => {
-  const { formatPossiblyConvertedCurrency, exchangeRates } = useCurrency();
+  const { formatPossiblyConvertedCurrency } = useCurrency();
 
-  const convertNgnToUsd = (amountNgn: number): number | null => {
-      const ngnRate = exchangeRates?.[PROPS_BASE_CURRENCY];
-      if (ngnRate && typeof ngnRate === 'number' && ngnRate > 0) {
-          return amountNgn / ngnRate;
-      }
-      console.warn(`Rate for ${PROPS_BASE_CURRENCY} not available for conversion.`);
-      return null;
-  };
-
-  const formattedTotalBalance = convertNgnToUsd(totalBalance);
-  const formattedTotalIncome = convertNgnToUsd(totalIncome);
-  const formattedTotalExpense = convertNgnToUsd(totalExpense);
+  // Use the values directly from the backend without conversion
+  // This ensures consistency between frontend and backend data
+  const formattedTotalBalance = totalBalance;
+  const formattedTotalIncome = totalIncome;
+  const formattedTotalExpense = totalExpense;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {isLoading || formattedTotalBalance === null ? (
+      {isLoading ? (
         <Skeleton className="h-32 w-full" />
       ) : (
         <StatCard
@@ -56,7 +49,7 @@ const StatCardsSection = ({
         />
       )}
 
-      {isLoading || formattedTotalIncome === null ? (
+      {isLoading ? (
         <Skeleton className="h-32 w-full" />
       ) : (
         <StatCard
@@ -69,7 +62,7 @@ const StatCardsSection = ({
         />
       )}
 
-      {isLoading || formattedTotalExpense === null ? (
+      {isLoading ? (
         <Skeleton className="h-32 w-full" />
       ) : (
         <StatCard
@@ -87,7 +80,7 @@ const StatCardsSection = ({
       ) : (
         <StatCard
           title="Monthly Transaction Count"
-          value={monthlyTransactionCount.toString()}
+          value={monthlyTransactionCount !== undefined ? monthlyTransactionCount.toString() : '0'}
           trend={0}
           icon={<Calendar className="w-6 h-6 text-violet-600 dark:text-violet-400" />}
           iconBgClass="bg-violet-100 dark:bg-violet-900/20"

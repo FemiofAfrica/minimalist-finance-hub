@@ -1,4 +1,4 @@
-import { Link } from '@remix-run/react';
+import { Link } from 'react-router-dom';
 import { MailCheck } from 'lucide-react';
 
 const ConfirmEmail = () => {
@@ -28,4 +28,4 @@ const ConfirmEmail = () => {
   );
 };
 
-export default ConfirmEmail; 
+export default ConfirmEmail;

@@ -1,10 +1,11 @@
-import { redirect, type LoaderFunctionArgs, json, type TypedResponse } from "@remix-run/node";
+import { redirect, type LoaderFunctionArgs, type ActionFunctionArgs, json, type TypedResponse } from "@remix-run/node";
 import { createServerClient } from "@supabase/auth-helpers-remix";
 import TransactionsPage from "@/pages/Transactions";
 import { useLoaderData } from "@remix-run/react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { fetchTransactions } from "@/services/transactionService";
 import { Transaction } from "@/types/transaction";
+import TransactionInput from "@/components/transactions/TransactionInput";
 
 // Define the type for the loader data
 export interface TransactionsLoaderData {
@@ -71,23 +72,88 @@ export const loader = async ({ request }: LoaderFunctionArgs): Promise<Response 
   }
 };
 
+// Action function to handle transaction creation
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const response = new Response();
+  const supabase = createServerClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+    { request, response }
+  );
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    return json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const formData = await request.formData();
+  const intent = formData.get('intent');
+
+  if (intent === 'createTransaction') {
+    const text = formData.get('text');
+    if (!text) {
+      return json({ error: 'Transaction text is required' }, { status: 400 });
+    }
+
+    try {
+      const { data: parsedData, error: parseError } = await supabase.functions.invoke('parse-transaction-groq', {
+        body: { text: text }
+      });
+
+      if (parseError || (parsedData && parsedData.error)) {
+        return json({
+          error: parsedData?.error || parseError?.message || 'Failed to parse transaction'
+        }, { status: 400 });
+      }
+
+      // Create the transaction in the database
+      const { error: insertError } = await supabase
+        .from('transactions')
+        .insert([
+          {
+            user_id: user.id,
+            ...parsedData,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        ]);
+
+      if (insertError) {
+        return json({ error: 'Failed to create transaction' }, { status: 500 });
+      }
+
+      return json({ success: true });
+    } catch (error) {
+      return json({
+        error: error instanceof Error ? error.message : 'An unexpected error occurred'
+      }, { status: 500 });
+    }
+  }
+
+  return json({ error: 'Invalid intent' }, { status: 400 });
+};
+
 // Route component renders the actual page
 export default function TransactionsRoute() {
-  // Use the updated loader data type
-  const { user, firstName, initialTransactions } = useLoaderData<typeof loader>();
-  const userId = user?.id; // Extract userId from the loader data
+  const { user, firstName, initialTransactions, totalIncome, totalExpenses, netBalance } = useLoaderData<typeof loader>();
+  const userId = user?.id;
 
   return (
     <DashboardLayout firstName={firstName}>
-        {/* Pass initialTransactions and userId down */}
-        {userId ? (
-            <TransactionsPage 
-                initialTransactions={initialTransactions} 
-                userId={userId} 
-            />
-        ) : (
-            <div>Loading user data...</div> // Should not happen if loader redirects
-        )}
+      {userId ? (
+        <div className="space-y-6">
+          <TransactionInput />
+          <TransactionsPage
+            initialTransactions={initialTransactions}
+            userId={userId}
+            totalIncome={totalIncome}
+            totalExpenses={totalExpenses}
+            netBalance={netBalance}
+          />
+        </div>
+      ) : (
+        <div>Loading user data...</div>
+      )}
     </DashboardLayout>
   );
-} 
+}

@@ -14,3 +14,12 @@ export interface Category {
   created_at?: string;
   updated_at?: string;
 }
+
+// Interface for category expense data used in dashboard charts
+export interface CategoryExpense {
+  category_id: string;
+  category_name: string;
+  amount: number;
+  percentage?: number;
+  color?: string;
+}

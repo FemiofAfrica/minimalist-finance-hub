@@ -1,32 +1,33 @@
-import { useState } from 'react';
-import { Form, Link, useActionData } from '@remix-run/react';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/components/ui/use-toast';
-import { useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts';
+import { ApiError, createApiError } from '@/types/error';
 
-// Type for action data (optional error message)
-type ActionData = {
-  error?: string;
-};
+
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const actionData = useActionData<ActionData>();
-
-  // Show error toast if action returns an error
+  const { signIn } = useAuth();
+  const navigate = useNavigate();
+  
+  // Show error toast if there's an error
   useEffect(() => {
-    if (actionData?.error) {
+    if (error) {
       toast({
         title: "Error",
-        description: actionData.error,
+        description: error,
         variant: "destructive",
       });
     }
-  }, [actionData, toast]);
+  }, [error, toast]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#004D40]">
@@ -43,7 +44,24 @@ const Login = () => {
           </p>
         </div>
 
-        <Form method="post" className="space-y-4 bg-[#00695C] rounded-lg p-6">
+        <form 
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setError(null);
+            setIsLoading(true);
+            
+            try {
+              await signIn(email, password);
+              // Navigation is handled in the AuthContext after successful login
+            } catch (err: unknown) {
+              const apiError = createApiError(err);
+              setError(apiError.message || 'Failed to login. Please check your credentials.');
+            } finally {
+              setIsLoading(false);
+            }
+          }} 
+          className="space-y-4 bg-[#00695C] rounded-lg p-6"
+        >
           <div className="space-y-4">
             <div>
               <Label htmlFor="email" className="text-sm font-medium text-gray-200">Email</Label>
@@ -76,10 +94,11 @@ const Login = () => {
           <Button 
             type="submit" 
             className="w-full h-11 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent"
+            disabled={isLoading}
           >
-            Sign In
+            {isLoading ? 'Signing In...' : 'Sign In'}
           </Button>
-        </Form>
+        </form>
 
         {/* Add Sign Up and Forgot Password links */}
         <div className="mt-4 text-center text-sm space-x-2">

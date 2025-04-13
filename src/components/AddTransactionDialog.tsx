@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useFetcher } from "@remix-run/react";
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
   Dialog,
   DialogContent,
@@ -18,13 +18,21 @@ import { fetchAccounts, getDefaultAccount } from "@/services/accountService";
 import { fetchCards } from "@/services/cardService";
 import { Account } from "@/types/account";
 import { Card } from "@/types/card";
-import { TransactionInput } from "@/types/transaction";
-import { TransactionFlowType } from "@/types/transaction";
+import { TransactionInput, Transaction, TransactionType } from "@/types/transaction";
+import { TransactionCreationResponse } from "@/types/api-responses";
+import { useAuth } from "@/contexts";
 
-const AddTransactionDialog = () => {
+interface AddTransactionDialogProps {
+  onTransactionAdded?: (transaction: Transaction) => void;
+}
+
+const AddTransactionDialog = ({ onTransactionAdded }: AddTransactionDialogProps = {}) => {
   const [open, setOpen] = useState(false);
-  const fetcher = useFetcher();
   const { toast } = useToast();
+  const { user } = useAuth();
+  
+  // Added loading state
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<Partial<TransactionInput>>({
     type: 'expense',
@@ -42,46 +50,72 @@ const AddTransactionDialog = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleDateChange = (date: Date | undefined) => {
-    if (date) {
-      setFormData(prev => ({ ...prev, date: date.toISOString().split('T')[0] }));
-    }
+  // Handle date input changes
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    setFormData(prev => ({ ...prev, date: value }));
   };
 
-  useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data) {
-      if (fetcher.data.success) {
-        toast({
-          title: "Success",
-          description: "Transaction added successfully!",
-        });
-        setOpen(false);
-        setFormData({ });
-      } else if (fetcher.data.error) {
-        toast({
-          title: "Error",
-          description: fetcher.data.error,
-          variant: "destructive",
-        });
-      }
+  // Removed useEffect that was watching fetcher state
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    console.log("Submitting transaction via axios:", formData);
+    
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to add a transaction",
+        variant: "destructive",
+      });
+      return;
     }
-  }, [fetcher.state, fetcher.data, toast]);
-
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault(); 
-
-    const submitData = new FormData();
-    submitData.append("intent", "createTransaction"); 
-    Object.entries(formData).forEach(([key, value]) => {
-      if (value !== null && value !== undefined) {
-          submitData.append(key, String(value));
+    
+    try {
+      setIsSubmitting(true);
+      
+      // Call the API endpoint directly
+      const response = await axios.post('/api/transactions', {
+        userId: user.id,
+        transaction: formData
+      });
+      
+      // Handle success
+      toast({
+        title: "Success",
+        description: "Transaction added successfully!",
+      });
+      
+      setOpen(false);
+      setFormData({
+        type: 'expense',
+        date: new Date().toISOString().split('T')[0],
+        amount: 0,
+        account_id: '',
+        category_name: '',
+        description: '',
+        notes: '',
+        currency: ''
+      });
+      
+      // Call the callback if provided
+      if (onTransactionAdded && response.data) {
+        onTransactionAdded(response.data);
       }
-    });
-
-    fetcher.submit(submitData, { 
-        method: "post", 
-        action: "/"
-    });
+      
+      // Trigger a refresh event for other components to update
+      document.dispatchEvent(new Event('refresh-transactions'));
+      
+    } catch (error) {
+      console.error("Error adding transaction:", error);
+      toast({
+        title: "Error",
+        description: error.response?.data?.error || "Failed to add transaction",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -96,10 +130,10 @@ const AddTransactionDialog = () => {
             Enter the details for your new transaction.
           </DialogDescription>
         </DialogHeader>
-        <fetcher.Form onSubmit={handleSubmit} className="grid gap-4 py-4">
+        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="type" className="text-right">Type</Label>
-            <Select name="type" value={formData.type} onValueChange={(value) => setFormData(prev => ({...prev, type: value as any}))}>
+            <Select name="type" value={formData.type} onValueChange={(value) => setFormData(prev => ({...prev, type: value as TransactionType}))}>
               <SelectTrigger>
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
@@ -119,7 +153,7 @@ const AddTransactionDialog = () => {
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="account_id" className="text-right">Account</Label>
-            <Select name="account_id" value={formData.account_id} onValueChange={(value) => setFormData(prev => ({...prev, account_id: value as any}))}>
+            <Select name="account_id" value={formData.account_id} onValueChange={(value) => setFormData(prev => ({...prev, account_id: value}))}>
               <SelectTrigger>
                 <SelectValue placeholder="Select account" />
               </SelectTrigger>
@@ -130,7 +164,7 @@ const AddTransactionDialog = () => {
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="category_name" className="text-right">Category</Label>
-            <Select name="category_name" value={formData.category_name} onValueChange={(value) => setFormData(prev => ({...prev, category_name: value as any}))}>
+            <Select name="category_name" value={formData.category_name} onValueChange={(value) => setFormData(prev => ({...prev, category_name: value}))}>
               <SelectTrigger>
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
@@ -158,11 +192,11 @@ const AddTransactionDialog = () => {
             <Input id="currency" name="currency" value={formData.currency} onChange={handleInputChange} className="col-span-3" />
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={fetcher.state !== 'idle'}>
-              {fetcher.state !== 'idle' ? "Adding..." : "Add Transaction"}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Adding..." : "Add Transaction"}
             </Button>
           </DialogFooter>
-        </fetcher.Form>
+        </form>
       </DialogContent>
     </Dialog>
   );

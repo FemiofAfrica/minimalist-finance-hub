@@ -1,51 +1,76 @@
 import { useState, useEffect } from 'react';
-import { Form, Link, useActionData, useSearchParams } from '@remix-run/react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/components/ui/use-toast';
-
-// Type for action data
-type ActionData = {
-  error?: string;
-  success?: boolean;
-};
+import { useToast } from '@/hooks/use-toast';
+import { ApiError, createApiError } from '@/types/error';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
-  const { toast } = useToast();
-  const actionData = useActionData<ActionData>();
-  const [searchParams] = useSearchParams();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Show toast for errors or success
+  // Show toast for errors
   useEffect(() => {
-    if (actionData?.error) {
+    if (error) {
       toast({
         title: "Error",
-        description: actionData.error,
+        description: error,
         variant: "destructive",
       });
-      setShowSuccessMessage(false);
-    } else if (actionData?.success) {
-       toast({
-        title: "Success",
-        description: "Password reset email sent. Please check your inbox.",
-      });
-      setShowSuccessMessage(true);
-      setEmail(''); // Clear email field on success
     }
-  }, [actionData, toast]);
+  }, [error, toast]);
 
   // Check for reset message from URL (after successful reset)
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
     if (searchParams.get('reset') === 'success') {
       toast({
         title: "Password Updated",
         description: "Your password has been successfully updated. You can now log in.",
       });
     }
-  }, [searchParams, toast]);
+  }, [location.search, toast]);
+  
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send reset email');
+      }
+      
+      toast({
+        title: "Success",
+        description: "Password reset email sent. Please check your inbox.",
+      });
+      setShowSuccessMessage(true);
+      setEmail(''); // Clear email field on success
+    } catch (err: unknown) {
+      const apiError = createApiError(err);
+      setError(apiError.message || 'Failed to send reset email');
+      setShowSuccessMessage(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#004D40]">
@@ -63,7 +88,7 @@ const ForgotPassword = () => {
             </Link>
           </div>
         ) : (
-          <Form method="post" className="space-y-4 bg-[#00695C] rounded-lg p-6">
+          <form onSubmit={handleSubmit} className="space-y-4 bg-[#00695C] rounded-lg p-6">
             <p className="text-sm text-gray-200 text-center mb-4">Enter your email address and we'll send you a link to reset your password.</p>
             <div className="space-y-4">
               <div>
@@ -85,11 +110,11 @@ const ForgotPassword = () => {
             <Button
               type="submit"
               className="w-full h-11 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent disabled:opacity-50"
-              disabled={!email}
+              disabled={isLoading || !email}
             >
-              Send Reset Link
+              {isLoading ? 'Sending...' : 'Send Reset Link'}
             </Button>
-          </Form>
+          </form>
         )}
 
         {!showSuccessMessage && (
@@ -104,4 +129,4 @@ const ForgotPassword = () => {
   );
 };
 
-export default ForgotPassword; 
+export default ForgotPassword;

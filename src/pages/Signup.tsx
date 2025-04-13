@@ -1,48 +1,72 @@
 import { useState, useEffect } from 'react';
-import { Form, Link, useActionData } from '@remix-run/react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts';
+import { ApiError, createApiError } from '@/types/error';
 
-// Type for action data
-type ActionData = {
-  error?: string;
-};
+
 
 const Signup = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [passwordMatchError, setPasswordMatchError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const actionData = useActionData<ActionData>();
+  const { signUp } = useAuth();
+  const navigate = useNavigate();
 
-  // Show error toast if action returns an error
+  // Show error toast if there's an error
   useEffect(() => {
-    if (actionData?.error) {
+    if (error) {
       toast({
         title: "Signup Error",
-        description: actionData.error,
+        description: error,
         variant: "destructive",
       });
     }
-  }, [actionData, toast]);
+  }, [error, toast]);
 
   // Client-side password match check
   useEffect(() => {
     setPasswordMatchError(password !== confirmPassword && confirmPassword !== '');
   }, [password, confirmPassword]);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    
     if (password !== confirmPassword) {
-      event.preventDefault(); // Prevent form submission
       setPasswordMatchError(true);
+      setError("Passwords do not match.");
+      return;
+    }
+    
+    if (!firstName || !lastName) {
+      setError("First name and last name are required.");
+      return;
+    }
+    
+    setError(null);
+    setIsLoading(true);
+    
+    try {
+      await signUp(email, password, firstName, lastName);
       toast({
-        title: "Password Mismatch",
-        description: "Passwords do not match.",
-        variant: "destructive",
+        title: "Success",
+        description: "Account created successfully! Please check your email to verify your account.",
       });
+      navigate('/confirm-email');
+    } catch (err: unknown) {
+      const apiError = createApiError(err);
+      setError(apiError.message || 'Failed to create account.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -54,8 +78,36 @@ const Signup = () => {
           <h2 className="text-2xl font-bold text-white">Create Account</h2>
         </div>
 
-        <Form method="post" onSubmit={handleSubmit} className="space-y-4 bg-[#00695C] rounded-lg p-6">
+        <form onSubmit={handleSubmit} className="space-y-4 bg-[#00695C] rounded-lg p-6">
           <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="firstName" className="text-sm font-medium text-gray-200">First Name</Label>
+                <Input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                  className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
+                  placeholder="First name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="lastName" className="text-sm font-medium text-gray-200">Last Name</Label>
+                <Input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                  className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
+                  placeholder="Last name"
+                />
+              </div>
+            </div>
             <div>
               <Label htmlFor="email" className="text-sm font-medium text-gray-200">Email</Label>
               <Input
@@ -106,11 +158,11 @@ const Signup = () => {
           <Button
             type="submit"
             className="w-full h-11 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent disabled:opacity-50"
-            disabled={passwordMatchError || !email || !password || !confirmPassword}
+            disabled={isLoading || passwordMatchError || !email || !password || !confirmPassword || !firstName || !lastName}
           >
-            Sign Up
+            {isLoading ? 'Creating Account...' : 'Sign Up'}
           </Button>
-        </Form>
+        </form>
         <div className="mt-4 text-center text-sm">
           <Link to="/login" className="font-medium text-gray-200 hover:text-white">
             Already have an account? Login
@@ -121,4 +173,4 @@ const Signup = () => {
   );
 };
 
-export default Signup; 
+export default Signup;

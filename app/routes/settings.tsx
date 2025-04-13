@@ -14,7 +14,12 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { useTheme } from '@/contexts/ThemeContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+
+// Define action response types
+type ActionSuccessResponse = { success: true };
+type ActionErrorResponse = { error: string; details: string };
+type ActionResponse = ActionSuccessResponse | ActionErrorResponse;
 
 // Loader function to enforce authentication and load profile data
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -183,7 +188,8 @@ export default function SettingsRoute() {
   
   // Show success message when form submission completes
   React.useEffect(() => {
-    if (actionData?.success && !isSubmitting) {
+    const successResponse = actionData as ActionSuccessResponse;
+    if (successResponse?.success && !isSubmitting) {
       setShowSuccess(true);
       const timer = setTimeout(() => setShowSuccess(false), 3000);
       return () => clearTimeout(timer);
@@ -213,9 +219,12 @@ export default function SettingsRoute() {
                           Profile updated successfully!
                         </div>
                       )}
-                      {actionData?.error && (
+                      {(actionData as ActionErrorResponse)?.error && (
                         <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
-                          Error: {actionData.error} {actionData.details ? `(${actionData.details})` : ''}
+                          Error: {(actionData as ActionErrorResponse).error} 
+                          {(actionData as ActionErrorResponse).details ? 
+                            `(${(actionData as ActionErrorResponse).details})` : 
+                            ''}
                         </div>
                       )}
                       <div className="grid grid-cols-2 gap-4">
@@ -252,4 +261,4 @@ export default function SettingsRoute() {
       </div>
     </DashboardLayout>
   );
-} 
+}

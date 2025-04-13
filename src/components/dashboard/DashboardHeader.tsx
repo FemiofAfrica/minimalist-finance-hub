@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts";
 import { CurrencySelector } from "@/components/CurrencySelector";
+import { supabase } from '@/integrations/supabase/client';
 import { Menu } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useLocation } from 'react-router-dom';
 
 interface DashboardHeaderProps {
-  firstName?: string | null;
   userEmail?: string | null;
+  userName?: string;
+  firstName?: string;
+  isLoading?: boolean;
 }
 
 // List of greeting templates
@@ -22,77 +26,129 @@ const GREETING_TEMPLATES = [
   "Glad you're here, {name}!",
 ];
 
-const DashboardHeader = ({ firstName, userEmail }: DashboardHeaderProps) => {
+// Function to get page title from path
+const getPageTitle = (pathname: string): string => {
+  switch (pathname) {
+    case '/':
+      return 'Dashboard';
+    case '/transactions':
+      return 'Transactions';
+    case '/subscriptions':
+      return 'Subscriptions';
+    case '/insights':
+      return 'Insights';
+    case '/settings':
+      return 'Settings';
+    // Add other paths as needed
+    default: {
+      // Attempt to capitalize the path segment
+      const pathSegment = pathname.substring(1).split('/')[0];
+      return pathSegment
+        ? pathSegment.charAt(0).toUpperCase() + pathSegment.slice(1)
+        : 'Page';
+    }
+  }
+};
+
+const DashboardHeader = ({ userEmail, userName, firstName, isLoading: propIsLoading }: DashboardHeaderProps) => {
+  const { user, signOut } = useAuth();
   const [greeting, setGreeting] = useState('');
-  const [isLoadingGreeting, setIsLoadingGreeting] = useState(!firstName);
+  const [isLoadingGreeting, setIsLoadingGreeting] = useState(propIsLoading ?? true);
   const isMobile = useIsMobile();
   const { toggleSidebar } = useSidebar();
   const location = useLocation();
 
-  // Function to get page title from path
-  const getPageTitle = (pathname: string): string => {
-    switch (pathname) {
-      case '/':
-        return 'Dashboard';
-      case '/transactions':
-        return 'Transactions';
-      case '/subscriptions':
-        return 'Subscriptions';
-      case '/insights':
-        return 'Insights';
-      case '/settings':
-        return 'Settings';
-      // Add other paths as needed
-      default:
-        // Attempt to capitalize the path segment
-        const pathSegment = pathname.substring(1).split('/')[0];
-        return pathSegment
-          ? pathSegment.charAt(0).toUpperCase() + pathsegment.slice(1)
-          : 'Page';
-    }
-  };
-
   const pageTitle = getPageTitle(location.pathname);
 
   useEffect(() => {
-    if (firstName) {
+    const generateGreeting = async () => {
+      if (!user) {
+        setGreeting('Welcome!');
+        setIsLoadingGreeting(false);
+        return;
+      }
+
+      setIsLoadingGreeting(true);
+      let nameToUse = 'there';
+
+      try {
+        // First check if firstName prop is provided (new prop)
+        if (firstName) {
+          console.log('Using provided firstName for greeting:', firstName);
+          nameToUse = firstName;
+        }
+        // Then check if userName prop is provided (legacy prop)
+        else if (userName) {
+          console.log('Using provided userName for greeting:', userName);
+          nameToUse = userName;
+        }
+        // Then try to get name from user metadata
+        else if (user.user_metadata?.first_name) {
+          console.log('Found first_name in user metadata:', user.user_metadata.first_name);
+          nameToUse = user.user_metadata.first_name;
+        } else {
+          // If not in metadata, try profiles table
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('first_name')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          console.log('Profile data:', profile);
+          console.log('Profile error:', error);
+
+          if (error) {
+            console.error('Error fetching profile for greeting:', error);
+            nameToUse = user.email?.split('@')[0] || 'there';
+          } else if (profile && profile.first_name) {
+            console.log('Using first_name from profile:', profile.first_name);
+            nameToUse = profile.first_name;
+          } else {
+            console.log('No profile or first_name found, using email fallback');
+            nameToUse = user.email?.split('@')[0] || 'there';
+          }
+        }
+      } catch (fetchError) {
+        console.error('Exception fetching profile:', fetchError);
+        nameToUse = user.email?.split('@')[0] || 'there';
+      }
+
       const randomIndex = Math.floor(Math.random() * GREETING_TEMPLATES.length);
       const selectedTemplate = GREETING_TEMPLATES[randomIndex];
-      setGreeting(selectedTemplate.replace('{name}', firstName));
+      console.log('Selected name for greeting:', nameToUse);
+
+      const formattedGreeting = selectedTemplate.replace('{name}', nameToUse);
+      setGreeting(formattedGreeting);
       setIsLoadingGreeting(false);
-    } else {
-      // Fallback if no first name is provided
-      setGreeting("Welcome!"); 
-      setIsLoadingGreeting(false);
-    }
-  }, [firstName]);
+    };
+
+    generateGreeting();
+  }, [firstName, user, userName]);
 
   return (
     <>
-      <div className="flex items-center">
-        {isMobile && (
-          <Button
-            variant="outline"
-            size="icon"
-            className="mr-2"
-            onClick={toggleSidebar}
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
-        )}
-        <div>
-          <h1 className="text-xl font-semibold">{pageTitle}</h1>
-          {/* Display greeting */} 
-          <p className="text-sm text-muted-foreground">
-            {isLoadingGreeting ? 'Loading...' : greeting}
-          </p>
-        </div>
+      {/* Mobile Menu Button */}
+      {isMobile && (
+        <Button 
+          variant="outline" 
+          size="icon" 
+          onClick={toggleSidebar}
+          className="shrink-0 mr-4"
+        >
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Toggle Menu</span>
+        </Button>
+      )}
+      {/* Main Header Content */}
+      <div className="flex-1 min-w-0">
+        <h1 className="text-xl md:text-2xl font-semibold text-slate-900 dark:text-slate-50 text-left truncate">
+          {pageTitle}
+        </h1>
+        <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 text-left truncate">
+          {isLoadingGreeting ? 'Loading greeting...' : greeting}
+        </p>
       </div>
-
-      <div className="flex items-center gap-4">
-          <CurrencySelector />
-        {/* Logout button is in Sidebar, no need for signOut here */}
-      </div>
+      <CurrencySelector />
     </>
   );
 };

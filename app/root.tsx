@@ -1,4 +1,3 @@
-import type { LinksFunction } from "@remix-run/node";
 import {
   Links,
   LiveReload,
@@ -10,17 +9,17 @@ import {
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import ErrorBoundaryComponent from "@/components/ErrorBoundary";
-import stylesheet from "@/index.css?url";
 import { Toaster } from "@/components/ui/toaster";
 import React from 'react';
 import { Analytics } from "@vercel/analytics/remix";
 import { SpeedInsights } from "@vercel/speed-insights/remix";
 
+// Import links function from separate file
+import { links } from "./links";
+
+// Re-export the links function with allowConstantExport flag
 // eslint-disable-next-line react-refresh/only-export-components
-export const links: LinksFunction = () => [
-  { rel: "stylesheet", href: stylesheet },
-  // ... other links
-];
+export { links };
 
 export default function App() {
   return (

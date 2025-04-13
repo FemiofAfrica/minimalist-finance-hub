@@ -1,69 +1,20 @@
 import { Link, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  LineChart, 
-  CreditCard as CreditCardIcon, 
-  Settings, 
-  LogOut, 
-  BookOpenText,
-  Wallet,
-  PiggyBank,
-  Moon,
-  Sun,
-  Target
-} from "lucide-react";
+import { LogOut, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Sidebar } from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { Form } from "@remix-run/react";
+import { sidebarLinks } from "@/config/navigation";
 
-const links = [
-  { 
-    href: "/", 
-    label: "Dashboard", 
-    icon: <LayoutDashboard className="mr-2 h-4 w-4" />
-  },
-  { 
-    href: "/transactions", 
-    label: "Transactions", 
-    icon: <LineChart className="mr-2 h-4 w-4" />
-  },
-  { 
-    href: "/subscriptions", 
-    label: "Subscriptions", 
-    icon: <CreditCardIcon className="mr-2 h-4 w-4" />
-  },
-  /* Accounts & Cards functionality temporarily hidden from public access
-  { 
-    href: "/accounts", 
-    label: "Accounts & Cards", 
-    icon: <Wallet className="mr-2 h-4 w-4" />
-  },
-  */
-  // Temporarily hidden for future deployment
-  // { 
-  //   href: "/budgeting", 
-  //   label: "Budgeting", 
-  //   icon: <PiggyBank className="mr-2 h-4 w-4" />
-  // },
-  { 
-    href: "/insights",
-    label: "Insights",
-    icon: <Target className="mr-2 h-4 w-4" />
-  },
-  { 
-    href: "/settings", 
-    label: "Settings", 
-    icon: <Settings className="mr-2 h-4 w-4" />
-  }
-];
+
 
 export function DashboardSidebar() {
   const location = useLocation();
+  const { signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
   
@@ -79,7 +30,7 @@ export function DashboardSidebar() {
       <div className="flex flex-1 flex-col overflow-hidden">
         <ScrollArea className="flex-1 px-6">
           <nav className="flex flex-col gap-1">
-            {links.map((link) => (
+            {sidebarLinks.map((link) => (
               <Button
                 key={link.href}
                 variant={location.pathname === link.href ? "secondary" : "ghost"}
@@ -114,12 +65,10 @@ export function DashboardSidebar() {
                 </>
               )}
             </Button>
-            <Form method="post" action="/logout">
-              <Button type="submit" className="w-full justify-start" variant="ghost" size="sm">
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </Button>
-            </Form>
+            <Button className="w-full justify-start" variant="ghost" onClick={signOut} size="sm">
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
           </div>
         </div>
       </div>

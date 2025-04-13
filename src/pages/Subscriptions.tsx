@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchSubscriptions, deleteSubscription, convertSubscriptionToTransaction, createSubscription, updateSubscription, getUpcomingSubscriptions } from '@/services/subscriptionService';
+import { fetchSubscriptions, deleteSubscription, createSubscription, updateSubscription, getSubscriptionById, convertSubscriptionToTransaction } from '@/services/subscriptionService.axios';
 import { Subscription, SubscriptionFrequency } from '@/types/subscription';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
+import { useAuth } from '@/contexts';
 import { formatNaira } from '@/utils/formatters';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,8 +19,10 @@ import { format } from 'date-fns';
 import { CalendarIcon, PlusCircle, Trash2, Edit, CheckCircle, AlertCircle, CreditCard, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionAutocomplete } from '@/components/ui/transaction-autocomplete';
+import DashboardLayout from '@/components/dashboard/DashboardLayout';
 
 const SubscriptionsPage: React.FC = () => {
+  const { user } = useAuth();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +67,15 @@ const SubscriptionsPage: React.FC = () => {
 
   const handleSaveSubscription = async () => {
     try {
+      if (!user?.id) {
+        toast({
+          title: "Error",
+          description: "User not authenticated",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (!formData.name) {
         toast({
           title: "Error",
@@ -88,7 +99,7 @@ const SubscriptionsPage: React.FC = () => {
         formData.frequency
       );
       
-      const newSubscription = await createSubscription({
+      const newSubscription = await createSubscription(user.id, {
         name: formData.name,
         description: formData.description,
         amount: formData.amount,
@@ -121,6 +132,14 @@ const SubscriptionsPage: React.FC = () => {
 
   const handleUpdateSubscription = async () => {
     if (!selectedSubscription) return;
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "User not authenticated",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
       if (!formData.name) {
@@ -146,20 +165,23 @@ const SubscriptionsPage: React.FC = () => {
         formData.frequency
       );
       
-      const updatedSubscription = await updateSubscription({
-        subscription_id: selectedSubscription.subscription_id,
-        name: formData.name,
-        description: formData.description,
-        amount: formData.amount,
-        frequency: formData.frequency as SubscriptionFrequency,
-        next_billing_date: adjustedBillingDate,
-        category_name: formData.category_name,
-        category_type: formData.category_type,
-        is_active: formData.is_active,
-        auto_renew: formData.auto_renew,
-        reminder_days: formData.reminder_days,
-        provider_id: formData.provider_id
-      });
+      const updatedSubscription = await updateSubscription(
+        user.id,
+        selectedSubscription.subscription_id,
+        {
+          name: formData.name,
+          description: formData.description,
+          amount: formData.amount,
+          frequency: formData.frequency as SubscriptionFrequency,
+          next_billing_date: adjustedBillingDate,
+          category_name: formData.category_name,
+          category_type: formData.category_type,
+          is_active: formData.is_active,
+          auto_renew: formData.auto_renew,
+          reminder_days: formData.reminder_days,
+          provider_id: formData.provider_id
+        }
+      );
       
       setSubscriptions(subscriptions.map(sub => 
         sub.subscription_id === updatedSubscription.subscription_id ? updatedSubscription : sub
@@ -194,27 +216,42 @@ const SubscriptionsPage: React.FC = () => {
     provider_id: null as string | null
   });
 
-  useEffect(() => {
-    loadSubscriptions();
-  }, []);
-
-  const loadSubscriptions = async () => {
+  const loadSubscriptions = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchSubscriptions();
+      const data = await fetchSubscriptions(user.id);
       setSubscriptions(data);
-
-      const upcomingSubs = await getUpcomingSubscriptions(7);
-      setDueSoonCount(upcomingSubs.length);
-
+      
+      // Count subscriptions due in the next 7 days
+      const now = new Date();
+      const nextWeek = new Date(now);
+      nextWeek.setDate(now.getDate() + 7);
+      
+      const dueSoon = data.filter(sub => {
+        const billingDate = new Date(sub.next_billing_date);
+        return billingDate >= now && billingDate <= nextWeek && sub.is_active;
+      });
+      
+      setDueSoonCount(dueSoon.length);
     } catch (err) {
       setError('Failed to load subscriptions');
       console.error(err);
+      toast({
+        title: "Error",
+        description: "Failed to load subscriptions",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, toast]);
+
+  useEffect(() => {
+    if (user?.id) {
+      loadSubscriptions();
+    }
+  }, [user, loadSubscriptions]);
 
   const handleAddSubscription = () => {
     setFormData({
@@ -252,8 +289,17 @@ const SubscriptionsPage: React.FC = () => {
   };
 
   const handleDeleteSubscription = async (subscriptionId: string) => {
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "User not authenticated",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
-      await deleteSubscription(subscriptionId);
+      await deleteSubscription(user.id, subscriptionId);
       setSubscriptions(subscriptions.filter(sub => sub.subscription_id !== subscriptionId));
       toast({
         title: 'Subscription deleted',
@@ -281,14 +327,23 @@ const SubscriptionsPage: React.FC = () => {
 
   const confirmCancelSubscription = async () => {
     if (!selectedSubscription) return;
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "User not authenticated",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
       setError(null);
       
-      const updatedSubscription = await updateSubscription({
-        subscription_id: selectedSubscription.subscription_id,
-        is_active: false
-      });
+      const updatedSubscription = await updateSubscription(
+        user.id,
+        selectedSubscription.subscription_id,
+        { is_active: false }
+      );
       
       setSubscriptions(subscriptions.map(sub => 
         sub.subscription_id === updatedSubscription.subscription_id ? updatedSubscription : sub
@@ -312,9 +367,17 @@ const SubscriptionsPage: React.FC = () => {
 
   const processPaymentConfirmation = async () => {
     if (!selectedSubscription) return;
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "User not authenticated",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
-      await convertSubscriptionToTransaction(selectedSubscription.subscription_id);
+      await convertSubscriptionToTransaction(user.id, selectedSubscription.subscription_id);
       toast({
         title: 'Payment confirmed',
         description: 'The subscription payment has been recorded and the next billing date updated.',

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { format } from "date-fns";
-import { fetchRevenueData, RevenueChartData as FetchedRevenueData } from "@/services/revenueChartService";
+import { useAuth } from "@/contexts";
+import { fetchRevenueData, RevenueChartData as FetchedRevenueData } from "@/services/revenueChartService.axios";
 
 export type TimePeriod = "7days" | "30days" | "90days";
 
@@ -21,6 +21,7 @@ const RevenueChart = ({ period }: RevenueChartProps) => {
   const [data, setData] = useState<RevenueChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const { formatPossiblyConvertedCurrency, exchangeRates } = useCurrency();
+  const { user } = useAuth();
 
   const convertNgnToUsd = (amountNgn: number): number | null => {
     const ngnRate = exchangeRates?.[PROPS_BASE_CURRENCY];
@@ -32,16 +33,27 @@ const RevenueChart = ({ period }: RevenueChartProps) => {
 
   useEffect(() => {
     const loadRevenueData = async () => {
+      if (!user?.id) {
+        console.error("User ID not available, cannot fetch revenue data.");
+        setLoading(false);
+        return;
+      }
+      
       setLoading(true);
       try {
-        const fetchedData: FetchedRevenueData[] = await fetchRevenueData(period);
+        const fetchedData = await fetchRevenueData(period, user.id);
         
-        const chartData: RevenueChartDataPoint[] = fetchedData.map(item => ({
-          date: item.month,
-          revenue: item.revenue
-        }));
-
-        setData(chartData);
+        // Check if fetchedData is an array before using map
+        if (Array.isArray(fetchedData)) {
+          const chartData: RevenueChartDataPoint[] = fetchedData.map(item => ({
+            date: item.month,
+            revenue: item.revenue
+          }));
+          setData(chartData);
+        } else {
+          console.error("Revenue data is not an array:", fetchedData);
+          setData([]);
+        }
       } catch (error) {
         console.error("Failed to load revenue data:", error);
         setData([]);
@@ -61,7 +73,7 @@ const RevenueChart = ({ period }: RevenueChartProps) => {
     return () => {
       document.removeEventListener('refresh-transactions', handleRefresh);
     };
-  }, [period]);
+  }, [period, user]);
 
   if (loading) {
     return (

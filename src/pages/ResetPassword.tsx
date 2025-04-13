@@ -1,19 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from '@remix-run/react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/components/ui/use-toast';
-import { createClient } from '@supabase/supabase-js'; // Use standard client for client-side
-
-// IMPORTANT: Client-side Supabase instance
-// Access VITE variables via import.meta.env
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
-
-// Create a separate client-side Supabase client instance
-// DO NOT use auth helpers here, as we need the standard client behavior for hash parsing
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { useToast } from '@/hooks/use-toast';
+import { ApiError, createApiError } from '@/types/error';
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
@@ -24,26 +15,25 @@ const ResetPassword = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Listen for Supabase auth events (specifically PASSWORD_RECOVERY)
-  // This confirms Supabase JS has processed the tokens from the URL hash
+  // Get token from URL hash or query parameters
+  const location = useLocation();
+  
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-      } 
-    });
-
-    // Check if tokens are present in hash immediately (Supabase might process fast)
-    if (window.location.hash.includes('access_token')) {
-
+    // Check if token is present in URL hash or query parameters
+    const hashParams = new URLSearchParams(location.hash.substring(1));
+    const queryParams = new URLSearchParams(location.search);
+    
+    const token = hashParams.get('access_token') || queryParams.get('token');
+    
+    if (token) {
+      console.log('Reset token found in URL');
+      // Store token in session storage for the API request
+      sessionStorage.setItem('resetToken', token);
     } else {
-       console.warn('No access token found in URL hash. Password reset might fail.');
-       // Optionally redirect or show error if no token found after a short delay
+      console.warn('No reset token found in URL. Password reset might fail.');
+      setError('Invalid or missing reset token. Please request a new password reset link.');
     }
-
-    return () => {
-      authListener?.unsubscribe();
-    };
-  }, []);
+  }, [location]);
 
   // Client-side password match check
   useEffect(() => {
@@ -67,23 +57,47 @@ const ResetPassword = () => {
     }
 
     setIsUpdating(true);
+    console.log('Attempting password update...');
+    
+    // Get token from session storage
+    const token = sessionStorage.getItem('resetToken');
+    
+    if (!token) {
+      setError("Reset token not found. Please request a new password reset link.");
+      setIsUpdating(false);
+      return;
+    }
 
-    // Update password using client-side Supabase
-    // Supabase JS automatically uses the tokens from the URL hash fragment
-    const { data, error: updateError } = await supabase.auth.updateUser({
-      password: password,
-    });
-
-    setIsUpdating(false);
-
-    if (updateError) {
-      console.error("Password Update Error:", updateError);
-      setError(updateError.message || "Failed to update password. The link may have expired or been used already.");
-      toast({ title: "Update Failed", description: updateError.message || "Could not update password.", variant: "destructive" });
-    } else {
+    try {
+      // Call the Express API endpoint to reset password
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ password })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update password. The link may have expired or been used already.");
+      }
+      
+      // Clear the token from session storage
+      sessionStorage.removeItem('resetToken');
+      
       toast({ title: "Success", description: "Password updated successfully! Redirecting to login..." });
       // Redirect to login page after successful update
-      setTimeout(() => navigate('/login?reset=success'), 2000); 
+      setTimeout(() => navigate('/login?reset=success'), 2000);
+    } catch (err: unknown) {
+      const apiError = createApiError(err);
+      console.error("Password Update Error:", apiError);
+      setError(apiError.message || "Failed to update password. The link may have expired or been used already.");
+      toast({ title: "Update Failed", description: apiError.message || "Could not update password.", variant: "destructive" });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -152,4 +166,4 @@ const ResetPassword = () => {
   );
 };
 
-export default ResetPassword; 
+export default ResetPassword;

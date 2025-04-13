@@ -1,0 +1,58 @@
+/**
+ * Example Vite configuration for the migrated SPA
+ * This removes Remix-specific plugins and configures for a standard React SPA
+ */
+
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tsconfigPaths from "vite-tsconfig-paths";
+import path from "path";
+
+export default defineConfig({
+  // Development server configuration
+  server: {
+    port: 8080,
+    // Proxy API requests to the Express backend during development
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
+  },
+  
+  // Plugins
+  plugins: [
+    react(), // React plugin for JSX support
+    tsconfigPaths(), // Support for path aliases in tsconfig
+  ],
+  
+  // Path resolution
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'), // Alias for src directory
+    },
+    dedupe: ['react', 'react-dom'], // Avoid duplicate React instances
+  },
+  
+  // Build configuration
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: true,
+    // Optimize chunks
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: [
+            '@/components/ui/button',
+            '@/components/ui/dialog',
+            '@/components/ui/input',
+            // Add other UI components
+          ],
+        },
+      },
+    },
+  },
+});
