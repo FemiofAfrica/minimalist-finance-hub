@@ -22,6 +22,7 @@ import { Account, AccountType } from "@/types/account";
 import { createAccount, updateAccount, deleteAccount } from "@/services/accountService";
 import { Wallet } from "lucide-react";
 import { BankSelector } from "@/components/BankSelector";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface AccountDialogProps {
   isOpen: boolean;
@@ -31,12 +32,13 @@ interface AccountDialogProps {
 
 const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
   const [formData, setFormData] = useState<Partial<Account>>({
-    account_name: '',
-    account_type: 'CHECKING',
+    name: '',
+    type: 'CHECKING',
     institution: '',
     account_number: '',
-    current_balance: 0,
+    balance: 0,
     is_active: true,
+    is_default: false,
     custom_tags: []
   });
   const [tagInput, setTagInput] = useState('');
@@ -48,22 +50,24 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
   useEffect(() => {
     if (account) {
       setFormData({
-        account_name: account.account_name,
-        account_type: account.account_type,
+        name: account.name,
+        type: account.type,
         institution: account.institution || '',
         account_number: account.account_number || '',
-        current_balance: account.current_balance,
+        balance: account.balance,
         is_active: account.is_active,
+        is_default: account.is_default,
         custom_tags: account.custom_tags || []
       });
     } else {
       setFormData({
-        account_name: '',
-        account_type: 'CHECKING',
+        name: '',
+        type: 'CHECKING',
         institution: '',
         account_number: '',
-        current_balance: 0,
+        balance: 0,
         is_active: true,
+        is_default: false,
         custom_tags: []
       });
     }
@@ -104,7 +108,7 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
   };
 
   const validateForm = () => {
-    if (!formData.account_name) {
+    if (!formData.name) {
       toast({
         title: "Validation Error",
         description: "Account name is required",
@@ -182,35 +186,34 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
         
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="account_name" className="text-right">
+            <Label htmlFor="name" className="text-right">
               Account Name
             </Label>
             <Input
-              id="account_name"
-              value={formData.account_name}
-              onChange={(e) => handleChange('account_name', e.target.value)}
+              id="name"
+              value={formData.name}
+              onChange={(e) => handleChange('name', e.target.value)}
               className="col-span-3"
               placeholder="e.g., Main Savings, Investment Fund"
             />
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="account_type" className="text-right">
+            <Label htmlFor="type" className="text-right">
               Account Type
             </Label>
             <Select 
-              value={formData.account_type} 
-              onValueChange={(value) => handleChange('account_type', value as AccountType)}
+              value={formData.type} 
+              onValueChange={(value) => handleChange('type', value as AccountType)}
             >
               <SelectTrigger className="col-span-3">
                 <SelectValue placeholder="Select account type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="SAVINGS">Savings</SelectItem>
-                <SelectItem value="CHECKING">Checking</SelectItem>
-                <SelectItem value="INVESTMENTS">Investments</SelectItem>
-                <SelectItem value="DEBT_SERVICING">Debt Servicing</SelectItem>
-                <SelectItem value="OTHER">Other</SelectItem>
+                <SelectItem value="savings">Savings</SelectItem>
+                <SelectItem value="checking">Checking</SelectItem>
+                <SelectItem value="credit">Credit</SelectItem>
+                <SelectItem value="investment">Investment</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -242,17 +245,33 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="current_balance" className="text-right">
+            <Label htmlFor="balance" className="text-right">
               Balance
             </Label>
             <Input
-              id="current_balance"
+              id="balance"
               type="number"
-              value={formData.current_balance}
-              onChange={(e) => handleNumberChange('current_balance', e.target.value)}
+              value={formData.balance}
+              onChange={(e) => handleNumberChange('balance', e.target.value)}
               className="col-span-3"
               placeholder="0.00"
             />
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <div className="text-right">
+              <Label htmlFor="is_default" className="mr-2">Default Account</Label>
+            </div>
+            <div className="col-span-3 flex items-center space-x-2">
+              <Checkbox 
+                id="is_default" 
+                checked={formData.is_default} 
+                onCheckedChange={(checked) => handleChange('is_default', checked === true)}
+              />
+              <Label htmlFor="is_default" className="text-sm leading-none">
+                Set as default account for transactions
+              </Label>
+            </div>
           </div>
 
           <div className="grid grid-cols-4 items-center gap-4">

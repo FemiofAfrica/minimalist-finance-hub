@@ -1,9 +1,8 @@
-
 import { formatNaira } from "@/utils/formatters";
 import { Account } from "@/types/account";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { PencilIcon, TrashIcon, CreditCardIcon } from "lucide-react";
+import { PencilIcon, TrashIcon, CreditCardIcon, StarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AccountCardProps {
@@ -16,13 +15,13 @@ interface AccountCardProps {
 const AccountCard = ({ account, onEdit, onDelete, onViewCards }: AccountCardProps) => {
   const getAccountTypeColor = (type: string) => {
     switch (type) {
-      case 'SAVINGS':
+      case 'savings':
         return 'bg-blue-100 text-blue-800';
-      case 'CHECKING':
+      case 'checking':
         return 'bg-green-100 text-green-800';
-      case 'INVESTMENTS':
+      case 'investment':
         return 'bg-purple-100 text-purple-800';
-      case 'DEBT_SERVICING':
+      case 'credit':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -30,25 +29,35 @@ const AccountCard = ({ account, onEdit, onDelete, onViewCards }: AccountCardProp
   };
 
   return (
-    <Card className="overflow-hidden">
+    <Card className={`overflow-hidden ${account.is_default ? 'ring-2 ring-primary/30' : ''}`}>
       <CardHeader className="p-4">
         <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="text-lg font-semibold">{account.account_name}</CardTitle>
-            {account.institution && (
-              <CardDescription className="text-sm text-muted-foreground">
-                {account.institution}
-              </CardDescription>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-lg font-semibold">{account.name}</CardTitle>
+            {account.is_default && (
+              <StarIcon className="h-4 w-4 text-amber-500 fill-amber-500" />
             )}
           </div>
-          <Badge className={`${getAccountTypeColor(account.account_type)}`}>
-            {account.account_type.replace('_', ' ')}
-          </Badge>
+          <div className="flex gap-1 flex-wrap justify-end">
+            <Badge className={`${getAccountTypeColor(account.type)}`}>
+              {account.type.charAt(0).toUpperCase() + account.type.slice(1)}
+            </Badge>
+            {account.is_default && (
+              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                Default
+              </Badge>
+            )}
+          </div>
         </div>
+        {account.institution && (
+          <CardDescription className="text-sm text-muted-foreground">
+            {account.institution}
+          </CardDescription>
+        )}
       </CardHeader>
       <CardContent className="p-4 pt-0">
         <div className="mt-2">
-          <p className="text-2xl font-bold">{formatNaira(account.current_balance)}</p>
+          <p className="text-2xl font-bold">{formatNaira(account.balance)}</p>
           {account.account_number && (
             <p className="text-sm text-muted-foreground mt-1">
               ••••{account.account_number.slice(-4)}

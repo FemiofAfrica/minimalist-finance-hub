@@ -26,84 +26,129 @@ async function getUserId(): Promise<string> {
 /**
  * Gets the default account for the user. Creates one if it doesn't exist.
  */
-export const getDefaultAccount = async (): Promise<Account> => { // Returns application Account type
+export const getDefaultAccount = async (): Promise<Account | null> => {
   try {
     const userId = await getUserId();
-    const defaultAccountName = 'Default Account'; // Define default name
-
-    console.log(`Getting or creating default account for user ${userId}`);
-
+    
     // Try to fetch the existing default account
-    const { data: existingAccount, error: fetchError } = await supabase
+    const { data, error } = await supabase
       .from('accounts')
       .select('*')
       .eq('user_id', userId)
-      .eq('name', defaultAccountName) // Use schema column 'name'
-      .maybeSingle(); // Returns AccountRow | null
-
-    // Handle fetch errors (excluding 'No rows found' which is expected)
-    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = range not satisfiable (0 rows)
-      console.error('Error fetching default account:', fetchError);
-      throw new Error('Failed to get default account: ' + fetchError.message);
+      .eq('is_default', true)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error fetching default account:', error);
+      throw error;
     }
-
-    // If account exists, return it (Map DB Row to Application Account type)
-    if (existingAccount) {
-      console.log("Found existing default account:", existingAccount.account_id);
-      // You might need a mapping function here if AccountRow differs significantly from Account type
-      // For simplicity, assuming direct compatibility or minimal mapping needed:
+    
+    // If default account exists, return it
+    if (data) {
       return {
-          ...existingAccount,
-          // Ensure type compatibility if Account type uses different enum casing etc.
-          type: existingAccount.type as Account['type'] // Cast if needed
-      } as Account; // Assert as Account type
+        account_id: data.account_id,
+        name: data.name,
+        type: data.type as Account['type'],
+        balance: data.balance || 0,
+        currency: data.currency,
+        is_active: data.is_active || true,
+        is_default: true,
+        institution: null, // institution doesn't exist in database, default to null
+        account_number: data.account_number,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        user_id: data.user_id,
+        custom_tags: [] // custom_tags doesn't exist in database, default to empty array
+      };
     }
-
-    // --- Create Default Account ---
-    console.log("Default account not found. Creating one...");
-
-    // Explicitly type the object using the generated 'Insert' type
-    const defaultAccountData: AccountInsert = {
-      user_id: userId,
-      name: defaultAccountName, // DB column 'name'
-      type: 'savings' as 'checking' | 'savings' | 'credit' | 'investment', // Ensure this matches one of the expected literal types
-      balance: 0,              // DB column 'balance'
-      currency: 'NGN',         // DB column 'currency' - Ensure NGN is valid/default
-      is_active: true          // DB column 'is_active'
-      // created_at and updated_at are usually handled by the database
-    };
-
-    const { data: newAccount, error: createError } = await supabase
+    
+    // If no default account, try to get the first account
+    const { data: firstAccount, error: firstAccountError } = await supabase
       .from('accounts')
-      .insert(defaultAccountData) // Pass the correctly typed object
-      .select()
-      .single(); // Returns AccountRow
-
-    if (createError) {
-      console.error('Error creating default account:', createError);
-      throw new Error('Failed to create default account: ' + createError.message);
+      .select('*')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+    
+    if (firstAccountError) {
+      console.error('Error fetching first account:', firstAccountError);
+      throw firstAccountError;
     }
-
-     if (!newAccount) {
-         throw new Error("Failed to create or retrieve default account after insertion.");
-     }
-
-    console.log("Created new default account:", newAccount.account_id);
-    // Map the newly created AccountRow to the application's Account type before returning
-     return {
-          ...newAccount,
-          type: newAccount.type as Account['type'] // Cast if needed
-      } as Account; // Assert as Account type
-
+    
+    // If any account exists, set it as default and return it
+    if (firstAccount) {
+      await setDefaultAccount(firstAccount.account_id);
+      
+      return {
+        account_id: firstAccount.account_id,
+        name: firstAccount.name,
+        type: firstAccount.type as Account['type'],
+        balance: firstAccount.balance || 0,
+        currency: firstAccount.currency,
+        is_active: firstAccount.is_active || true,
+        is_default: true,
+        institution: null, // institution doesn't exist in database, default to null
+        account_number: firstAccount.account_number,
+        created_at: firstAccount.created_at,
+        updated_at: firstAccount.updated_at,
+        user_id: firstAccount.user_id,
+        custom_tags: [] // custom_tags doesn't exist in database, default to empty array
+      };
+    }
+    
+    // No accounts found
+    return null;
   } catch (error) {
-    console.error("Error in getDefaultAccount:", error);
+    console.error('Error in getDefaultAccount:', error);
     throw error;
   }
 };
 
-// Make sure other functions like createAccount, updateAccount also use AccountInsert
-// or AccountUpdate types from generated Supabase types when preparing data for .insert()/.update()
-
+/**
+ * Gets an account by its ID.
+ */
+export const getAccountById = async (accountId: string): Promise<Account | null> => {
+  try {
+    const userId = await getUserId();
+    
+    const { data, error } = await supabase
+      .from('accounts')
+      .select('*')
+      .eq('account_id', accountId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error fetching account by ID:', error);
+      throw error;
+    }
+    
+    // If account exists, return it
+    if (data) {
+      return {
+        account_id: data.account_id,
+        name: data.name,
+        type: data.type as Account['type'],
+        balance: data.balance || 0,
+        currency: data.currency,
+        is_active: data.is_active || true,
+        is_default: data.is_default || false,
+        institution: null, // institution doesn't exist in database, default to null
+        account_number: data.account_number,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        user_id: data.user_id,
+        custom_tags: [] // custom_tags doesn't exist in database, default to empty array
+      };
+    }
+    
+    // No account found
+    return null;
+  } catch (error) {
+    console.error('Error in getAccountById:', error);
+    throw error;
+  }
+};
 
 /**
  * Fetches all accounts for the current user.
@@ -125,8 +170,19 @@ export const fetchAccounts = async (): Promise<Account[]> => {
 
     // Map the database rows to Account type
     return (data || []).map(account => ({
-      ...account,
-      type: account.type as Account['type']
+      account_id: account.account_id,
+      name: account.name,
+      type: account.type as Account['type'],
+      balance: account.balance || 0,
+      currency: account.currency,
+      is_active: account.is_active || true,
+      is_default: account.is_default || false,
+      institution: null, // institution doesn't exist in database, default to null
+      account_number: account.account_number,
+      created_at: account.created_at,
+      updated_at: account.updated_at,
+      user_id: account.user_id,
+      custom_tags: [] // custom_tags doesn't exist in database, default to empty array
     }));
   } catch (error) {
     console.error('Error in fetchAccounts:', error);

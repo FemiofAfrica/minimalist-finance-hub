@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"; // Assuming shadcn/ui Button
 import { supabase } from "@/integrations/supabase/client"; // Supabase client instance
 import { useToast } from "@/hooks/use-toast"; // Custom toast hook
 import VoiceInput from "@/components/VoiceInput"; // Your VoiceInput component
-import { Database } from "@/integrations/supabase/types";
+import { Database } from "@/integrations/supabase/database.types";
+import { getDefaultAccount } from "@/services/accountService";
 
 interface ChatInputProps {
   onTransactionAdded?: () => void; // Optional callback after successful addition

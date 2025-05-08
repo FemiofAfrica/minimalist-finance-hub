@@ -49,7 +49,7 @@ const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
         // Attempt to capitalize the path segment
         const pathSegment = pathname.substring(1).split('/')[0];
         return pathSegment
-          ? pathSegment.charAt(0).toUpperCase() + pathsegment.slice(1)
+          ? pathSegment.charAt(0).toUpperCase() + pathSegment.slice(1)
           : 'Page';
     }
   };

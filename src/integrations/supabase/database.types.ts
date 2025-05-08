@@ -12,10 +12,12 @@ export type Database = {
       accounts: {
         Row: {
           account_id: string
+          account_number: string | null
           balance: number | null
           created_at: string | null
           currency: string
           is_active: boolean | null
+          is_default: boolean
           name: string
           type: Database["public"]["Enums"]["account_type"]
           updated_at: string | null
@@ -23,10 +25,12 @@ export type Database = {
         }
         Insert: {
           account_id?: string
+          account_number?: string | null
           balance?: number | null
           created_at?: string | null
           currency?: string
           is_active?: boolean | null
+          is_default?: boolean
           name: string
           type: Database["public"]["Enums"]["account_type"]
           updated_at?: string | null
@@ -34,10 +38,12 @@ export type Database = {
         }
         Update: {
           account_id?: string
+          account_number?: string | null
           balance?: number | null
           created_at?: string | null
           currency?: string
           is_active?: boolean | null
+          is_default?: boolean
           name?: string
           type?: Database["public"]["Enums"]["account_type"]
           updated_at?: string | null

@@ -1,4 +1,3 @@
-
 import { formatNaira } from "@/utils/formatters";
 import { Card as CardType } from "@/types/card";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -75,6 +74,11 @@ const CardItem = ({ card, onEdit, onDelete }: CardItemProps) => {
         <div>
           <p className="text-sm text-muted-foreground">Current Balance</p>
           <p className="text-2xl font-bold">{formatNaira(card.current_balance)}</p>
+          {card.account_id && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Balance linked to account
+            </p>
+          )}
         </div>
         
         {card.credit_limit && (

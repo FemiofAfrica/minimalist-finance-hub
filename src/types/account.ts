@@ -13,6 +13,7 @@ export interface Account {
   balance: number; // Current balance - DB: numeric
   currency?: string; // Currency code (e.g., "NGN", "USD") - DB: text
   is_active: boolean; // Whether the account is active - DB: boolean
+  is_default: boolean; // Whether this is the default account for transactions - DB: boolean
   created_at?: string; // Timestamp of creation - DB: timestamptz
   updated_at?: string; // Timestamp of last update - DB: timestamptz
 

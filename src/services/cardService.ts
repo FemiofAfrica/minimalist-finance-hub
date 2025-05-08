@@ -1,6 +1,6 @@
-
 import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
-import { Card } from "@/types/card";
+import { Card, normalizeDatabaseCard, prepareDatabaseCard } from "@/types/card";
+import { getAccountById } from "@/services/accountService";
 
 export const fetchCards = async (): Promise<Card[]> => {
   try {
@@ -18,7 +18,31 @@ export const fetchCards = async (): Promise<Card[]> => {
       throw error;
     }
 
-    return data || [];
+    // Normalize the cards to match our application format
+    const normalizedCards = (data || []).map(card => normalizeDatabaseCard(card));
+    
+    // Fetch account balances for all cards with account_id
+    const cardsWithBalances = await Promise.all(
+      normalizedCards.map(async (card) => {
+        if (card.account_id) {
+          try {
+            const account = await getAccountById(card.account_id);
+            if (account) {
+              // Set the card's current balance to the account's balance
+              return {
+                ...card,
+                current_balance: account.balance
+              };
+            }
+          } catch (error) {
+            console.error(`Error fetching account for card ${card.card_id}:`, error);
+          }
+        }
+        return card;
+      })
+    );
+    
+    return cardsWithBalances;
   } catch (error) {
     console.error("Error in fetchCards:", error);
     throw error;
@@ -29,10 +53,11 @@ export const createCard = async (card: Omit<Card, 'card_id'>): Promise<Card> => 
   try {
     const userId = await getCurrentUserId();
     
-    const cardWithUserId = {
+    // Prepare the card data for database insertion
+    const cardWithUserId = prepareDatabaseCard({
       ...card,
       user_id: userId
-    };
+    });
     
     console.log("Creating card with user_id:", cardWithUserId);
     
@@ -47,7 +72,22 @@ export const createCard = async (card: Omit<Card, 'card_id'>): Promise<Card> => 
       throw error;
     }
 
-    return data;
+    // Normalize the card data
+    const normalizedCard = normalizeDatabaseCard(data);
+    
+    // If the card is linked to an account, get the account balance
+    if (normalizedCard.account_id) {
+      try {
+        const account = await getAccountById(normalizedCard.account_id);
+        if (account) {
+          normalizedCard.current_balance = account.balance;
+        }
+      } catch (error) {
+        console.error(`Error fetching account for new card:`, error);
+      }
+    }
+
+    return normalizedCard;
   } catch (error) {
     console.error("Error in createCard:", error);
     throw error;
@@ -56,9 +96,15 @@ export const createCard = async (card: Omit<Card, 'card_id'>): Promise<Card> => 
 
 export const updateCard = async (cardId: string, updates: Partial<Card>): Promise<Card> => {
   try {
+    // Prepare the card data for database update
+    const cardUpdates = prepareDatabaseCard({
+      card_id: cardId,
+      ...updates
+    });
+    
     const { data, error } = await supabase
       .from('cards')
-      .update(updates)
+      .update(cardUpdates)
       .eq('card_id', cardId)
       .select()
       .single();
@@ -68,7 +114,22 @@ export const updateCard = async (cardId: string, updates: Partial<Card>): Promis
       throw error;
     }
 
-    return data;
+    // Normalize the card data
+    const normalizedCard = normalizeDatabaseCard(data);
+    
+    // If the card is linked to an account, get the account balance
+    if (normalizedCard.account_id) {
+      try {
+        const account = await getAccountById(normalizedCard.account_id);
+        if (account) {
+          normalizedCard.current_balance = account.balance;
+        }
+      } catch (error) {
+        console.error(`Error fetching account for updated card:`, error);
+      }
+    }
+
+    return normalizedCard;
   } catch (error) {
     console.error("Error in updateCard:", error);
     throw error;
@@ -105,7 +166,25 @@ export const getCardById = async (cardId: string): Promise<Card | null> => {
       throw error;
     }
 
-    return data;
+    // If no data found, return null
+    if (!data) return null;
+    
+    // Normalize the card data
+    const normalizedCard = normalizeDatabaseCard(data);
+    
+    // If the card is linked to an account, get the account balance
+    if (normalizedCard.account_id) {
+      try {
+        const account = await getAccountById(normalizedCard.account_id);
+        if (account) {
+          normalizedCard.current_balance = account.balance;
+        }
+      } catch (error) {
+        console.error(`Error fetching account for card ${cardId}:`, error);
+      }
+    }
+    
+    return normalizedCard;
   } catch (error) {
     console.error("Error in getCardById:", error);
     throw error;
@@ -128,7 +207,24 @@ export const getCardsByAccount = async (accountId: string): Promise<Card[]> => {
       throw error;
     }
 
-    return data || [];
+    // Normalize the cards
+    const normalizedCards = (data || []).map(card => normalizeDatabaseCard(card));
+    
+    // Get the account to set balances
+    try {
+      const account = await getAccountById(accountId);
+      if (account) {
+        // Set all cards for this account to have the account's balance
+        return normalizedCards.map(card => ({
+          ...card,
+          current_balance: account.balance
+        }));
+      }
+    } catch (error) {
+      console.error(`Error fetching account ${accountId}:`, error);
+    }
+    
+    return normalizedCards;
   } catch (error) {
     console.error("Error in getCardsByAccount:", error);
     throw error;

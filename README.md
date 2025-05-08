@@ -67,3 +67,53 @@ Simply open [Lovable](https://lovable.dev/projects/9e7980c0-6c09-4a72-9fca-0a7fe
 ## I want to use a custom domain - is that possible?
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+
+# FinTrack - Minimalist Finance Hub
+
+## Default Account Implementation
+
+We've added a default account system to ensure transactions always have an account associated with them. This addresses the "No default account found for the user" error.
+
+### Database Migration
+
+Run the following SQL migration in your Supabase SQL Editor:
+
+```sql
+-- Run the migration script to add the is_default column to accounts table
+-- Copy the contents of migrations/add_is_default_to_accounts.sql
+```
+
+## Account Number Implementation
+
+To support storing account numbers for bank accounts, we've added a new column to the database.
+
+### Database Migration
+
+Run the following SQL migration in your Supabase SQL Editor:
+
+```sql
+-- Run the migration script to add the account_number column to accounts table
+-- Copy the contents of migrations/add_account_number_to_accounts.sql
+```
+
+### Features:
+
+1. Default account management
+   - Each user must have one default account
+   - Transactions without a specified account will use the default account
+   - First account created is automatically set as default
+   - Users can change which account is default
+
+2. UI Enhancements
+   - Default accounts have visual indicators
+   - Default status can be toggled in the account creation/edit dialog
+   - When deleting a default account, another account is automatically made default
+
+### Implementation Details:
+
+- Added `is_default` field to accounts table
+- Created database triggers to ensure only one default account per user
+- Added UI to allow setting an account as default
+- Updated account service to handle default account logic
+- Visual indicators for default accounts in the UI
+- Added `account_number` field to accounts table for storing account numbers

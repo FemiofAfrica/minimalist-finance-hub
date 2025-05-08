@@ -67,7 +67,7 @@ function App() {
                 </PrivateRoute>
               }
             />
-            /* Budgeting functionality temporarily hidden from public access
+            {/* Budgeting functionality temporarily hidden from public access
             <Route
               path="/budgeting"
               element={
@@ -76,8 +76,7 @@ function App() {
                 </PrivateRoute>
               }
             />
-            {/* Accounts & Cards functionality temporarily hidden from public access */}
-            {/* 
+            */}
             <Route
               path="/accounts"
               element={
@@ -85,8 +84,7 @@ function App() {
                   <AccountsAndCards />
                 </PrivateRoute>
               }
-            /> 
-            */}
+            />
             <Route
               path="/reports"
               element={
