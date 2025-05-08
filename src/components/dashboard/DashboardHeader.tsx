@@ -26,26 +26,26 @@ const GREETING_TEMPLATES = [
   "Glad you're here, {name}!",
 ];
 
-// Function to get page title from path
-const getPageTitle = (pathname: string): string => {
-  switch (pathname) {
-    case '/':
-      return 'Dashboard';
-    case '/transactions':
-      return 'Transactions';
-    case '/subscriptions':
-      return 'Subscriptions';
-    case '/insights':
-      return 'Insights';
-    case '/settings':
-      return 'Settings';
-    // Add other paths as needed
-    default: {
-      // Attempt to capitalize the path segment
-      const pathSegment = pathname.substring(1).split('/')[0];
-      return pathSegment
-        ? pathSegment.charAt(0).toUpperCase() + pathSegment.slice(1)
-        : 'Page';
+  // Function to get page title from path
+  const getPageTitle = (pathname: string): string => {
+    switch (pathname) {
+      case '/':
+        return 'Dashboard';
+      case '/transactions':
+        return 'Transactions';
+      case '/subscriptions':
+        return 'Subscriptions';
+      case '/reports':
+        return 'Reports';
+      case '/settings':
+        return 'Settings';
+      // Add other paths as needed
+      default:
+        // Attempt to capitalize the path segment
+        const pathSegment = pathname.substring(1).split('/')[0];
+        return pathSegment
+          ? pathSegment.charAt(0).toUpperCase() + pathSegment.slice(1)
+          : 'Page';
     }
   }
 };

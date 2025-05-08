@@ -8,9 +8,45 @@ import { useAuth } from "@/contexts";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { sidebarLinks } from "@/config/navigation";
 
-
+const links = [
+  { 
+    href: "/", 
+    label: "Dashboard", 
+    icon: <LayoutDashboard className="mr-2 h-4 w-4" />
+  },
+  { 
+    href: "/transactions", 
+    label: "Transactions", 
+    icon: <LineChart className="mr-2 h-4 w-4" />
+  },
+  { 
+    href: "/subscriptions", 
+    label: "Subscriptions", 
+    icon: <CreditCardIcon className="mr-2 h-4 w-4" />
+  },
+  { 
+    href: "/accounts", 
+    label: "Accounts & Cards", 
+    icon: <Wallet className="mr-2 h-4 w-4" />
+  },
+  // Temporarily hidden for future deployment
+  // { 
+  //   href: "/budgeting", 
+  //   label: "Budgeting", 
+  //   icon: <PiggyBank className="mr-2 h-4 w-4" />
+  // },
+  { 
+    href: "/reports", 
+    label: "Reports", 
+    icon: <BookOpenText className="mr-2 h-4 w-4" />
+  },
+  { 
+    href: "/settings", 
+    label: "Settings", 
+    icon: <Settings className="mr-2 h-4 w-4" />
+  }
+];
 
 export function DashboardSidebar() {
   const location = useLocation();

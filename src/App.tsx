@@ -1,54 +1,113 @@
-import { Routes, Route } from 'react-router-dom';
+import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/react"
 
-// Import route protection components
-import ProtectedRoute from './components/ProtectedRoute';
-import PublicRoute from './components/PublicRoute';
-
-// Import pages
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { CurrencyProvider } from '@/contexts/CurrencyContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { Toaster } from '@/components/ui/toaster';
+import Login from '@/pages/Login';
 import Index from '@/pages/Index';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import ConfirmEmail from './pages/ConfirmEmail';
-import Transactions from './pages/Transactions';
-import Insights from './pages/Insights';
-import AccountsAndCards from './pages/AccountsAndCards';
-import Subscriptions from './pages/Subscriptions';
-import NotFound from './pages/NotFound';
+import Transactions from '@/pages/Transactions';
+import Subscriptions from '@/pages/Subscriptions';
+import AccountsAndCards from '@/pages/AccountsAndCards';
+import Budgeting from '@/pages/Budgeting';
+import Reports from '@/pages/Reports';
+import Settings from '@/pages/Settings';
+import NotFound from '@/pages/NotFound';
+import './App.css';
 
-// Analytics components
-import { Analytics } from '@vercel/analytics/react';
-import { SpeedInsights } from '@vercel/speed-insights/react';
+function PrivateRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
 
 function App() {
-  // No need for inline route components as we now have dedicated components
-
   return (
-    <>
-      <Routes>
-        {/* Protected Routes */}
-        <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-        <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
-        <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
-        <Route path="/accounts" element={<ProtectedRoute><AccountsAndCards /></ProtectedRoute>} />
-        <Route path="/subscriptions" element={<ProtectedRoute><Subscriptions /></ProtectedRoute>} />
-        
-        {/* Public Routes */}
-        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-        <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
-        <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
-        <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
-        <Route path="/confirm-email" element={<PublicRoute><ConfirmEmail /></PublicRoute>} />
-        
-        {/* 404 Route */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      
-      {/* Analytics */}
-      <Analytics />
-      <SpeedInsights />
-    </>
+    <AuthProvider>
+      <CurrencyProvider>
+        <ThemeProvider>
+          <Router>
+            <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/"
+              element={
+                <PrivateRoute>
+                  <Index />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/transactions"
+              element={
+                <PrivateRoute>
+                  <Transactions />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/subscriptions"
+              element={
+                <PrivateRoute>
+                  <Subscriptions />
+                </PrivateRoute>
+              }
+            />
+            {/* Budgeting functionality temporarily hidden from public access
+            <Route
+              path="/budgeting"
+              element={
+                <PrivateRoute>
+                  <Budgeting />
+                </PrivateRoute>
+              }
+            />
+            */}
+            <Route
+              path="/accounts"
+              element={
+                <PrivateRoute>
+                  <AccountsAndCards />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <PrivateRoute>
+                  <Reports />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <PrivateRoute>
+                  <Settings />
+                </PrivateRoute>
+              }
+            />
+            <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Router>
+          <Toaster />
+        </ThemeProvider>
+      </CurrencyProvider>
+    </AuthProvider>
   );
 }
 
