@@ -1,26 +1,44 @@
-
 import { useState, useEffect } from "react";
 import { Account } from "@/types/account";
-import { fetchAccounts } from "@/services/accountService";
+import { fetchAccounts, deleteAccount } from "@/services/accountService";
 import AccountCard from "./AccountCard";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AccountDialog from "./AccountDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const AccountsList = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const loadAccounts = async () => {
     try {
       setLoading(true);
+      console.log("Loading accounts...");
       const data = await fetchAccounts();
+      console.log(`Loaded ${data.length} accounts`);
       setAccounts(data);
     } catch (error) {
+      console.error("Error loading accounts:", error);
       toast({
         title: "Error",
         description: "Failed to load accounts",
@@ -36,19 +54,53 @@ const AccountsList = () => {
   }, []);
 
   const handleEditAccount = (account: Account) => {
+    console.log("Editing account:", account);
     setSelectedAccount(account);
     setIsDialogOpen(true);
   };
 
   const handleDeleteAccount = (accountId: string) => {
-    // Will be implemented in AccountDialog.tsx
+    console.log("Delete requested for account:", accountId);
+    // Set the account ID to delete and open the confirmation dialog
+    setAccountToDelete(accountId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteAccount = async () => {
+    if (!accountToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      console.log(`Deleting account ${accountToDelete}`);
+      await deleteAccount(accountToDelete);
+      toast({
+        title: "Success",
+        description: "Account deleted successfully",
+      });
+      // Refresh accounts list after deletion
+      loadAccounts();
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete account",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setAccountToDelete(null);
+    }
   };
 
   const handleViewCards = (accountId: string) => {
-    // Navigate to cards page for this account
+    // Navigate to cards tab with the account ID
+    console.log(`Navigating to cards for account ${accountId}`);
+    navigate(`/accounts-cards?tab=cards&accountId=${accountId}`);
   };
 
   const handleAddAccount = () => {
+    console.log("Adding new account");
     setSelectedAccount(null);
     setIsDialogOpen(true);
   };
@@ -56,8 +108,14 @@ const AccountsList = () => {
   const handleDialogClose = (refresh: boolean = false) => {
     setIsDialogOpen(false);
     if (refresh) {
+      console.log("Refreshing accounts after dialog closed");
       loadAccounts();
     }
+  };
+
+  const handleRefresh = () => {
+    console.log("Manual refresh requested");
+    loadAccounts();
   };
 
   if (loading) {
@@ -72,10 +130,20 @@ const AccountsList = () => {
     <div className="w-full">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Your Accounts</h2>
-        <Button onClick={handleAddAccount} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          Add Account
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleRefresh} 
+            className="flex items-center gap-2"
+            title="Refresh accounts data"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button onClick={handleAddAccount} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Add Account
+          </Button>
+        </div>
       </div>
       
       {accounts.length === 0 ? (
@@ -106,6 +174,29 @@ const AccountsList = () => {
         onClose={handleDialogClose}
         account={selectedAccount}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently remove the account and all associated data.
+              Any cards linked to this account will also be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteAccount} 
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

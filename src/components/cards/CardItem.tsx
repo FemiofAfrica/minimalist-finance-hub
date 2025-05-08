@@ -12,6 +12,22 @@ interface CardItemProps {
 }
 
 const CardItem = ({ card, onEdit, onDelete }: CardItemProps) => {
+  // Get card name using either new schema or legacy field
+  const cardName = card.name || card.card_name || 'Unnamed Card';
+  
+  // Get card type using either new schema or legacy field
+  const cardType = card.type || card.card_type || 'OTHER';
+  
+  // Get card's last 4 digits, either from last_four or card_number
+  const lastFour = card.last_four || 
+    (card.card_number ? card.card_number.slice(-4) : '****');
+  
+  // Update the cardBalance calculation to prioritize account balance
+  const cardBalance = card.current_balance !== undefined ? card.current_balance : 0;
+
+  // Add console log to debug balance
+  console.log(`Card ${card.card_id} (${cardName}) balance: ${cardBalance}`, card);
+
   const getCardTypeColor = (type: string) => {
     switch (type) {
       case 'CREDIT':
@@ -43,19 +59,17 @@ const CardItem = ({ card, onEdit, onDelete }: CardItemProps) => {
       <CardHeader className="bg-gradient-to-r from-gray-800 to-gray-700 text-white p-5">
         <div className="flex justify-between items-start">
           <div className="flex flex-col">
-            <h3 className="text-lg font-semibold">{card.card_name}</h3>
-            {card.card_number && (
-              <div className="mt-4 space-y-1">
-                <p className="text-sm opacity-80">Card Number</p>
-                <p className="font-mono tracking-wider">
-                  ••••{' '}•••• {' '}•••• {' '}
-                  {card.card_number.slice(-4)}
-                </p>
-              </div>
-            )}
+            <h3 className="text-lg font-semibold">{cardName}</h3>
+            <div className="mt-4 space-y-1">
+              <p className="text-sm opacity-80">Card Number</p>
+              <p className="font-mono tracking-wider">
+                ••••{' '}•••• {' '}•••• {' '}
+                {lastFour}
+              </p>
+            </div>
           </div>
-          <Badge className={`${getCardTypeColor(card.card_type)}`}>
-            {card.card_type}
+          <Badge className={`${getCardTypeColor(cardType)}`}>
+            {cardType}
           </Badge>
         </div>
         
@@ -73,7 +87,7 @@ const CardItem = ({ card, onEdit, onDelete }: CardItemProps) => {
       <CardContent className="p-4">
         <div>
           <p className="text-sm text-muted-foreground">Current Balance</p>
-          <p className="text-2xl font-bold">{formatNaira(card.current_balance)}</p>
+          <p className="text-2xl font-bold">{formatNaira(cardBalance)}</p>
           {card.account_id && (
             <p className="text-xs text-muted-foreground mt-1">
               Balance linked to account

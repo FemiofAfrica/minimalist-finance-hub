@@ -22,7 +22,6 @@ import { Card, CardType } from "@/types/card";
 import { createCard, updateCard, deleteCard } from "@/services/cardService";
 import { fetchAccounts, getAccountById } from "@/services/accountService";
 import { Account } from "@/types/account";
-import { BankSelector } from "@/components/BankSelector";
 
 interface CardDialogProps {
   isOpen: boolean;
@@ -32,19 +31,16 @@ interface CardDialogProps {
 }
 
 const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
-  const [formData, setFormData] = useState<Partial<Card> & { bank?: string }>({    
-    card_name: '',
-    card_type: 'DEBIT',
-    card_number: '',
-    expiry_date: '',
-    credit_limit: undefined,
-    current_balance: 0,
-    is_active: true,
-    account_id: accountId,
-    custom_tags: []
+  const [step, setStep] = useState(1); // Step 1: Select account, Step 2: Enter card details
+  const [formData, setFormData] = useState<Partial<Card>>({    
+    name: '',
+    type: 'DEBIT',
+    last_four: '',
+    user_id: '',
+    current_balance: 0
   });
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [tagInput, setTagInput] = useState('');
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -54,8 +50,32 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
     // Load accounts for the dropdown
     const getAccounts = async () => {
       try {
+        console.log("Fetching accounts for card form");
         const accountsData = await fetchAccounts();
         setAccounts(accountsData);
+        console.log(`Fetched ${accountsData.length} accounts for selection`);
+        
+        // If accountId is provided, fetch and set the selected account
+        if (accountId) {
+          console.log(`Provided accountId: ${accountId}, fetching details`);
+          const account = await getAccountById(accountId);
+          if (account) {
+            console.log(`Found account: ${account.name} with balance: ${account.balance}`);
+            setSelectedAccount(account);
+            
+            // Auto-populate form with account data
+            setFormData(prev => ({
+              ...prev,
+              account_id: account.account_id,
+              current_balance: account.balance
+            }));
+            
+            // Move to step 2 since we already have an account
+            setStep(2);
+          } else {
+            console.error(`Account ${accountId} not found`);
+          }
+        }
       } catch (error) {
         console.error("Error fetching accounts:", error);
       }
@@ -63,85 +83,107 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
 
     if (isOpen) {
       getAccounts();
+      setStep(card || accountId ? 2 : 1); // Start at step 1 if creating a new card
     }
-  }, [isOpen]);
+  }, [isOpen, accountId]);
 
   useEffect(() => {
     if (card) {
-      // Format date for the input (YYYY-MM-DD)
-      let formattedDate = '';
-      if (card.expiry_date) {
-        try {
-          const date = new Date(card.expiry_date);
-          formattedDate = date.toISOString().split('T')[0];
-        } catch {
-          formattedDate = '';
-        }
-      }
-
+      console.log("Initializing form with existing card:", card);
       setFormData({
-        card_name: card.card_name,
-        card_type: card.card_type,
-        card_number: card.card_number || '',
-        expiry_date: formattedDate,
-        credit_limit: card.credit_limit,
-        current_balance: card.current_balance,
-        is_active: card.is_active,
+        name: card.card_name || card.name,
+        type: card.card_type || card.type,
+        last_four: card.card_number?.slice(-4) || card.last_four || '',
+        user_id: card.user_id,
         account_id: card.account_id,
-        custom_tags: card.custom_tags || []
+        current_balance: card.current_balance || 0
       });
+      
+      // If the card has an account_id, fetch and set the selected account
+      if (card.account_id) {
+        const fetchCardAccount = async () => {
+          try {
+            console.log(`Fetching account ${card.account_id} for existing card`);
+            const account = await getAccountById(card.account_id!);
+            if (account) {
+              console.log(`Found account: ${account.name} with balance: ${account.balance}`);
+              setSelectedAccount(account);
+              
+              // Update the card's balance from the account
+              setFormData(prev => ({
+                ...prev,
+                current_balance: account.balance
+              }));
+            } else {
+              console.error(`Account ${card.account_id} not found for card`);
+            }
+          } catch (error) {
+            console.error("Error fetching card's account:", error);
+          }
+        };
+        
+        fetchCardAccount();
+      }
     } else {
+      console.log("Initializing form for new card");
       setFormData({
-        card_name: '',
-        card_type: 'DEBIT',
-        card_number: '',
-        expiry_date: '',
-        credit_limit: undefined,
-        current_balance: 0,
-        is_active: true,
-        account_id: accountId,
-        custom_tags: []
+        name: '',
+        type: 'DEBIT',
+        last_four: '',
+        user_id: '',
+        current_balance: 0
       });
     }
-    setTagInput('');
     setShowDeleteConfirm(false);
-  }, [card, isOpen, accountId]);
+  }, [card, isOpen]);
 
-  const handleChange = (field: keyof Card, value: any) => {
+  const handleChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
-  const handleNumberChange = (field: keyof Card, value: string) => {
-    const numValue = value === '' ? undefined : parseFloat(value);
-    setFormData(prev => ({
-      ...prev,
-      [field]: numValue
-    }));
-  };
-
-  const handleAccountChange = async (accountId: string) => {
-    // If "none" is selected, just update the form data without auto-populating
+  const handleAccountSelect = async (accountId: string) => {
     if (accountId === "none") {
-      handleChange('account_id', undefined);
+      console.log("No account selected");
+      setSelectedAccount(null);
+      setFormData(prev => ({
+        ...prev,
+        account_id: undefined,
+        current_balance: 0
+      }));
       return;
     }
     
-    // Update account_id in form data
-    handleChange('account_id', accountId);
-    
-    // Fetch the account details to get the current balance
     try {
+      console.log(`Selected account ID: ${accountId}, fetching details`);
       const account = await getAccountById(accountId);
       if (account) {
-        // Auto-populate the current balance from the linked account
-        handleChange('current_balance', account.current_balance);
+        console.log(`Found account: ${account.name} with balance: ${account.balance}`);
+        setSelectedAccount(account);
         
+        // Auto-populate card name based on account name
+        // and set current_balance to match the account's balance
+        setFormData(prev => {
+          const updatedForm = {
+            ...prev,
+            name: `${account.name} Card`,
+            account_id: account.account_id,
+            current_balance: account.balance // Set card balance to account balance
+          };
+          console.log("Updated form data:", updatedForm);
+          return updatedForm;
+        });
+        
+        // Move to step 2
+        setStep(2);
+      } else {
+        console.error(`Account ${accountId} not found`);
         toast({
-          title: "Balance Updated",
-          description: "Card balance has been updated from the linked account.",
+          title: "Error",
+          description: "Selected account could not be found",
+          variant: "destructive",
         });
       }
     } catch (error) {
@@ -149,40 +191,43 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
     }
   };
 
-  const handleAddTag = () => {
-    if (tagInput.trim() && !formData.custom_tags?.includes(tagInput.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        custom_tags: [...(prev.custom_tags || []), tagInput.trim()]
-      }));
-      setTagInput('');
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setFormData(prev => ({
-      ...prev,
-      custom_tags: prev.custom_tags?.filter(tag => tag !== tagToRemove) || []
-    }));
-  };
-
   const validateForm = () => {
-    if (!formData.card_name) {
+    if (!selectedAccount && step === 1) {
       toast({
-        title: "Validation Error",
-        description: "Card name is required",
+        title: "Account Required",
+        description: "Please select an account to link this card to",
         variant: "destructive",
       });
       return false;
     }
     
-    if (formData.card_type === 'CREDIT' && formData.credit_limit === undefined) {
-      toast({
-        title: "Validation Error",
-        description: "Credit limit is required for credit cards",
-        variant: "destructive",
-      });
-      return false;
+    if (step === 2) {
+      if (!formData.name) {
+        toast({
+          title: "Validation Error",
+          description: "Card name is required",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      if (!formData.last_four) {
+        toast({
+          title: "Validation Error",
+          description: "Last four digits of the card number are required",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      if (formData.last_four.length !== 4 || !/^\d{4}$/.test(formData.last_four)) {
+        toast({
+          title: "Validation Error",
+          description: "Please enter exactly 4 digits for the card number",
+          variant: "destructive",
+        });
+        return false;
+      }
     }
     
     return true;
@@ -191,10 +236,24 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
   const handleSubmit = async () => {
     if (!validateForm()) return;
     
+    // If we're on step 1, move to step 2
+    if (step === 1) {
+      setStep(2);
+      return;
+    }
+    
     setSubmitting(true);
     try {
-      // Remove the bank field from formData as it's not in the database schema
-      const { bank, ...cardData } = formData;
+      // Ensure we're using the account's balance
+      const accountBalance = selectedAccount?.balance || 0;
+      
+      const cardData = {
+        ...formData,
+        account_id: selectedAccount?.account_id,
+        current_balance: accountBalance
+      };
+      
+      console.log("Submitting card with data:", cardData);
       
       if (card) {
         // Update existing card
@@ -213,6 +272,7 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
       }
       onClose(true);
     } catch (error) {
+      console.error("Error saving card:", error);
       toast({
         title: "Error",
         description: "Failed to save card",
@@ -246,6 +306,118 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
     }
   };
 
+  const renderStep1 = () => (
+    <div className="grid gap-6 py-4">
+      <div className="space-y-2">
+        <h3 className="text-lg font-medium">Step 1: Select an Account</h3>
+        <p className="text-sm text-muted-foreground">
+          Each card must be linked to an account. Select the account this card belongs to.
+        </p>
+      </div>
+      
+      <div className="grid gap-4">
+        <Label htmlFor="linked_account">Linked Account</Label>
+        <Select 
+          value={selectedAccount?.account_id || 'none'}
+          onValueChange={handleAccountSelect}
+          disabled={!!accountId}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select an account" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Select an account</SelectItem>
+            {accounts.map(account => (
+              <SelectItem key={account.account_id} value={account.account_id}>
+                {account.name} ({account.type}) - {account.balance}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        
+        {selectedAccount && (
+          <div className="bg-muted p-3 rounded-md mt-2">
+            <h4 className="font-medium">Selected Account</h4>
+            <p className="text-sm">Name: {selectedAccount.name}</p>
+            <p className="text-sm">Type: {selectedAccount.type}</p>
+            <p className="text-sm">Balance: {selectedAccount.balance}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderStep2 = () => (
+    <div className="grid gap-6 py-4">
+      <div className="space-y-2">
+        <h3 className="text-lg font-medium">Step 2: Card Details</h3>
+        <p className="text-sm text-muted-foreground">
+          Enter the basic details for your card.
+        </p>
+      </div>
+      
+      {selectedAccount && (
+        <div className="bg-muted p-3 rounded-md">
+          <p className="text-sm font-medium">Linked to: {selectedAccount.name}</p>
+          <p className="text-sm">Balance: {selectedAccount.balance}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            The card will use this account's balance
+          </p>
+        </div>
+      )}
+      
+      <div className="grid gap-4">
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="name" className="text-right">
+            Card Name
+          </Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => handleChange('name', e.target.value)}
+            className="col-span-3"
+            placeholder="e.g., Personal Visa, Company Mastercard"
+          />
+        </div>
+        
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="type" className="text-right">
+            Card Type
+          </Label>
+          <Select 
+            value={formData.type} 
+            onValueChange={(value) => handleChange('type', value)}
+          >
+            <SelectTrigger className="col-span-3">
+              <SelectValue placeholder="Select card type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="CREDIT">Credit</SelectItem>
+              <SelectItem value="DEBIT">Debit</SelectItem>
+              <SelectItem value="PREPAID">Prepaid</SelectItem>
+              <SelectItem value="OTHER">Other</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="last_four" className="text-right">
+            Last 4 Digits
+          </Label>
+          <Input
+            id="last_four"
+            value={formData.last_four}
+            onChange={(e) => handleChange('last_four', e.target.value)}
+            className="col-span-3"
+            placeholder="e.g., 1234"
+            maxLength={4}
+            pattern="[0-9]{4}"
+          />
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[525px]">
@@ -254,188 +426,15 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
           <DialogDescription>
             {card 
               ? 'Update your card details below' 
-              : 'Enter the details of your new card'}
+              : 'Enter the details of your new card'
+            }
           </DialogDescription>
         </DialogHeader>
         
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="card_name" className="text-right">
-              Card Name
-            </Label>
-            <Input
-              id="card_name"
-              value={formData.card_name}
-              onChange={(e) => handleChange('card_name', e.target.value)}
-              className="col-span-3"
-              placeholder="e.g., Personal Visa, Company Mastercard"
-            />
-          </div>
-          
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="card_type" className="text-right">
-              Card Type
-            </Label>
-            <Select 
-              value={formData.card_type} 
-              onValueChange={(value) => handleChange('card_type', value as CardType)}
-            >
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select card type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="CREDIT">Credit</SelectItem>
-                <SelectItem value="DEBIT">Debit</SelectItem>
-                <SelectItem value="PREPAID">Prepaid</SelectItem>
-                <SelectItem value="OTHER">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="linked_account" className="text-right">
-              Linked Account
-            </Label>
-            <div className="col-span-3">
-              <Select 
-                value={formData.account_id || 'none'}
-                onValueChange={(value) => handleAccountChange(value)}
-                disabled={!!accountId}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select linked account (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {accounts.map(account => (
-                    <SelectItem key={account.account_id} value={account.account_id}>
-                      {account.account_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {formData.account_id && (
-                <p className="text-xs text-muted-foreground mt-1 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 mr-1">
-                    <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
-                  </svg>
-                  This card is linked to an account and will affect its balance
-                </p>
-              )}
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="bank" className="text-right">
-              Bank
-            </Label>
-            <div className="col-span-3">
-              <BankSelector
-                value={formData.bank || ''}
-                onChange={(value) => setFormData(prev => ({ ...prev, bank: value }))}
-                placeholder="Select issuing bank..."
-              />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="card_number" className="text-right">
-              Card Number
-            </Label>
-            <Input
-              id="card_number"
-              value={formData.card_number}
-              onChange={(e) => handleChange('card_number', e.target.value)}
-              className="col-span-3"
-              placeholder="Last 4 digits only"
-              maxLength={4}
-            />
-          </div>
-          
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="expiry_date" className="text-right">
-              Expiry Date
-            </Label>
-            <Input
-              id="expiry_date"
-              type="date"
-              value={formData.expiry_date}
-              onChange={(e) => handleChange('expiry_date', e.target.value)}
-              className="col-span-3"
-            />
-          </div>
-          
-          {(formData.card_type === 'CREDIT' || formData.credit_limit !== undefined) && (
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="credit_limit" className="text-right">
-                Credit Limit
-              </Label>
-              <Input
-                id="credit_limit"
-                type="number"
-                value={formData.credit_limit || ''}
-                onChange={(e) => handleNumberChange('credit_limit', e.target.value)}
-                className="col-span-3"
-                placeholder="0.00"
-              />
-            </div>
-          )}
-          
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="current_balance" className="text-right">
-              Current Balance
-            </Label>
-            <Input
-              id="current_balance"
-              type="number"
-              value={formData.current_balance || 0}
-              onChange={(e) => handleNumberChange('current_balance', e.target.value)}
-              className="col-span-3"
-              placeholder="0.00"
-            />
-          </div>
-
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="custom_tags" className="text-right">
-              Tags
-            </Label>
-            <div className="col-span-3 space-y-2">
-              <div className="flex gap-2">
-                <Input
-                  id="tag_input"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  placeholder="Add a tag"
-                  className="flex-1"
-                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                />
-                <Button type="button" onClick={handleAddTag} size="sm">
-                  Add
-                </Button>
-              </div>
-              
-              {formData.custom_tags && formData.custom_tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {formData.custom_tags.map((tag, index) => (
-                    <div key={index} className="bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-xs flex items-center gap-1">
-                      {tag}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTag(tag)}
-                        className="text-secondary-foreground/70 hover:text-secondary-foreground"
-                      >
-                        &times;
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        {step === 1 ? renderStep1() : renderStep2()}
         
         <DialogFooter className="flex justify-between items-center">
-          {card ? (
+          {card && step === 2 ? (
             <div className="flex-1">
               {showDeleteConfirm ? (
                 <div className="flex gap-2">
@@ -468,6 +467,15 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
             <div></div>
           )}
           <div className="flex gap-2">
+            {step === 2 && !card && (
+              <Button 
+                variant="outline" 
+                onClick={() => setStep(1)}
+                disabled={submitting || deleting}
+              >
+                Back
+              </Button>
+            )}
             <Button 
               variant="outline" 
               onClick={() => onClose()}
@@ -481,7 +489,11 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
             >
               {submitting 
                 ? "Saving..." 
-                : card ? "Update Card" : "Add Card"
+                : step === 1 
+                  ? "Next" 
+                  : card 
+                    ? "Update Card" 
+                    : "Add Card"
               }
             </Button>
           </div>

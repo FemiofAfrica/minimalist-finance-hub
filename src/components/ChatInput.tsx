@@ -215,42 +215,47 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
           throw new Error("User not authenticated.");
       }
 
-      const { data: defaultAccount } = await supabase
-        .from('accounts')
-        .select('account_id')
-        .eq('user_id', userResponse.user.id)
-        .single();
-
-      if (!defaultAccount) {
-        throw new Error('No default account found for the user.');
+      // Get the default account using the accountService
+      try {
+        const defaultAccount = await getDefaultAccount();
+        
+        if (!defaultAccount) {
+          throw new Error('No default account found for the user.');
+        }
+        
+        const transactionToInsert = {
+          description: parsedData.description,
+          amount: Number(parsedData.amount),
+          type: categoryTypeLower,
+          category_id: categoryId as string,
+          category_name: parsedData.category_name,
+          category_type: parsedData.category_type,
+          date: parsedData.date,
+          user_id: userResponse.user.id,
+          account_id: defaultAccount.account_id,
+          currency: 'USD'
+        };
+        
+        console.log('Inserting transaction:', transactionToInsert);
+        
+        const { data: insertedData, error: insertError } = await supabase
+          .from('transactions')
+          .insert(transactionToInsert)
+          .select(); // Optionally select the inserted row
+        
+        if (insertError) {
+          console.error('Error inserting transaction:', insertError);
+          throw new Error(`Database error saving transaction: ${insertError.message}`);
+        }
+        
+        console.log('Transaction inserted successfully:', insertedData);
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('No default account')) {
+          // Provide a more helpful error message that guides the user
+          throw new Error('No default account found. Please create an account first in the Accounts & Cards section.');
+        }
+        throw error;
       }
-
-      const transactionToInsert = {
-        description: parsedData.description,
-        amount: Number(parsedData.amount),
-        type: categoryTypeLower,
-        category_id: categoryId as string,
-        category_name: parsedData.category_name,
-        category_type: parsedData.category_type,
-        date: parsedData.date,
-        user_id: userResponse.user.id,
-        account_id: defaultAccount.account_id,
-        currency: 'USD'
-      };
-
-      console.log('Inserting transaction:', transactionToInsert);
-
-      const { data: insertedData, error: insertError } = await supabase
-        .from('transactions')
-        .insert(transactionToInsert)
-        .select(); // Optionally select the inserted row
-
-      if (insertError) {
-        console.error('Error inserting transaction:', insertError);
-        throw new Error(`Database error saving transaction: ${insertError.message}`);
-      }
-
-      console.log('Transaction inserted successfully:', insertedData);
 
       // --- Post-Submission Actions ---
       toast({
