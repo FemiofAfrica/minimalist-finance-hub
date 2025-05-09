@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { LogOut, Moon, Sun } from "lucide-react";
+import { LogOut, Moon, Sun, LayoutDashboard, LineChart, CreditCard as CreditCardIcon, Wallet, BookOpenText, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -9,7 +9,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
-const links = [
+const sidebarLinks = [
   { 
     href: "/", 
     label: "Dashboard", 

@@ -1,8 +1,9 @@
+import React, { useEffect } from "react";
 import { formatNaira } from "@/utils/formatters";
 import { Card as CardType } from "@/types/card";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, Pencil, Trash2 } from "lucide-react";
+import { CreditCard, Pencil, Trash2, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface CardItemProps {
@@ -12,6 +13,28 @@ interface CardItemProps {
 }
 
 const CardItem = ({ card, onEdit, onDelete }: CardItemProps) => {
+  // Get card name using either new schema or legacy field
+  const cardName = card.name || card.card_name || 'Unnamed Card';
+  
+  // Get card type using either new schema or legacy field
+  const cardType = card.type || card.card_type || 'OTHER';
+  
+  // Get card's last 4 digits, either from last_four or card_number
+  const lastFour = card.last_four || 
+    (card.card_number ? card.card_number.slice(-4) : '****');
+  
+  // Update the cardBalance calculation to prioritize account balance
+  const cardBalance = card.current_balance !== undefined ? card.current_balance : 0;
+
+  // Log card details for debugging
+  useEffect(() => {
+    console.log(`Card ${card.card_id} (${cardName}) rendered:`, {
+      balance: cardBalance,
+      accountId: card.account_id,
+      hasAccountLink: !!card.account_id
+    });
+  }, [card.card_id, cardName, cardBalance, card.account_id]);
+
   const getCardTypeColor = (type: string) => {
     switch (type) {
       case 'CREDIT':
@@ -75,9 +98,10 @@ const CardItem = ({ card, onEdit, onDelete }: CardItemProps) => {
           <p className="text-sm text-muted-foreground">Current Balance</p>
           <p className="text-2xl font-bold">{formatNaira(card.current_balance)}</p>
           {card.account_id && (
-            <p className="text-xs text-muted-foreground mt-1">
-              Balance linked to account
-            </p>
+            <div className="flex items-center mt-1 text-xs text-muted-foreground">
+              <Link size={12} className="mr-1" />
+              <span>Balance linked to account</span>
+            </div>
           )}
         </div>
         

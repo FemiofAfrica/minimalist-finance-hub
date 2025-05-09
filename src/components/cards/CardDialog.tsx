@@ -193,8 +193,33 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
     
     setSubmitting(true);
     try {
-      // Remove the bank field from formData as it's not in the database schema
-      const { bank, ...cardData } = formData;
+      // ALWAYS ensure we're using the account's balance if an account is selected
+      let accountBalance = 0;
+      
+      if (selectedAccount) {
+        // Refetch the account to get the latest balance
+        try {
+          const latestAccount = await getAccountById(selectedAccount.account_id);
+          if (latestAccount) {
+            console.log(`Using latest account balance: ${latestAccount.balance}`);
+            accountBalance = latestAccount.balance;
+          } else {
+            console.warn(`Could not fetch latest account data, using existing balance: ${selectedAccount.balance}`);
+            accountBalance = selectedAccount.balance;
+          }
+        } catch (error) {
+          console.error('Error fetching latest account data:', error);
+          accountBalance = selectedAccount.balance;
+        }
+      }
+      
+      const cardData = {
+        ...formData,
+        account_id: selectedAccount?.account_id,
+        current_balance: accountBalance // Always use the account balance
+      };
+      
+      console.log("Submitting card with data:", cardData);
       
       if (card) {
         // Update existing card

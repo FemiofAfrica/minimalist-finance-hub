@@ -19,10 +19,14 @@ export interface Card {
 /**
  * Helper function to convert between API and database schemas
  * 
- * Note: This function doesn't set the current_balance. The current_balance
- * should be set using the account's balance when fetching cards.
+ * @param card The card data from the database
+ * @param initialBalance Optional initial balance to set (defaults to 0)
+ * @returns A normalized Card object with both DB and legacy fields
+ * 
+ * Note: The current_balance should be synced with the linked account's balance
+ * after normalization using the syncCardWithAccountBalance function.
  */
-export function normalizeDatabaseCard(card: any): Card {
+export function normalizeDatabaseCard(card: any, initialBalance: number = 0): Card {
   // Convert from database fields to application fields
   return {
     card_id: card.card_id,
@@ -40,7 +44,7 @@ export function normalizeDatabaseCard(card: any): Card {
     // Add legacy fields for backward compatibility
     card_number: card.last_four ? `•••• •••• •••• ${card.last_four}` : undefined,
     
-    // current_balance should be set from the linked account's balance separately
-    current_balance: 0 // Default to 0; should be updated with account balance
+    // Allow setting an initial balance (should be updated with account balance)
+    current_balance: initialBalance
   };
 }
