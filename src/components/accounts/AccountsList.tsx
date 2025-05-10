@@ -36,7 +36,21 @@ const AccountsList = () => {
       console.log("Loading accounts...");
       const data = await fetchAccounts();
       console.log(`Loaded ${data.length} accounts`);
-      setAccounts(data);
+      
+      // Sort accounts: default accounts first, then by creation date (newest first)
+      const sortedAccounts = [...data].sort((a, b) => {
+        // First sort by default status (true comes before false)
+        if (a.is_default && !b.is_default) return -1;
+        if (!a.is_default && b.is_default) return 1;
+        
+        // Then sort by created_at date (newest first)
+        if (a.created_at && b.created_at) {
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        }
+        return 0;
+      });
+      
+      setAccounts(sortedAccounts);
     } catch (error) {
       console.error("Error loading accounts:", error);
       toast({

@@ -6,6 +6,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 const supportedCurrencies = [
   { code: "NGN", symbol: "₦", name: "Nigerian Naira" },
@@ -16,15 +18,22 @@ const supportedCurrencies = [
 
 export function CurrencySelector() {
   const { currentCurrency, setCurrentCurrency } = useCurrency();
+  const isMobile = useIsMobile();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="w-[130px]">
-          {currentCurrency.symbol} {currentCurrency.code}
+        <Button 
+          variant="outline" 
+          className={cn(
+            "min-w-0",
+            isMobile ? "w-[70px] text-sm px-2" : "w-[130px]"
+          )}
+        >
+          {currentCurrency.symbol} {!isMobile && currentCurrency.code}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="w-[200px]">
         {supportedCurrencies.map((currency) => (
           <DropdownMenuItem
             key={currency.code}

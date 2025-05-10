@@ -104,10 +104,11 @@ const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
       {/* Mobile Menu Button */}
       {isMobile && (
         <Button 
-          variant="outline" 
+          variant="ghost" 
           size="icon" 
           onClick={toggleSidebar}
-          className="shrink-0 mr-4"
+          className="shrink-0 mr-2 h-10 w-10 bg-primary/5 hover:bg-primary/10 rounded-full"
+          aria-label="Toggle Menu"
         >
           <Menu className="h-5 w-5" />
           <span className="sr-only">Toggle Menu</span>

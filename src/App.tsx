@@ -107,6 +107,8 @@ function App() {
             </Routes>
           </Router>
           <Toaster />
+          <Analytics />
+          <SpeedInsights />
         </ThemeProvider>
       </CurrencyProvider>
     </AuthProvider>

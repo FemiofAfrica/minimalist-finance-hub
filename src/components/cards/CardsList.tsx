@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Card as CardType } from "@/types/card";
 import { fetchCards, getCardsByAccount, deleteCard } from "@/services/cardService";
-import { getAccountById } from "@/services/accountService";
+import { getAccountById, fetchAccounts } from "@/services/accountService";
+import { Account } from "@/types/account";
 import CardItem from "./CardItem";
 import { Button } from "@/components/ui/button";
 import { Plus, RefreshCw } from "lucide-react";
@@ -24,6 +25,7 @@ interface CardsListProps {
 
 const CardsList = ({ accountId }: CardsListProps) => {
   const [cards, setCards] = useState<CardType[]>([]);
+  const [accounts, setAccounts] = useState<Record<string, Account>>({});
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
@@ -32,10 +34,30 @@ const CardsList = ({ accountId }: CardsListProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
+  // Load accounts data for determining default account
+  const loadAccountsData = async () => {
+    try {
+      const accountsData = await fetchAccounts();
+      const accountsMap = accountsData.reduce((acc, account) => {
+        acc[account.account_id] = account;
+        return acc;
+      }, {} as Record<string, Account>);
+      
+      setAccounts(accountsMap);
+      return accountsMap;
+    } catch (error) {
+      console.error("Error loading accounts data:", error);
+      return {};
+    }
+  };
+
   const loadCards = async () => {
     try {
       setLoading(true);
       console.log("Loading cards...", accountId ? `for account ${accountId}` : "all cards");
+      
+      // Load accounts map for default status lookup
+      const accountsMap = await loadAccountsData();
       
       // If we're loading cards for a specific account, make sure to get the account details first
       if (accountId) {
@@ -63,12 +85,28 @@ const CardsList = ({ accountId }: CardsListProps) => {
       const allCards = await fetchCards();
       console.log(`Loaded ${allCards.length} cards`);
       
-      // Log the balances for debugging
-      allCards.forEach(card => {
-        console.log(`Card ${card.card_id}: ${card.name || card.card_name} - Balance: ${card.current_balance}`);
+      // Sort cards: cards linked to default accounts first, then by creation date
+      const sortedCards = [...allCards].sort((a, b) => {
+        const aAccount = a.account_id && accountsMap[a.account_id];
+        const bAccount = b.account_id && accountsMap[b.account_id];
+        
+        // Cards linked to default accounts come first
+        if (aAccount?.is_default && !bAccount?.is_default) return -1;
+        if (!aAccount?.is_default && bAccount?.is_default) return 1;
+        
+        // Then sort by created_at date (newest first)
+        if (a.created_at && b.created_at) {
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        }
+        return 0;
       });
       
-      setCards(allCards);
+      // Log the balances for debugging
+      sortedCards.forEach(card => {
+        console.log(`Card ${card.card_id}: ${card.name || card.card_name} - Balance: ${card.current_balance} - Default Account: ${card.account_id && accountsMap[card.account_id]?.is_default}`);
+      });
+      
+      setCards(sortedCards);
     } catch (error) {
       console.error("Error loading cards:", error);
       toast({

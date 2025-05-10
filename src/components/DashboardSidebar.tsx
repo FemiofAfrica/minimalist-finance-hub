@@ -105,7 +105,10 @@ export function DashboardSidebar() {
               <Button
                 key={link.href}
                 variant={location.pathname === link.href ? "secondary" : "ghost"}
-                className="justify-start pl-2 hover:bg-primary hover:text-primary-foreground"
+                className={cn(
+                  "justify-start pl-2 hover:bg-primary hover:text-primary-foreground",
+                  isMobile && "h-12 text-base py-6 my-1" // Taller buttons on mobile for easier tapping
+                )}
                 asChild
               >
                 <Link to={link.href}>
@@ -116,34 +119,40 @@ export function DashboardSidebar() {
             ))}
           </nav>
         </ScrollArea>
-        <div className="border-t border-border p-3">
+        <div className={cn("border-t border-border p-3", isMobile && "mt-2")}>
           <div className="flex flex-col gap-2">
             <Button 
-              className="w-full justify-start" 
+              className={cn(
+                "w-full justify-start",
+                isMobile && "h-12 text-base py-6" // Taller buttons on mobile for easier tapping
+              )}
               variant="ghost" 
               onClick={toggleTheme} 
-              size="sm"
+              size={isMobile ? "default" : "sm"}
             >
               {theme === "light" ? (
                 <>
-                  <Moon className="mr-2 h-4 w-4" />
+                  <Moon className={cn("mr-2 h-4 w-4", isMobile && "h-5 w-5")} />
                   Dark Mode
                 </>
               ) : (
                 <>
-                  <Sun className="mr-2 h-4 w-4" />
+                  <Sun className={cn("mr-2 h-4 w-4", isMobile && "h-5 w-5")} />
                   Light Mode
                 </>
               )}
             </Button>
             <Button 
-              className="w-full justify-start" 
+              className={cn(
+                "w-full justify-start",
+                isMobile && "h-12 text-base py-6" // Taller buttons on mobile for easier tapping
+              )}
               variant="ghost" 
               onClick={handleSignOut} 
               disabled={isLoggingOut}
-              size="sm"
+              size={isMobile ? "default" : "sm"}
             >
-              <LogOut className="mr-2 h-4 w-4" />
+              <LogOut className={cn("mr-2 h-4 w-4", isMobile && "h-5 w-5")} />
               {isLoggingOut ? "Logging out..." : "Logout"}
             </Button>
           </div>
