@@ -16,9 +16,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { CalendarIcon, PlusCircle, Trash2, Edit, CheckCircle, AlertCircle, CreditCard, XCircle } from 'lucide-react';
+import { CalendarIcon, PlusCircle, Trash2, Edit, CheckCircle, AlertCircle, CreditCard, XCircle, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionAutocomplete } from '@/components/ui/transaction-autocomplete';
+import { useCurrency } from '@/contexts/CurrencyContext';
+
+// Define the original base currency of the incoming data
+const APP_BASE_CURRENCY = "NGN";
 
 const SubscriptionsPage: React.FC = () => {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -33,7 +37,29 @@ const SubscriptionsPage: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [dueSoonCount, setDueSoonCount] = useState<number>(0);
+  const [renewingSubscriptionId, setRenewingSubscriptionId] = useState<string | null>(null);
+  const { formatPossiblyConvertedCurrency, isLiveConversionEnabled, currentCurrency, exchangeRates } = useCurrency();
   
+  // Helper function to convert NGN amounts to USD (which is the base currency in CurrencyContext)
+  const convertNgnToUsd = (amountNgn: number): number | null => {
+    const ngnRate = exchangeRates?.[APP_BASE_CURRENCY];
+    if (ngnRate && typeof ngnRate === 'number' && ngnRate > 0) {
+      return amountNgn / ngnRate;
+    }
+    // If conversion fails, return original amount
+    return amountNgn;
+  };
+  
+  const formatAmount = (amountNgn: number) => {
+    // First convert from NGN to USD (base currency for the context)
+    const amountUsd = convertNgnToUsd(amountNgn);
+    
+    // Then use the context formatter which will handle any further conversions
+    return amountUsd !== null 
+      ? formatPossiblyConvertedCurrency(amountUsd) 
+      : formatNaira(amountNgn); // Fallback to direct NGN formatting
+  };
+
   const adjustBillingDateIfNeeded = (billingDate: string, frequency: string): string => {
     const today = new Date();
     const nextBillingDate = new Date(billingDate);
@@ -269,6 +295,30 @@ const SubscriptionsPage: React.FC = () => {
     }
   };
 
+  const handleRenewSubscription = async (subscription: Subscription) => {
+    try {
+      setRenewingSubscriptionId(subscription.subscription_id);
+      
+      await convertSubscriptionToTransaction(subscription.subscription_id);
+      
+      toast({
+        title: 'Subscription Renewed',
+        description: `${subscription.name} has been renewed and the next payment date updated.`,
+      });
+      
+      loadSubscriptions();
+    } catch (err) {
+      console.error("Error renewing subscription:", err);
+      toast({
+        title: "Error",
+        description: "Failed to renew subscription",
+        variant: "destructive",
+      });
+    } finally {
+      setRenewingSubscriptionId(null);
+    }
+  };
+
   const handleConfirmPayment = (subscription: Subscription) => {
     setSelectedSubscription(subscription);
     setIsConfirmPaymentDialogOpen(true);
@@ -494,7 +544,7 @@ const SubscriptionsPage: React.FC = () => {
               <CardTitle className="text-sm font-medium">Total Monthly Cost</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatNaira(calculateMonthlyTotal())}</div>
+              <div className="text-2xl font-bold">{formatAmount(calculateMonthlyTotal())}</div>
             </CardContent>
           </Card>
           
@@ -566,7 +616,7 @@ const SubscriptionsPage: React.FC = () => {
                         </div>
                         <div className="flex-grow flex flex-col justify-center items-center text-center space-y-1.5 mb-4">
                           <h3 className="text-base font-semibold leading-tight" title={subscription.name}>{subscription.name}</h3>
-                          <p className="text-xl font-bold">{formatNaira(subscription.amount)}</p>
+                          <p className="text-xl font-bold">{formatAmount(subscription.amount)}</p>
                           <div className="flex items-center text-xs text-muted-foreground whitespace-nowrap">
                             <CalendarIcon className="w-3 h-3 mr-1 flex-shrink-0" />
                             <span>Next payment is on {formatDate(subscription.next_billing_date)}</span>
@@ -582,8 +632,30 @@ const SubscriptionsPage: React.FC = () => {
                                 onClick={() => handleEditSubscription(subscription)}
                                 title="Manage Subscription"
                               >
-                                Manage Subscription 
+                                Manage
                               </Button>
+
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 px-3 text-xs"
+                                onClick={() => handleRenewSubscription(subscription)}
+                                disabled={renewingSubscriptionId === subscription.subscription_id}
+                                title="Renew Subscription"
+                              >
+                                {renewingSubscriptionId === subscription.subscription_id ? (
+                                  <>
+                                    <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
+                                    Renewing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <RefreshCw className="mr-1 h-3 w-3" />
+                                    Renew
+                                  </>
+                                )}
+                              </Button>
+                              
                               <Button 
                                 variant="outline" 
                                 size="sm" 
@@ -591,7 +663,7 @@ const SubscriptionsPage: React.FC = () => {
                                 onClick={() => handleCancelSubscription(subscription)}
                                 title="Cancel Plan"
                               >
-                                Cancel Plan
+                                Cancel
                               </Button>
                             </div>
                           ) : (
@@ -1006,7 +1078,7 @@ const SubscriptionsPage: React.FC = () => {
                   </div>
                   <div className="flex justify-between mb-2">
                     <span className="font-medium">Amount:</span>
-                    <span>{formatNaira(selectedSubscription.amount)}</span>
+                    <span>{formatAmount(selectedSubscription.amount)}</span>
                   </div>
                   <div className="flex justify-between mb-2">
                     <span className="font-medium">Due date:</span>
@@ -1043,7 +1115,7 @@ const SubscriptionsPage: React.FC = () => {
                   </div>
                   <div className="flex justify-between mb-2">
                     <span className="font-medium">Amount:</span>
-                    <span>{formatNaira(selectedSubscription.amount)}</span>
+                    <span>{formatAmount(selectedSubscription.amount)}</span>
                   </div>
                   <div className="flex justify-between mb-2">
                     <span className="font-medium">Frequency:</span>

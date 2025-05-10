@@ -138,7 +138,7 @@ export const createSubscription = async (subscription: Omit<Subscription, 'subsc
           .eq('user_id', userId)
           .eq('name', 'Default Account') // Find account by name
           .limit(1)
-          .maybeSingle(); // Use maybeSingle as there might be no default
+          .maybeSingle();
 
         if (defaultAccountError) {
           console.error("Error fetching default account:", defaultAccountError);
@@ -407,26 +407,73 @@ export const convertSubscriptionToTransaction = async (subscriptionId: string): 
       throw new Error(`Subscription with ID ${subscriptionId} not found`);
     }
     
-    // Create a transaction from the subscription
-    const transaction = {
-      description: `${subscription.name} Subscription`,
+    // Get the user's default account to link the transaction to
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+    
+    // Fetch the default account or any active account
+    const { data: defaultAccount, error: accountError } = await supabase
+      .from('accounts')
+      .select('account_id, currency')
+      .eq('user_id', user.id)
+      .eq('is_default', true)
+      .limit(1)
+      .maybeSingle();
+    
+    if (accountError) {
+      console.error('Error fetching default account:', accountError);
+      throw accountError;
+    }
+    
+    // If no default account is found, try to get any active account
+    let accountId;
+    let accountCurrency = 'NGN';
+    
+    if (defaultAccount && defaultAccount.account_id) {
+      accountId = defaultAccount.account_id;
+      accountCurrency = defaultAccount.currency || 'NGN';
+    } else {
+      // Fallback to any account if no default is set
+      const { data: anyAccount, error: anyAccountError } = await supabase
+        .from('accounts')
+        .select('account_id, currency')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+      
+      if (anyAccountError) {
+        console.error('Error fetching any account:', anyAccountError);
+        throw anyAccountError;
+      }
+      
+      if (!anyAccount || !anyAccount.account_id) {
+        throw new Error('No active account found to link the transaction to');
+      }
+      
+      accountId = anyAccount.account_id;
+      accountCurrency = anyAccount.currency || 'NGN';
+    }
+    
+    // Create a transaction from the subscription using the createTransaction function
+    // to ensure all necessary fields and validation are applied
+    const transactionInput = {
+      account_id: accountId,
       amount: subscription.amount,
-      category_id: subscription.category_id,
-      category_name: subscription.category_name,
-      category_type: subscription.category_type || 'EXPENSE',
+      currency: accountCurrency,
+      type: (subscription.category_type?.toLowerCase() === 'income' ? 'income' : 'expense') as 'income' | 'expense',
       date: new Date().toISOString().split('T')[0], // Today's date
-      user_id: subscription.user_id,
-      source: 'subscription'
+      description: `${subscription.name} Subscription Payment`,
+      category_id: subscription.category_id,
+      category_name: subscription.category_name || 'Subscriptions',
+      notes: `Automatic payment for subscription: ${subscription.name}`,
+      subscription_id: subscription.subscription_id // Link it to the subscription
     };
     
-    const { error: transactionError } = await supabase
-      .from('transactions')
-      .insert([transaction]);
-    
-    if (transactionError) {
-      console.error('Error creating transaction from subscription:', transactionError);
-      throw transactionError;
-    }
+    // Use the createTransaction function instead of direct insert
+    await createTransaction(transactionInput);
     
     // Update the subscription's next billing date based on frequency
     const nextBillingDate = calculateNextBillingDate(subscription.next_billing_date, subscription.frequency as SubscriptionFrequency);
