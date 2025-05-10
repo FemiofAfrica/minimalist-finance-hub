@@ -7,6 +7,7 @@ import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { Toaster } from '@/components/ui/toaster';
 import Login from '@/pages/Login';
+import ResetPassword from '@/pages/ResetPassword';
 import Index from '@/pages/Index';
 import Transactions from '@/pages/Transactions';
 import Subscriptions from '@/pages/Subscriptions';
@@ -43,6 +44,7 @@ function App() {
           <Router>
             <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route
               path="/"
               element={

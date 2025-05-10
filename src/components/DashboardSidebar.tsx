@@ -1,4 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { 
   LayoutDashboard, 
   LineChart, 
@@ -18,6 +19,7 @@ import { Sidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -61,9 +63,31 @@ const links = [
 
 export function DashboardSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  
+  const handleSignOut = async () => {
+    try {
+      setIsLoggingOut(true);
+      await signOut();
+      navigate('/login'); // Redirect to login page after successful logout
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Logout Issue",
+        description: "There was a problem logging out. You've been redirected to the login page.",
+        variant: "destructive",
+      });
+      // Even if there's an error, redirect to login
+      navigate('/login');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
   
   const navigation = (
     <div className="flex h-full flex-col">
@@ -112,9 +136,15 @@ export function DashboardSidebar() {
                 </>
               )}
             </Button>
-            <Button className="w-full justify-start" variant="ghost" onClick={signOut} size="sm">
+            <Button 
+              className="w-full justify-start" 
+              variant="ghost" 
+              onClick={handleSignOut} 
+              disabled={isLoggingOut}
+              size="sm"
+            >
               <LogOut className="mr-2 h-4 w-4" />
-              Logout
+              {isLoggingOut ? "Logging out..." : "Logout"}
             </Button>
           </div>
         </div>

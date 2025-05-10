@@ -11,6 +11,8 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithTwitter: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  resendVerificationEmail: (email: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -97,8 +99,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    try {
+      // First check if a session exists to prevent AuthSessionMissingError
+      const { data } = await supabase.auth.getSession();
+      
+      if (!data.session) {
+        // No session exists, manually clean up local state
+        setUser(null);
+        setSession(null);
+        return;
+      }
+      
+      // Proceed with normal signOut if session exists
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (error) {
+      console.error('Sign out error:', error);
+      // Even if logout fails, clear local state to allow user to "escape"
+      setUser(null);
+      setSession(null);
+    }
   };
 
   const signInWithGoogle = async () => {
@@ -121,6 +141,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      if (!email) {
+        throw new Error('Email is required.');
+      }
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (error) throw error;
+    } catch (error) {
+      console.error('Password reset error:', error);
+      throw error;
+    }
+  };
+
+  const resendVerificationEmail = async (email: string) => {
+    try {
+      if (!email) {
+        throw new Error('Email is required.');
+      }
+      
+      // Supabase doesn't have a direct "resend verification" API
+      // The recommended approach is to re-signup with the same email
+      const { error } = await supabase.auth.signUp({
+        email,
+        password: '', // This will be ignored when the user already exists
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+        }
+      });
+      
+      if (error && !error.message.includes('User already registered')) {
+        throw error;
+      }
+    } catch (error) {
+      console.error('Resend verification error:', error);
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -130,7 +192,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp, 
       signOut,
       signInWithGoogle,
-      signInWithTwitter
+      signInWithTwitter,
+      resetPassword,
+      resendVerificationEmail
     }}>
       {!loading && children}
     </AuthContext.Provider>

@@ -1,8 +1,26 @@
+/* Reset styles for full-width pages */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+}
+
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
   text-align: center;
+}
+
+/* Authentication pages specific styles */
+.auth-page {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
 }
 
 .logo {

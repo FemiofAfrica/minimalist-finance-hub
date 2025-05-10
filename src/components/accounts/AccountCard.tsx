@@ -49,11 +49,11 @@ const AccountCard = ({ account, onEdit, onDelete, onViewCards }: AccountCardProp
             )}
           </div>
         </div>
-        {account.institution && (
-          <CardDescription className="text-sm text-muted-foreground">
-            {account.institution}
-          </CardDescription>
-        )}
+            {account.institution && (
+              <CardDescription className="text-sm text-muted-foreground">
+                {account.institution}
+              </CardDescription>
+            )}
       </CardHeader>
       <CardContent className="p-4 pt-0">
         <div className="mt-2">
