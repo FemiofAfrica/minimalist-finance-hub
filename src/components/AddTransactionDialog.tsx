@@ -18,7 +18,7 @@ import { fetchCards } from "@/services/cardService";
 import { Account } from "@/types/account";
 import { Card } from "@/types/card";
 import { createTransaction } from "@/services/transactionService";
-import { TransactionFlowType } from "@/types/transaction";
+import { TransactionFlowType, TransactionType } from "@/types/transaction";
 
 const AddTransactionDialog = () => {
   const [open, setOpen] = useState(false);
@@ -53,35 +53,36 @@ const AddTransactionDialog = () => {
     setLoading(true);
     try {
       // Fetch all accounts for the dropdown
+      console.log("Fetching accounts for dialog...");
       const accountsData = await fetchAccounts();
-      if (Array.isArray(accountsData)) {
-        setAccounts(accountsData);
-      } else {
-        console.error("fetchAccounts did not return an array.");
-        setAccounts([]); // Reset accounts on error
-        // Optionally throw or show toast
-      }
-
-      // Get the default account (service handles creation if needed)
-      const defaultAccount = await getDefaultAccount();
       
-      // Set the default account in the form state
-      if (defaultAccount && defaultAccount.account_id) {
-        setFormData(prev => ({
-          ...prev,
-          account_id: defaultAccount.account_id 
-        }));
+      if (Array.isArray(accountsData) && accountsData.length > 0) {
+        console.log(`Found ${accountsData.length} accounts`);
+        setAccounts(accountsData);
+        
+        // Get the default account or first account
+        const defaultAccount = accountsData.find(acc => acc.is_default) || accountsData[0];
+        
+        if (defaultAccount) {
+          console.log("Using account:", defaultAccount.name);
+          setFormData(prev => ({
+            ...prev,
+            account_id: defaultAccount.account_id 
+          }));
+        } else {
+          console.error("No accounts available despite array having length");
+          setFormData(prev => ({ ...prev, account_id: '' })); 
+        }
       } else {
-        // Handle case where getDefaultAccount failed unexpectedly
-        console.error("Failed to get or create default account from service.");
-        setFormData(prev => ({ ...prev, account_id: '' })); 
+        console.error("No accounts found or fetchAccounts returned empty array");
+        setAccounts([]);
+        setFormData(prev => ({ ...prev, account_id: '' }));
         toast({
-          title: "Error",
-          description: "Could not set default account.",
+          title: "Warning",
+          description: "No accounts found. Please create an account first.",
           variant: "destructive"
         });
       }
-
     } catch (error) {
       // Catch errors from either fetchAccounts or getDefaultAccount
       console.error('Error loading accounts and setting default:', error);
@@ -164,12 +165,13 @@ const AddTransactionDialog = () => {
       const transaction = {
         description: formData.description,
         amount: parseFloat(formData.amount),
-        category_type: formData.type.toUpperCase(),
-        category_name: formData.category || 'Uncategorized',
+        type: formData.type as TransactionType,
+        category: formData.category || 'uncategorized',
         date: new Date(formData.date).toISOString(),
         account_id: formData.account_id === 'none' ? null : formData.account_id,
-
-        transaction_type: formData.transaction_type
+        transaction_type: formData.transaction_type,
+        user_id: null, // Will be set by the service
+        currency: 'NGN' // Default currency
       };
       
       await createTransaction(transaction);
@@ -186,8 +188,7 @@ const AddTransactionDialog = () => {
         type: 'expense',
         category: 'uncategorized',
         date: new Date().toISOString().split('T')[0],
-        account_id: 'none',
-
+        account_id: '',
         transaction_type: 'REGULAR'
       });
       
@@ -215,7 +216,7 @@ const AddTransactionDialog = () => {
           Add Manually
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Transaction</DialogTitle>
           <DialogDescription>
@@ -300,7 +301,7 @@ const AddTransactionDialog = () => {
                 <SelectContent>
                   {accounts.map((account) => (
                     <SelectItem key={account.account_id} value={account.account_id}>
-                      {account.account_name}
+                      {account.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

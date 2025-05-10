@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import { searchTransactionsByDescription } from '@/services/searchService';
 import { Transaction } from '@/types/transaction';
@@ -26,27 +25,55 @@ export function TransactionAutocomplete({
   const [inputValue, setInputValue] = useState(value);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchPerformed, setSearchPerformed] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Update internal state when external value changes
   useEffect(() => {
     setInputValue(value);
   }, [value]);
 
+  // Handle clicks outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   // Search for transactions when input value changes
   useEffect(() => {
     const searchTransactions = async () => {
       if (inputValue.trim().length < 2) {
         setTransactions([]);
+        setSearchPerformed(false);
         return;
       }
 
       setLoading(true);
+      setSearchPerformed(false);
       try {
         const results = await searchTransactionsByDescription(inputValue);
         setTransactions(results);
+        setSearchPerformed(true);
+        
+        // Close dropdown if no results found
+        if (results.length === 0) {
+          // Wait a short time to allow user to see "No results found" message
+          setTimeout(() => {
+            setOpen(false);
+          }, 800);
+        }
       } catch (error) {
         console.error('Error searching transactions:', error);
+        setOpen(false);
       } finally {
         setLoading(false);
       }
@@ -61,6 +88,9 @@ export function TransactionAutocomplete({
     setInputValue(newValue);
     if (onChange) {
       onChange(newValue);
+    }
+    if (newValue.trim().length >= 2) {
+      setOpen(true);
     }
   };
 
@@ -79,17 +109,25 @@ export function TransactionAutocomplete({
       e.preventDefault();
       handleSelect(transactions[0]);
     }
+    // Close dropdown on Escape
+    if (e.key === 'Escape') {
+      setOpen(false);
+    }
   };
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full" ref={containerRef}>
       <Input
         ref={inputRef}
         type="text"
         value={inputValue}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          if (inputValue.trim().length >= 2) {
+            setOpen(true);
+          }
+        }}
         placeholder={placeholder}
         className={className}
         autoComplete="off"
@@ -120,14 +158,14 @@ export function TransactionAutocomplete({
                           <span>
                             {new Date(transaction.date).toLocaleDateString()} - {formatNaira(transaction.amount)}
                           </span>
-                          {transaction.account_id && (
-                            <span className="text-blue-500">
-                              Account: {transaction.account_id}
+                          {transaction.category_name && (
+                            <span className="text-green-500">
+                              {transaction.category_name}
                             </span>
                           )}
-                          {transaction.card_id && (
-                            <span className="text-purple-500">
-                              Card: {transaction.card_id}
+                          {transaction.account_name && (
+                            <span className="text-blue-500">
+                              Account: {transaction.account_name}
                             </span>
                           )}
                         </div>

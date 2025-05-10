@@ -8,8 +8,14 @@ AS $$
 BEGIN
   -- Insert a corresponding row into public.profiles
   -- Uses the id and email from the NEW record in auth.users
-  INSERT INTO public.profiles (id, email)
-  VALUES (NEW.id, NEW.email);
+  -- Also copy first_name and last_name from user_metadata if available
+  INSERT INTO public.profiles (id, email, first_name, last_name)
+  VALUES (
+    NEW.id, 
+    NEW.email,
+    (NEW.raw_user_meta_data->>'first_name'),
+    (NEW.raw_user_meta_data->>'last_name')
+  );
 
   -- Note: If you collect first/last name during signup and store it in
   -- user_metadata, you could potentially populate those fields here too.

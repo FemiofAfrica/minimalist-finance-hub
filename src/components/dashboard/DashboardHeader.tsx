@@ -68,6 +68,7 @@ const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
       let nameToUse = 'there';
 
       try {
+        // First try to get name from profiles table
         const { data: profile, error } = await supabase
           .from('profiles')
           .select('first_name')
@@ -76,16 +77,20 @@ const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
 
         if (error) {
           console.error('Error fetching profile for greeting:', error);
-          nameToUse = user.email?.split('@')[0] || 'there';
+          // Fallback to user metadata if there's an error with profile
+          nameToUse = user.user_metadata?.first_name || user.email?.split('@')[0] || 'there';
         } else if (profile?.first_name) {
+          // Use profile first_name if available
           nameToUse = profile.first_name;
         } else {
-          nameToUse = user.email?.split('@')[0] || 'there';
+          // If profile exists but first_name is not set, try user_metadata
+          nameToUse = user.user_metadata?.first_name || user.email?.split('@')[0] || 'there';
         }
 
       } catch (fetchError) {
         console.error('Exception fetching profile:', fetchError);
-        nameToUse = user.email?.split('@')[0] || 'there';
+        // Fallback to user metadata in case of exception
+        nameToUse = user.user_metadata?.first_name || user.email?.split('@')[0] || 'there';
       }
 
       const randomIndex = Math.floor(Math.random() * GREETING_TEMPLATES.length);

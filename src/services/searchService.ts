@@ -14,63 +14,52 @@ export const searchTransactionsByDescription = async (query: string): Promise<Tr
     console.log("Searching transactions by description:", query);
     
     // Search for transactions with a similar description
-    const { data: transactionsData, error: transactionsError } = await supabase
+    const { data, error } = await supabase
       .from('transactions')
-      .select(`
-        *,
-        accounts:account_id(name)
-      `)
+      .select('*')
       .ilike('description', `%${query}%`)
       .order('date', { ascending: false })
       .limit(5); // Limit to 5 results for performance
 
-    if (transactionsError) {
-      console.error('Error searching transactions:', transactionsError);
-      throw transactionsError;
+    if (error) {
+      console.error('Error searching transactions:', error);
+      return [];
     }
 
-    if (!transactionsData || transactionsData.length === 0) {
+    if (!data || data.length === 0) {
       console.log("No matching transactions found");
       return [];
     }
 
-    // Process the transactions to include account and card names
-    const enrichedTransactions = transactionsData.map(transaction => {
-      const processedTransaction: Transaction = {
-        ...transaction,
-        transaction_id: transaction.transaction_id,
-        user_id: transaction.user_id,
-        account_id: transaction.account_id,
-        amount: transaction.amount,
-        currency: transaction.currency,
-        date: transaction.date,
-        type: transaction.type,
-      };
-      
-      // Add account and card name information if available
-      if (transaction.accounts) {
-        processedTransaction.account_name = transaction.accounts.name;
-      }
-      
-      return processedTransaction;
-    });
+    // Map to the Transaction type
+    const transactions = data.map((t): Transaction => ({
+      transaction_id: t.transaction_id,
+      user_id: t.user_id,
+      account_id: t.account_id,
+      category_id: t.category_id,
+      description: t.description || '',
+      amount: t.amount,
+      currency: t.currency,
+      date: t.date,
+      type: t.type
+    }));
     
-    // Return unique transactions based on description
-    // This prevents showing multiple entries of the same subscription
+    // Get unique transactions by description to avoid duplicates
     const uniqueTransactions = Array.from(
-      new Map(enrichedTransactions.map(item => [item.description, item]))
+      new Map(transactions.map(item => [item.description, item]))
       .values()
     );
     
+    console.log(`Found ${uniqueTransactions.length} unique matching transactions`);
     return uniqueTransactions;
   } catch (error) {
-    console.error("Error in searchTransactionsByDescription:", error);
+    console.error('Error in searchTransactionsByDescription:', error);
     return [];
   }
 };
 
 /**
- * Search for accounts and cards by name
+ * Search for accounts by name
  */
 export const searchAccountsAndCards = async (query: string): Promise<{
   accounts: { id: string, name: string, type: 'account' }[],
@@ -84,41 +73,24 @@ export const searchAccountsAndCards = async (query: string): Promise<{
     // Search for accounts with similar names
     const { data: accountsData, error: accountsError } = await supabase
       .from('accounts')
-      .select('account_id, account_name')
-      .ilike('account_name', `%${query}%`)
+      .select('account_id, name')
+      .ilike('name', `%${query}%`)
       .limit(3);
 
     if (accountsError) {
       console.error('Error searching accounts:', accountsError);
-      throw accountsError;
-    }
-
-    // Search for cards with similar names
-    const { data: cardsData, error: cardsError } = await supabase
-      .from('cards')
-      .select('card_id, card_name')
-      .ilike('card_name', `%${query}%`)
-      .limit(3);
-
-    if (cardsError) {
-      console.error('Error searching cards:', cardsError);
-      throw cardsError;
+      return { accounts: [], cards: [] };
     }
 
     // Format results
     const accounts = (accountsData || []).map(account => ({
       id: account.account_id,
-      name: account.account_name,
+      name: account.name,
       type: 'account' as const
     }));
 
-    const cards = (cardsData || []).map(card => ({
-      id: card.card_id,
-      name: card.card_name,
-      type: 'card' as const
-    }));
-
-    return { accounts, cards };
+    // Return only accounts - cards functionality removed as it's not in the DB schema
+    return { accounts, cards: [] };
   } catch (error) {
     console.error("Error in searchAccountsAndCards:", error);
     return { accounts: [], cards: [] };

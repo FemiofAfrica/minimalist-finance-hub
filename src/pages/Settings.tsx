@@ -58,25 +58,35 @@ export default function Settings() {
 
           if (error) {
             console.error('Error fetching profile:', error);
-            // Optionally show a toast error here
+            // Fall back to user metadata if there's an error
+            if (user.user_metadata) {
+              setFirstName(user.user_metadata.first_name || '');
+              setLastName(user.user_metadata.last_name || '');
+            }
             return;
           }
 
-          if (profileData) {
+          if (profileData && (profileData.first_name || profileData.last_name)) {
+            // Use profile data if available
             setFirstName(profileData.first_name || '');
             setLastName(profileData.last_name || '');
           } else {
-            // If no profile exists, initialize with empty strings
-            setFirstName('');
-            setLastName('');
-            // Optionally, check user_metadata as a fallback for initial population?
-            // if (user.user_metadata) {
-            //   setFirstName(user.user_metadata.first_name || '');
-            //   setLastName(user.user_metadata.last_name || '');
-            // }
+            // If no profile exists or fields are empty, check user_metadata
+            if (user.user_metadata) {
+              setFirstName(user.user_metadata.first_name || '');
+              setLastName(user.user_metadata.last_name || '');
+            } else {
+              setFirstName('');
+              setLastName('');
+            }
           }
         } catch (fetchError) {
           console.error('Exception fetching profile:', fetchError);
+          // Fall back to user metadata in case of exception
+          if (user.user_metadata) {
+            setFirstName(user.user_metadata.first_name || '');
+            setLastName(user.user_metadata.last_name || '');
+          }
           toast({
             title: 'Error loading profile',
             description: 'Could not load your profile data.',
@@ -87,7 +97,7 @@ export default function Settings() {
     };
 
     fetchProfile();
-  }, [user, supabase, toast]); // Add supabase and toast to dependencies
+  }, [user, toast]);
   
   // Handle profile update
   const handleProfileUpdate = async () => {
