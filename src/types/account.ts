@@ -18,7 +18,8 @@ export interface Account {
   updated_at?: string; // Timestamp of last update - DB: timestamptz
 
   // Optional fields - These might be application-level details
-  institution?: string; // Name of the financial institution (if applicable)
+  institution?: string; // Institution ID or code (if applicable)
+  bank_name?: string;    // Human-readable bank name for display
   account_number?: string; // Account number (masked or full, consider security)
   custom_tags?: string[]; // Any custom tags user might apply
 }

@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/popover";
 
 // List of Nigerian banks
-const nigerianBanks = [
+export const nigerianBanks = [
   { id: "access", name: "Access Bank" },
   { id: "citibank", name: "Citibank Nigeria" },
   { id: "ecobank", name: "Ecobank Nigeria" },
@@ -50,9 +50,15 @@ const nigerianBanks = [
   { id: "other", name: "Other" },
 ];
 
+// Helper function to get bank name from id
+export const getBankNameById = (id: string): string => {
+  const bank = nigerianBanks.find(bank => bank.id === id);
+  return bank ? bank.name : id;
+};
+
 interface BankSelectorProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, displayName?: string) => void;
   placeholder?: string;
 }
 
@@ -66,7 +72,8 @@ export function BankSelector({ value, onChange, placeholder = "Select bank..." }
 
   const handleSelect = (currentValue: string) => {
     setSelectedBank(currentValue);
-    onChange(currentValue);
+    const bank = nigerianBanks.find(bank => bank.id === currentValue);
+    onChange(currentValue, bank?.name);
     setOpen(false);
   };
 

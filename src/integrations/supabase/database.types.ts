@@ -22,6 +22,9 @@ export type Database = {
           type: Database["public"]["Enums"]["account_type"]
           updated_at: string | null
           user_id: string
+          institution: string | null
+          bank_name: string | null
+          custom_tags: string[] | null
         }
         Insert: {
           account_id?: string
@@ -35,6 +38,9 @@ export type Database = {
           type: Database["public"]["Enums"]["account_type"]
           updated_at?: string | null
           user_id: string
+          institution?: string | null
+          bank_name?: string | null
+          custom_tags?: string[] | null
         }
         Update: {
           account_id?: string
@@ -48,6 +54,9 @@ export type Database = {
           type?: Database["public"]["Enums"]["account_type"]
           updated_at?: string | null
           user_id?: string
+          institution?: string | null
+          bank_name?: string | null
+          custom_tags?: string[] | null
         }
         Relationships: []
       }

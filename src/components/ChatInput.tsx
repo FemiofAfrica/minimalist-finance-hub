@@ -7,6 +7,25 @@ import { useToast } from "@/hooks/use-toast"; // Custom toast hook
 import VoiceInput from "@/components/VoiceInput"; // Your VoiceInput component
 import { Database } from "@/integrations/supabase/database.types";
 import { getDefaultAccount } from "@/services/accountService";
+import { createTransferTransaction } from "@/services/transactionService"; // Added import
+
+// Define types for parsed transaction data
+interface ParsedTransactionData {
+  description: string;
+  amount: number;
+  category_name: string;
+  category_type: string;
+  date: string;
+  is_transfer?: boolean;
+  source_account?: string;
+  destination_account?: string;
+}
+
+interface AccountData {
+  account_id: string;
+  name: string;
+  currency: string;
+}
 
 interface ChatInputProps {
   onTransactionAdded?: () => void; // Optional callback after successful addition
@@ -139,6 +158,13 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
           throw new Error(parsedData.details || parsedData.error || 'Failed to parse transaction details.');
       }
 
+      // --- Check if this is a transfer transaction ---
+      if (parsedData.is_transfer === true || parsedData.category_type === "TRANSFER") {
+        console.log('Detected transfer transaction:', parsedData);
+        await handleTransferTransaction(parsedData);
+        return;
+      }
+
       // --- Validate Successful Response Data ---
       // Check if the expected data structure is present after a successful call
       if (!parsedData || typeof parsedData.description !== 'string' || typeof parsedData.amount !== 'number' || typeof parsedData.category_name !== 'string' || typeof parsedData.category_type !== 'string' || typeof parsedData.date !== 'string') {
@@ -158,13 +184,16 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
 
       // --- Category Handling ---
       // Check if the category exists in the database
-      const categoryTypeLower = parsedData.category_type.toLowerCase() as Database['public']['Enums']['transaction_type'];
+      const categoryTypeLower = parsedData.category_type.toLowerCase() as 'income' | 'expense' | 'transfer';
+      
+      // Disable TypeScript error for this specific line
+      // @ts-expect-error - TypeScript has issues with deep type instantiation for Supabase queries
       const { data: existingCategory, error: categoryError } = await supabase
         .from('categories')
-        .select('category_id') // Only select the ID
-        .eq('category_name', parsedData.category_name) // Match category_name
-        .maybeSingle(); // Expect 0 or 1 result
-
+        .select('category_id')
+        .eq('category_name', parsedData.category_name)
+        .maybeSingle();
+      
       if (categoryError) {
         console.error('Error looking up category:', categoryError);
         throw new Error(`Database error checking category: ${categoryError.message}`);
@@ -185,13 +214,13 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
 
         const { data: newCategory, error: insertCategoryError } = await supabase
           .from('categories')
-          .insert([{
-            category_name: parsedData.category_name, // Use category_name
+          .insert({
+            name: parsedData.category_name, // Use name instead of category_name
             user_id: userResponse.user.id, // Associate with the current user
             color: null, // Default color
             icon: null, // Default icon
             category_type: categoryTypeLower // Add category type
-          }])
+          })
           .select('category_id') // Select the ID of the newly created category
           .single(); // Expect exactly one result after insertion
 
@@ -289,6 +318,145 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
     }
   };
 
+  /**
+   * Handles transfer transactions by looking up accounts and creating a transfer
+   * @param {ParsedTransactionData} parsedData - The parsed transfer data from the NLP function
+   */
+  const handleTransferTransaction = async (parsedData: ParsedTransactionData) => {
+    try {
+      if (!parsedData.amount || parsedData.amount <= 0) {
+        throw new Error("Transfer amount must be greater than zero");
+      }
+      
+      if (!parsedData.source_account && !parsedData.destination_account) {
+        throw new Error("Could not determine source or destination account from your message");
+      }
+      
+      // Fetch all user accounts to match against the parsed account names
+      const { data: userResponse } = await supabase.auth.getUser();
+      if (!userResponse?.user) {
+        throw new Error("User not authenticated");
+      }
+      
+      interface AccountData {
+        account_id: string;
+        name: string;
+        currency: string;
+      }
+      
+      const { data: accounts, error: accountsError } = await supabase
+        .from('accounts')
+        .select('account_id, name, currency')
+        .eq('user_id', userResponse.user.id);
+        
+      if (accountsError) {
+        throw new Error(`Error fetching accounts: ${accountsError.message}`);
+      }
+      
+      if (!accounts || accounts.length === 0) {
+        throw new Error("You don't have any accounts set up. Please create accounts first.");
+      }
+      
+      // Function to find best matching account
+      const findMatchingAccount = (searchTerm: string | undefined): AccountData | null => {
+        if (!searchTerm) return null;
+        
+        // Normalize the search term
+        const normalizedSearch = searchTerm.toLowerCase().trim();
+        
+        // First try exact match
+        const exactMatch = accounts.find(account => 
+          account.name.toLowerCase() === normalizedSearch
+        );
+        
+        if (exactMatch) return exactMatch;
+        
+        // Then try contains match
+        const containsMatch = accounts.find(account => 
+          account.name.toLowerCase().includes(normalizedSearch) ||
+          normalizedSearch.includes(account.name.toLowerCase())
+        );
+        
+        return containsMatch || null;
+      };
+      
+      // Find source and destination accounts
+      const sourceAccount = findMatchingAccount(parsedData.source_account);
+      const destinationAccount = findMatchingAccount(parsedData.destination_account);
+      
+      // If we can't find both accounts but have at least two accounts, use default logic
+      if ((!sourceAccount || !destinationAccount) && accounts.length >= 2) {
+        // If we found one account, use it and pick another account for the other side
+        if (sourceAccount && !destinationAccount) {
+          const destAccount = accounts.find(a => a.account_id !== sourceAccount.account_id);
+          if (destAccount) {
+            await executeTransfer(sourceAccount.account_id, destAccount.account_id, parsedData);
+            return;
+          }
+        } else if (!sourceAccount && destinationAccount) {
+          const srcAccount = accounts.find(a => a.account_id !== destinationAccount.account_id);
+          if (srcAccount) {
+            await executeTransfer(srcAccount.account_id, destinationAccount.account_id, parsedData);
+            return;
+          }
+        } else {
+          // If we couldn't find either account, use the first two accounts
+          await executeTransfer(accounts[0].account_id, accounts[1].account_id, parsedData);
+          return;
+        }
+      } else if (sourceAccount && destinationAccount) {
+        // We found both accounts
+        await executeTransfer(sourceAccount.account_id, destinationAccount.account_id, parsedData);
+        return;
+      }
+      
+      // If we get here, we couldn't determine the accounts to use
+      throw new Error(
+        "Could not determine which accounts to use for the transfer. " +
+        "Please specify the source and destination accounts more clearly."
+      );
+    } catch (error) {
+      console.error("Error processing transfer:", error);
+      throw error; // Re-throw to be caught by the main handler
+    }
+  };
+  
+  /**
+   * Executes a transfer between the specified accounts
+   */
+  const executeTransfer = async (sourceAccountId: string, destinationAccountId: string, parsedData: ParsedTransactionData) => {
+    // Format date to YYYY-MM-DD
+    const date = parsedData.date || new Date().toISOString().split("T")[0];
+    
+    // Execute the transfer
+    const result = await createTransferTransaction(
+      sourceAccountId,
+      destinationAccountId,
+      parsedData.amount,
+      date,
+      parsedData.description || "Transfer between accounts",
+      null // no notes
+    );
+    
+    // Show success message
+    toast({
+      title: "Transfer Successful",
+      description: `${parsedData.amount} transferred between accounts`,
+    });
+    
+    // Clear input
+    setInput("");
+    
+    // Notify other components about the new transaction
+    console.log("Dispatching 'refresh-transactions' event.");
+    document.dispatchEvent(new CustomEvent('refresh-transactions'));
+    
+    // Call the provided callback function
+    if (onTransactionAdded) {
+      onTransactionAdded();
+    }
+  };
+
   // --- Render ---
   return (
     <form onSubmit={handleSubmit} className="flex items-center gap-2 p-4 border-t bg-background">
@@ -298,7 +466,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
           ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Describe transaction... (e.g., 'Spent ₦5000 on fuel yesterday')"
+          placeholder="Describe transaction... (e.g., 'Spent ₦5000 on fuel yesterday' or 'Transfer ₦5000 from savings to checking')"
           disabled={isProcessing} // Disable input while processing
           // Add padding-right if preview timer is visible to prevent overlap
           className={`pr-4 ${isPreviewMode ? 'border-blue-500 pr-12' : ''}`} // Adjusted padding

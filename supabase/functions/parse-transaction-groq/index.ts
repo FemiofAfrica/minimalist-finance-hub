@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck - This file uses Deno modules which TypeScript doesn't recognize in Node.js context
 import { serve as serveHttp } from "https://deno.land/std@0.201.0/http/server.ts";
 
 // Define standard CORS headers for responses
@@ -14,8 +16,11 @@ interface LocalParsedTransaction {
   description: string;
   amount: number;
   category_name: string;
-  category_type: "INCOME" | "EXPENSE"; // Use literal types for better type safety
+  category_type: "INCOME" | "EXPENSE" | "TRANSFER"; // Added TRANSFER type
   date?: string; // Optional date field added by the main handler
+  source_account?: string; // Optional field for source account in transfers
+  destination_account?: string; // Optional field for destination account in transfers
+  is_transfer?: boolean; // Flag to indicate if it's a transfer transaction
 }
 
 // --- Groq API Connection Verification (Optional) ---
@@ -158,7 +163,7 @@ function parseRelativeDate(text: string, baseDate: Date = new Date()): string {
 
 // --- Fallback Parser ---
 // Simple rule-based parser used when Groq API key is missing or API call fails.
-function useFallbackParser(text: string): Response {
+function parseFallback(text: string): Response {
   const lowerText = text.toLowerCase();
   const fallbackData: LocalParsedTransaction = {
     description: "Unknown Transaction",
@@ -178,6 +183,11 @@ function useFallbackParser(text: string): Response {
     income: /(?:received|earned|got paid|salary|bonus|gift|refund|income|deposit)/i,
     // Keywords indicating expense (used if income keywords aren't found)
     expense: /(?:spent|bought|paid|purchased|payment|withdrawal|charge|fee)/i,
+    // Keywords indicating a transfer
+    transfer: /(?:transfer|transferred|moved|sent|move|send) (?:money|cash|\$|₦|#)?/i,
+    // Patterns to extract source and destination accounts
+    sourceAccount: /(?:from|out of|source) (?:my |the )?(.*?)(?:account|wallet|card|to|$)/i,
+    destAccount: /(?:to|into|destination) (?:my |the )?(.*?)(?:account|wallet|card|$)/i,
     // Simple category keyword matching
     categories: [
         { name: "Groceries", patterns: /(?:groceries|supermarket|food shopping)/i },
@@ -194,9 +204,30 @@ function useFallbackParser(text: string): Response {
         { name: "Housing", patterns: /(?:rent|mortgage|housing|accommodation)/i },
         { name: "Insurance", patterns: /(?:insurance|premium)/i }, // Added Insurance
         { name: "Gift", patterns: /(?:gift|present)/i },
-        { name: "Transfer", patterns: /(?:transfer|sent money|received money)/i },
+        { name: "Transfer", patterns: /(?:transfer|moved|sent)/i },
       ]
   };
+
+  // Check if this is a transfer transaction
+  const isTransfer = patterns.transfer.test(lowerText);
+  
+  if (isTransfer) {
+    fallbackData.is_transfer = true;
+    fallbackData.category_type = "TRANSFER";
+    fallbackData.category_name = "Transfer";
+    
+    // Extract source account
+    const sourceMatch = lowerText.match(patterns.sourceAccount);
+    if (sourceMatch && sourceMatch[1]) {
+      fallbackData.source_account = sourceMatch[1].trim();
+    }
+    
+    // Extract destination account
+    const destMatch = lowerText.match(patterns.destAccount);
+    if (destMatch && destMatch[1]) {
+      fallbackData.destination_account = destMatch[1].trim();
+    }
+  }
 
   // --- Extraction Logic ---
   // Extract Amount
@@ -210,12 +241,14 @@ function useFallbackParser(text: string): Response {
     console.log("Fallback Parser - Amount pattern did not match or capture group 1 was empty.");
   }
 
-  // Determine Category Type (Income/Expense)
-  if (patterns.income.test(lowerText)) {
-    fallbackData.category_type = "INCOME";
-  } else if (patterns.expense.test(lowerText)) {
-    fallbackData.category_type = "EXPENSE";
-  } // Defaults to EXPENSE if neither is strongly indicated
+  // Determine Category Type (Income/Expense/Transfer)
+  if (!isTransfer) {
+    if (patterns.income.test(lowerText)) {
+      fallbackData.category_type = "INCOME";
+    } else if (patterns.expense.test(lowerText)) {
+      fallbackData.category_type = "EXPENSE";
+    } // Defaults to EXPENSE if neither is strongly indicated
+  }
 
   // --- Refactored Description Extraction ---
   let textWithoutAmountAndDate = text;
@@ -270,11 +303,15 @@ function useFallbackParser(text: string): Response {
     if (category.patterns.test(lowerText)) {
       fallbackData.category_name = category.name;
       // Adjust type for specific categories if needed
-      if (["Salary", "Gift", "Transfer"].includes(category.name) && fallbackData.category_type === "EXPENSE" && !patterns.expense.test(lowerText)) {
+      if (["Salary", "Gift"].includes(category.name) && fallbackData.category_type === "EXPENSE" && !patterns.expense.test(lowerText)) {
           fallbackData.category_type = "INCOME";
       }
-      if (category.name === "Transfer" && patterns.income.test(lowerText)) {
+      if (category.name === "Transfer" && !isTransfer) {
+        if (patterns.income.test(lowerText)) {
           fallbackData.category_type = "INCOME";
+        } else if (patterns.expense.test(lowerText)) {
+          fallbackData.category_type = "EXPENSE";
+        }
       }
       break; // Stop after first match
     }
@@ -296,35 +333,43 @@ async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
     You are a transaction parser that outputs ONLY raw JSON.
     Parse the following transaction text strictly into this JSON format:
     {
-      "description": "Brief description of the item/service (e.g., 'Groceries from Shoprite', 'Salary for March', 'Netflix subscription')",
+      "description": "Brief description of the item/service (e.g., 'Groceries from Shoprite', 'Salary for March', 'Transfer between accounts')",
       "amount": 1234.56,
       "category_name": "Appropriate category (e.g., 'Groceries', 'Salary', 'Transport', 'Dining', 'Utilities', 'Shopping', 'Entertainment', 'Healthcare', 'Education', 'Housing', 'Insurance', 'Gift', 'Transfer', 'Uncategorized')",
-      "category_type": "INCOME or EXPENSE"
+      "category_type": "INCOME, EXPENSE, or TRANSFER",
+      "is_transfer": false,
+      "source_account": null,
+      "destination_account": null
     }
 
     RULES:
     1. Output ONLY the JSON object. No introductory text, explanations, apologies, or markdown code blocks (like \`\`\`json).
     2. 'amount' MUST be a positive number (integer or float). Do not include currency symbols.
-    3. 'category_type' MUST be exactly "INCOME" or "EXPENSE". Determine this based on keywords like 'spent', 'paid', 'bought' (EXPENSE) or 'received', 'salary', 'deposit' (INCOME). Default to EXPENSE if unsure.
-    4. 'category_name' should be one of the suggested categories if possible. Use 'Utilities' for electricity, water, internet, phone bills, airtime/data recharge. Use 'Transport' for fuel, ride-sharing, public transit. Use 'Shopping' for general goods, clothes, electronics. Use 'Insurance' for premium payments. If unsure, use a sensible alternative or 'Uncategorized'.
-    5. 'description' should be concise. Extract the core item/service. Omit generic phrases ('payment for', 'spent on', 'bought at') and implied actions ('renewal', 'charge', 'fee', 'payment') unless essential for clarity. Do not include dates ('yesterday'). Capitalize only the first letter unless it's a proper noun.
-    6. DO NOT include a 'date' field in the JSON output.
+    3. 'category_type' MUST be exactly "INCOME", "EXPENSE", or "TRANSFER". 
+       - Use "TRANSFER" for moving money between accounts.
+       - Use "INCOME" for receiving money, salary, etc.
+       - Use "EXPENSE" for spending money.
+    4. For transfers:
+       - Set "is_transfer" to true
+       - Set "category_name" to "Transfer"
+       - Extract "source_account" and "destination_account" from the text if available
+       - Example: "I transferred 500 from my savings account to my checking account" should extract "savings" as source_account and "checking" as destination_account
+    5. 'category_name' should be one of the suggested categories if possible. Use 'Transfer' for money movements between accounts.
+    6. 'description' should be concise. For transfers, indicate the source and destination when possible.
+    7. DO NOT include a 'date' field in the JSON output.
 
     EXAMPLES:
     Text: "Payment for Netflix subscription yesterday"
-    JSON: { "description": "Netflix subscription", "amount": 15.00, "category_name": "Entertainment", "category_type": "EXPENSE" }
+    JSON: { "description": "Netflix subscription", "amount": 15.00, "category_name": "Entertainment", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null }
 
     Text: "Received ₦500,000 salary for May from Work Inc"
-    JSON: { "description": "Salary for May from Work Inc", "amount": 500000.00, "category_name": "Salary", "category_type": "INCOME" }
+    JSON: { "description": "Salary for May from Work Inc", "amount": 500000.00, "category_name": "Salary", "category_type": "INCOME", "is_transfer": false, "source_account": null, "destination_account": null }
 
-    Text: "Bolt ride home 500"
-    JSON: { "description": "Bolt ride home", "amount": 500.00, "category_name": "Transport", "category_type": "EXPENSE" }
+    Text: "I transferred 5000 from my savings account to my checking account"
+    JSON: { "description": "Transfer from savings to checking", "amount": 5000.00, "category_name": "Transfer", "category_type": "TRANSFER", "is_transfer": true, "source_account": "savings", "destination_account": "checking" }
 
-    Text: "Bought airtime recharge online 1000 NGN"
-    JSON: { "description": "Airtime recharge online", "amount": 1000.00, "category_name": "Utilities", "category_type": "EXPENSE" }
-
-    Text: "Google One subscription renewal 19.99"
-    JSON: { "description": "Google One subscription", "amount": 19.99, "category_name": "Entertainment", "category_type": "EXPENSE" }
+    Text: "Moved 2500 from my Stanbic account to Providus account"
+    JSON: { "description": "Transfer from Stanbic to Providus", "amount": 2500.00, "category_name": "Transfer", "category_type": "TRANSFER", "is_transfer": true, "source_account": "Stanbic", "destination_account": "Providus" }
 
     Transaction Text: "${text}"
   `;
@@ -562,7 +607,7 @@ async function serve(req: Request): Promise<Response> {
             console.warn("Groq API call failed, using fallback parser. Error:", groqError instanceof Error ? groqError.message : String(groqError));
             // Ensure text is defined before using fallback (should always be defined here)
             if (text) {
-                return useFallbackParser(text); // Use fallback parser
+                return parseFallback(text); // Use fallback parser
             } else {
                  // This case should be rare, means error happened before text was assigned
                  console.error("Critical error: Fallback triggered but text is undefined.");
@@ -575,7 +620,7 @@ async function serve(req: Request): Promise<Response> {
     } else {
       // No API key provided, use fallback parser directly
       console.log("No Groq API key provided, using fallback parser");
-      return useFallbackParser(text);
+      return parseFallback(text);
     }
 
   } catch (error: unknown) {

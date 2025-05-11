@@ -50,12 +50,13 @@ export const fetchAccounts = async (): Promise<Account[]> => {
       currency: account.currency,
       is_active: account.is_active || true,
       is_default: account.is_default || false,
-      institution: null, // institution doesn't exist in database, default to null
-      account_number: account.account_number,
+      institution: account.institution || null,
+      bank_name: account.bank_name || null,
+      account_number: account.account_number || null,
       created_at: account.created_at,
       updated_at: account.updated_at,
       user_id: account.user_id,
-      custom_tags: [] // custom_tags doesn't exist in database, default to empty array
+      custom_tags: account.custom_tags || []
     }));
   } catch (error) {
     console.error('Error in fetchAccounts:', error);
@@ -84,9 +85,9 @@ export const createAccount = async (accountData: Omit<Account, 'account_id'>): P
     const isFirstAccount = count === 0;
     
     // Create a copy and exclude fields that don't exist in DB
-    const { custom_tags, institution, ...dbAccountData } = accountData;
+    const { custom_tags, ...dbAccountData } = accountData;
     
-    // Prepare data for insertion (excluding non-DB fields)
+    // Prepare data for insertion
     const insertData: AccountInsert = {
       user_id: userId,
       name: dbAccountData.name,
@@ -96,6 +97,8 @@ export const createAccount = async (accountData: Omit<Account, 'account_id'>): P
       is_active: dbAccountData.is_active !== undefined ? dbAccountData.is_active : true,
       is_default: isFirstAccount ? true : dbAccountData.is_default || false,
       account_number: dbAccountData.account_number,
+      institution: dbAccountData.institution,
+      bank_name: dbAccountData.bank_name,
     };
     
     const { data, error } = await supabase
@@ -123,12 +126,13 @@ export const createAccount = async (accountData: Omit<Account, 'account_id'>): P
       currency: data.currency,
       is_active: data.is_active || true,
       is_default: data.is_default || false,
-      institution: institution || null, // Preserve institution from input
+      institution: data.institution || null,
+      bank_name: data.bank_name || null,
       account_number: data.account_number,
       created_at: data.created_at,
       updated_at: data.updated_at,
       user_id: data.user_id,
-      custom_tags: custom_tags || [],  // Preserve the custom_tags from input
+      custom_tags: custom_tags || [],
     };
   } catch (error) {
     console.error('Error in createAccount:', error);
@@ -144,10 +148,10 @@ export const updateAccount = async (accountId: string, accountData: Partial<Acco
     const userId = await getUserId();
     
     // Create a copy of accountData to avoid modifying the original
-    // Exclude both custom_tags and institution as they don't exist in database
-    const { custom_tags, institution, ...dbUpdateData } = accountData;
+    // Exclude custom_tags as it might not be supported in the update
+    const { custom_tags, ...dbUpdateData } = accountData;
     
-    // Prepare data for update (excluding fields not in DB)
+    // Prepare data for update
     const updateData: any = {
       ...dbUpdateData,
       updated_at: new Date().toISOString()

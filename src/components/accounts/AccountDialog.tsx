@@ -20,8 +20,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Account, AccountType } from "@/types/account";
 import { createAccount, updateAccount, deleteAccount } from "@/services/accountService";
-import { Wallet } from "lucide-react";
-import { BankSelector } from "@/components/BankSelector";
+import { Wallet, Building } from "lucide-react";
+import { BankSelector, getBankNameById } from "@/components/BankSelector";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface AccountDialogProps {
@@ -35,8 +35,10 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
     name: '',
     type: 'CHECKING',
     institution: '',
+    bank_name: '',
     account_number: '',
     balance: 0,
+    currency: 'NGN',
     is_active: true,
     is_default: false,
     custom_tags: []
@@ -53,8 +55,10 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
         name: account.name,
         type: account.type,
         institution: account.institution || '',
+        bank_name: account.bank_name || getBankNameById(account.institution || ''),
         account_number: account.account_number || '',
         balance: account.balance,
+        currency: account.currency || 'NGN',
         is_active: account.is_active,
         is_default: account.is_default,
         custom_tags: account.custom_tags || []
@@ -64,8 +68,10 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
         name: '',
         type: 'CHECKING',
         institution: '',
+        bank_name: '',
         account_number: '',
         balance: 0,
+        currency: 'NGN',
         is_active: true,
         is_default: false,
         custom_tags: []
@@ -87,6 +93,14 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
     setFormData(prev => ({
       ...prev,
       [field]: numValue
+    }));
+  };
+
+  const handleBankChange = (bankId: string, bankName?: string) => {
+    setFormData(prev => ({
+      ...prev,
+      institution: bankId,
+      bank_name: bankName || getBankNameById(bankId)
     }));
   };
 
@@ -219,13 +233,14 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="institution" className="text-right">
-              Institution
+            <Label htmlFor="institution" className="text-right flex items-center justify-end gap-1">
+              <Building className="h-4 w-4" />
+              Bank
             </Label>
             <div className="col-span-3">
               <BankSelector
                 value={formData.institution || ''}
-                onChange={(value) => handleChange('institution', value)}
+                onChange={handleBankChange}
                 placeholder="Select your bank..."
               />
             </div>
@@ -242,6 +257,26 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
               className="col-span-3"
               placeholder="e.g., 1234567890"
             />
+          </div>
+          
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="currency" className="text-right">
+              Currency
+            </Label>
+            <Select 
+              value={formData.currency || 'NGN'} 
+              onValueChange={(value) => handleChange('currency', value)}
+            >
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Select currency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="NGN">Nigerian Naira (NGN)</SelectItem>
+                <SelectItem value="USD">US Dollar (USD)</SelectItem>
+                <SelectItem value="EUR">Euro (EUR)</SelectItem>
+                <SelectItem value="GBP">British Pound (GBP)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
@@ -296,7 +331,8 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
               {formData.custom_tags && formData.custom_tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
                   {formData.custom_tags.map((tag, index) => (
-                    <div key={index} className="bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-xs flex items-center gap-1">
+                    <div key={index} className="bg-secondary text-secondary-foreground px-2 py-1 rounded-md 
+text-xs flex items-center gap-1">
                       {tag}
                       <button
                         type="button"

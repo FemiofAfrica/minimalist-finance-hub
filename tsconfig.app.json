@@ -6,13 +6,15 @@
     "module": "ESNext",
     "skipLibCheck": true,
     "types": ["vite/client"],
+    "composite": true,
+    "emitDeclarationOnly": true,
 
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",
-    "noEmit": true,
+    "outDir": "./dist",
     "jsx": "react-jsx",
 
     /* Linting */

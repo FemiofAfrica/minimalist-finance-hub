@@ -2,8 +2,9 @@ import { formatNaira } from "@/utils/formatters";
 import { Account } from "@/types/account";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { PencilIcon, TrashIcon, CreditCardIcon, StarIcon } from "lucide-react";
+import { PencilIcon, TrashIcon, CreditCardIcon, StarIcon, BuildingIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getBankNameById } from "@/components/BankSelector";
 
 interface AccountCardProps {
   account: Account;
@@ -28,6 +29,29 @@ const AccountCard = ({ account, onEdit, onDelete, onViewCards }: AccountCardProp
     }
   };
 
+  // Function to format balance with appropriate currency
+  const formatBalance = (amount: number, currency = 'NGN') => {
+    if (currency === 'NGN') {
+      return formatNaira(amount);
+    } else if (currency === 'USD') {
+      return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    } else {
+      return `${amount.toLocaleString()} ${currency}`;
+    }
+  };
+
+  // Get the bank name (either from bank_name field or by looking up the institution ID)
+  const getBankName = () => {
+    if (account.bank_name) {
+      return account.bank_name;
+    } else if (account.institution) {
+      return getBankNameById(account.institution);
+    }
+    return "Unknown Bank"; // Always show some bank name as a fallback
+  };
+
+  const bankName = getBankName();
+
   return (
     <Card className={`overflow-hidden ${account.is_default ? 'ring-2 ring-primary/30' : ''}`}>
       <CardHeader className="p-4">
@@ -42,6 +66,11 @@ const AccountCard = ({ account, onEdit, onDelete, onViewCards }: AccountCardProp
             <Badge className={`${getAccountTypeColor(account.type)}`}>
               {account.type.charAt(0).toUpperCase() + account.type.slice(1)}
             </Badge>
+            {account.currency && account.currency !== 'NGN' && (
+              <Badge variant="outline" className="bg-secondary/10">
+                {account.currency}
+              </Badge>
+            )}
             {account.is_default && (
               <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
                 Default
@@ -49,15 +78,16 @@ const AccountCard = ({ account, onEdit, onDelete, onViewCards }: AccountCardProp
             )}
           </div>
         </div>
-            {account.institution && (
-              <CardDescription className="text-sm text-muted-foreground">
-                {account.institution}
-              </CardDescription>
-            )}
+        <div className="flex items-center gap-1 mt-2">
+          <span className="bg-muted/50 text-muted-foreground text-xs px-2.5 py-1 rounded-md flex items-center">
+            <BuildingIcon className="h-3 w-3 mr-1.5" />
+            {bankName}
+          </span>
+        </div>
       </CardHeader>
       <CardContent className="p-4 pt-0">
         <div className="mt-2">
-          <p className="text-2xl font-bold">{formatNaira(account.balance)}</p>
+          <p className="text-2xl font-bold">{formatBalance(account.balance, account.currency)}</p>
           {account.account_number && (
             <p className="text-sm text-muted-foreground mt-1">
               ••••{account.account_number.slice(-4)}

@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Account } from "@/types/account";
 import { fetchAccounts, deleteAccount } from "@/services/accountService";
 import AccountCard from "./AccountCard";
 import { Button } from "@/components/ui/button";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw, ArrowLeftRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AccountDialog from "./AccountDialog";
+import TransferDialog from "./TransferDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +23,7 @@ const AccountsList = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<string | null>(null);
@@ -30,7 +32,7 @@ const AccountsList = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const loadAccounts = async () => {
+  const loadAccounts = useCallback(async () => {
     try {
       setLoading(true);
       console.log("Loading accounts...");
@@ -61,11 +63,11 @@ const AccountsList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     loadAccounts();
-  }, []);
+  }, [loadAccounts]);
 
   const handleEditAccount = (account: Account) => {
     console.log("Editing account:", account);
@@ -119,10 +121,23 @@ const AccountsList = () => {
     setIsDialogOpen(true);
   };
 
+  const handleTransfer = () => {
+    console.log("Opening transfer dialog");
+    setIsTransferDialogOpen(true);
+  };
+
   const handleDialogClose = (refresh: boolean = false) => {
     setIsDialogOpen(false);
     if (refresh) {
       console.log("Refreshing accounts after dialog closed");
+      loadAccounts();
+    }
+  };
+
+  const handleTransferDialogClose = (refresh: boolean = false) => {
+    setIsTransferDialogOpen(false);
+    if (refresh) {
+      console.log("Refreshing accounts after transfer");
       loadAccounts();
     }
   };
@@ -153,6 +168,17 @@ const AccountsList = () => {
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
+          {accounts.length > 1 && (
+            <Button 
+              variant="outline" 
+              onClick={handleTransfer} 
+              className="flex items-center gap-2"
+              title="Transfer between accounts"
+            >
+              <ArrowLeftRight className="h-4 w-4" />
+              Transfer
+            </Button>
+          )}
           <Button onClick={handleAddAccount} className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
             Add Account
@@ -187,6 +213,12 @@ const AccountsList = () => {
         isOpen={isDialogOpen}
         onClose={handleDialogClose}
         account={selectedAccount}
+      />
+
+      <TransferDialog
+        isOpen={isTransferDialogOpen}
+        onClose={handleTransferDialogClose}
+        initialSourceAccountId={selectedAccount?.account_id}
       />
 
       {/* Delete Confirmation Dialog */}

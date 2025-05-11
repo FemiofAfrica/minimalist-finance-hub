@@ -10,12 +10,21 @@
       "deno"
     ],
     "allowJs": true,
-    "strict": false
+    "strict": false,
+    "jsx": "react-jsx",
+    "jsxImportSource": "react"
   },
   "imports": {
     "std/": "https://deno.land/std@0.168.0/"
   },
   "tasks": {
-    "test": "deno test --allow-env --allow-net"
+    "test": "deno test --allow-env --allow-net",
+    "start": "deno run --allow-net --allow-env parse-transaction-groq/index.ts"
+  },
+  "importMap": "./import_map.json",
+  "lint": {
+    "rules": {
+      "exclude": ["react-hooks-rules-of-hooks"]
+    }
   }
 }

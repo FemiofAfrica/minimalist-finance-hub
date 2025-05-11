@@ -1,0 +1,20 @@
+{
+  "imports": {
+    "std/http/server": "https://deno.land/std@0.201.0/http/server.ts"
+  },
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window", "dom"],
+    "strict": true
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"],
+      "exclude": ["react-hooks-prefix"]
+    }
+  },
+  "tasks": {
+    "dev": "deno run --allow-net --allow-env index.ts",
+    "deploy": "supabase functions deploy parse-transaction-groq"
+  }
+} 

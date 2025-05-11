@@ -85,15 +85,25 @@ const CardItem = ({ card, onEdit, onDelete }: CardItemProps) => {
       </CardHeader>
       
       <CardContent className="p-4">
-        <div>
-          <p className="text-sm text-muted-foreground">Current Balance</p>
-          <p className="text-2xl font-bold">{formatNaira(cardBalance)}</p>
-          {card.account_id && (
+        {/* Only show balance if it's greater than 0 */}
+        {cardBalance > 0 ? (
+          <div>
+            <p className="text-sm text-muted-foreground">Current Balance</p>
+            <p className="text-2xl font-bold">{formatNaira(cardBalance)}</p>
+            {card.account_id && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Balance linked to account
+              </p>
+            )}
+          </div>
+        ) : card.account_id ? (
+          <div>
+            <p className="text-sm text-muted-foreground">Account Linked</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Balance linked to account
+              Balance information unavailable
             </p>
-          )}
-        </div>
+          </div>
+        ) : null}
         
         {card.credit_limit && (
           <div className="mt-3">

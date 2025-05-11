@@ -1,23 +1,14 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "Node16",
-    "moduleResolution": "Node16",
-    "resolveJsonModule": true,
     "allowJs": true,
-    "checkJs": true,
-    "strict": true,
-    "noImplicitAny": true,
-    "skipLibCheck": true,
-    "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "allowImportingTsExtensions": true,
+    "lib": ["esnext", "dom"],
+    "module": "esnext",
+    "moduleResolution": "node",
     "noEmit": true,
-    "jsx": "react-jsx",
-    "lib": ["es2022", "dom", "dom.iterable"],
-    "types": ["deno", "@types/node"]
+    "resolveJsonModule": true,
+    "target": "esnext",
+    "useUnknownInCatchVariables": true
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules"]
