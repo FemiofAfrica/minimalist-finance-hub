@@ -6,9 +6,13 @@ import StatCardsSection from "@/components/dashboard/StatCardsSection";
 import TransactionsSection from "@/components/dashboard/TransactionsSection";
 import ChartsSection from "@/components/dashboard/ChartsSection";
 import { fetchDashboardAnalytics, DashboardAnalytics } from "@/services/dashboardService";
+import { useOnboarding } from "@/hooks/useOnboarding";
+import { Onboarding } from "@/components/onboarding/Onboarding";
+import { DefaultAccountSetup } from "@/components/onboarding/DefaultAccountSetup";
 
 const Index = () => {
   const { user, loading: isAuthLoading } = useAuth();
+  const { hasCompletedOnboarding } = useOnboarding();
   const [dashboardData, setDashboardData] = useState<DashboardAnalytics>({
     totalBalance: 0,
     totalIncome: 0,
@@ -97,6 +101,8 @@ const Index = () => {
 
   return (
     <DashboardLayout>
+      {user && !hasCompletedOnboarding && <Onboarding />}
+      {user && <DefaultAccountSetup />}
       <div className="flex flex-col gap-8 pb-8">
         <StatCardsSection 
           totalBalance={dashboardData.totalBalance} 

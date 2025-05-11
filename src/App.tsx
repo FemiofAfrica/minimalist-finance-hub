@@ -17,6 +17,7 @@ import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
 import './App.css';
+import { OnboardingProvider } from '@/contexts/OnboardingContext';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -41,74 +42,76 @@ function App() {
     <AuthProvider>
       <CurrencyProvider>
         <ThemeProvider>
-          <Router>
-            <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route
-              path="/"
-              element={
-                <PrivateRoute>
-                  <Index />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/transactions"
-              element={
-                <PrivateRoute>
-                  <Transactions />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/subscriptions"
-              element={
-                <PrivateRoute>
-                  <Subscriptions />
-                </PrivateRoute>
-              }
-            />
-            {/* Budgeting functionality temporarily hidden from public access
-            <Route
-              path="/budgeting"
-              element={
-                <PrivateRoute>
-                  <Budgeting />
-                </PrivateRoute>
-              }
-            />
-            */}
-            <Route
-              path="/accounts"
-              element={
-                <PrivateRoute>
-                  <AccountsAndCards />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/reports"
-              element={
-                <PrivateRoute>
-                  <Reports />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <PrivateRoute>
-                  <Settings />
-                </PrivateRoute>
-              }
-            />
-            <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Router>
-          <Toaster />
-          <Analytics />
-          <SpeedInsights />
+          <OnboardingProvider>
+            <Router>
+              <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route
+                path="/"
+                element={
+                  <PrivateRoute>
+                    <Index />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/transactions"
+                element={
+                  <PrivateRoute>
+                    <Transactions />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/subscriptions"
+                element={
+                  <PrivateRoute>
+                    <Subscriptions />
+                  </PrivateRoute>
+                }
+              />
+              {/* Budgeting functionality temporarily hidden from public access
+              <Route
+                path="/budgeting"
+                element={
+                  <PrivateRoute>
+                    <Budgeting />
+                  </PrivateRoute>
+                }
+              />
+              */}
+              <Route
+                path="/accounts"
+                element={
+                  <PrivateRoute>
+                    <AccountsAndCards />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/reports"
+                element={
+                  <PrivateRoute>
+                    <Reports />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <PrivateRoute>
+                    <Settings />
+                  </PrivateRoute>
+                }
+              />
+              <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Router>
+            <Toaster />
+            <Analytics />
+            <SpeedInsights />
+          </OnboardingProvider>
         </ThemeProvider>
       </CurrencyProvider>
     </AuthProvider>
