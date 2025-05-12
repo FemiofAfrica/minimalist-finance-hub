@@ -419,7 +419,7 @@ const Login = () => {
           setResetError(null);
         }
       }}>
-        <DialogContent className="bg-[#00695C] text-white border-none">
+        <DialogContent className="bg-[#00695C] text-white border-none sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="text-white">Reset Password</DialogTitle>
             <DialogDescription className="text-gray-200">
@@ -438,30 +438,31 @@ const Login = () => {
           {isCodeResetView ? (
             <form onSubmit={handleCodeBasedReset}>
               <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="resetEmail2" className="text-white">Email</Label>
-                  <Input
-                    id="resetEmail2"
-                    type="email"
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    required
-                    placeholder="your@email.com"
-                    className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
-                  />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="resetCode" className="text-white">Reset Code</Label>
-                  <Input
-                    id="resetCode"
-                    type="text"
-                    value={resetCode}
-                    onChange={(e) => setResetCode(e.target.value)}
-                    required
-                    placeholder="Enter the code from your email"
-                    className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
-                  />
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="resetEmail2" className="text-white">Email</Label>
+                    <Input
+                      id="resetEmail2"
+                      type="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      required
+                      placeholder="your@email.com"
+                      className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="resetCode" className="text-white">Reset Code</Label>
+                    <Input
+                      id="resetCode"
+                      type="text"
+                      value={resetCode}
+                      onChange={(e) => setResetCode(e.target.value)}
+                      required
+                      placeholder="Enter the code"
+                      className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
+                    />
+                  </div>
                 </div>
                 
                 <div className="grid gap-2">
@@ -575,7 +576,7 @@ const Login = () => {
 
       {/* Email Verification Dialog */}
       <Dialog open={isVerifyDialogOpen} onOpenChange={setIsVerifyDialogOpen}>
-        <DialogContent className="bg-[#00695C] text-white border-none">
+        <DialogContent className="bg-[#00695C] text-white border-none sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="text-white">Resend Verification Email</DialogTitle>
             <DialogDescription className="text-gray-200">

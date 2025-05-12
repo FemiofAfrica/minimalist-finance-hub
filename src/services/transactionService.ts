@@ -40,9 +40,16 @@ function mapSupabaseDataToTransaction(dbData: Record<string, unknown>): Transact
       category_type?: string;
     } | null;
     
-    const categoryName = categoriesData?.category_name ?? 'Uncategorized';
-    const categoryType = categoriesData?.category_type?.toUpperCase() as Transaction['category_type'] ?? 
-      (dbData.type === 'income' ? 'INCOME' : 'EXPENSE');
+    // For transfer transactions, use "Transfer" as the category name instead of "Uncategorized"
+    const isTransfer = dbData.type === 'transfer';
+    const categoryName = isTransfer ? 'Transfer' : (categoriesData?.category_name ?? 'Uncategorized');
+    
+    // Also set the category type appropriately for transfers
+    const categoryType = isTransfer 
+      ? 'TRANSFER' 
+      : (categoriesData?.category_type?.toUpperCase() as Transaction['category_type'] ?? 
+         (dbData.type === 'income' ? 'INCOME' : 'EXPENSE'));
+         
     const accountName = accountsData?.name ?? null;
     const amount = typeof dbData.amount === 'number' ? dbData.amount : parseFloat(String(dbData.amount ?? 0));
 
@@ -83,7 +90,8 @@ export const fetchTransactions = async (limit?: number): Promise<{ transactions:
         categories (category_name, category_type)
       `)
       .eq('user_id', userId)
-      .order('date', { ascending: false });
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false });
 
     // Apply limit if specified
     if (limit) {
@@ -134,7 +142,8 @@ export const fetchTransactionsByAccount = async (accountId: string): Promise<Tra
       `)
       .eq('user_id', userId)
       .eq('account_id', accountId)
-      .order('date', { ascending: false }) as unknown as {
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false }) as unknown as {
         data: TransactionWithRelations[] | null;
         error: Error | null;
       };
@@ -170,7 +179,8 @@ export const fetchTransactionsByCard = async (cardId: string): Promise<Transacti
       `)
       .eq('user_id', userId)
       .eq('card_id', cardId)
-      .order('date', { ascending: false });
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching transactions by card:', error);
@@ -523,165 +533,77 @@ export const createTransferTransaction = async (
       throw new Error("Source and destination accounts must be different");
     if (!amount || amount <= 0) throw new Error("Transfer amount must be greater than zero");
 
-    // Get account details to check currencies
-    const { data: accounts, error: accountsError } = await supabase
-      .from('accounts')
-      .select('account_id, currency, name')
-      .in('account_id', [sourceAccountId, destinationAccountId])
-      .eq('user_id', userId);
+    console.log('Calling create_transfer RPC function with params:', {
+      source_account_id: sourceAccountId,
+      destination_account_id: destinationAccountId,
+      amount,
+      date_str: date,
+      description,
+      notes
+    });
 
-    if (accountsError) throw accountsError;
-    
-    if (!accounts || accounts.length !== 2) {
-      throw new Error("Could not find both accounts or accounts don't belong to the user");
+    // Use a more direct type assertion to fix TypeScript error
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc('create_transfer', {
+      source_account_id: sourceAccountId,
+      destination_account_id: destinationAccountId,
+      amount,
+      date_str: date,
+      description,
+      notes
+    });
+
+    if (error) {
+      console.error("Error in create_transfer RPC:", error);
+      throw new Error(`Transfer failed: ${error.message}`);
     }
 
-    const sourceAccount = accounts.find(a => a.account_id === sourceAccountId);
-    const destinationAccount = accounts.find(a => a.account_id === destinationAccountId);
-
-    if (!sourceAccount || !destinationAccount) {
-      throw new Error("Could not identify source or destination account");
+    if (!data) {
+      throw new Error("Transfer completed but returned no data");
     }
 
-    // Check if currencies match (simplified version - in a real app you'd handle currency conversion)
-    const sourceCurrency = sourceAccount.currency;
-    const destinationCurrency = destinationAccount.currency;
-    
-    const conversionRate = 1; // Using const as this value is never reassigned
-    if (sourceCurrency !== destinationCurrency) {
-      // In a real app, you would fetch the conversion rate from an API
-      console.warn(`Currency mismatch in transfer: ${sourceCurrency} to ${destinationCurrency}. Using 1:1 conversion.`);
+    console.log('Transfer completed successfully:', data);
+
+    // Fetch the created transactions to return them
+    const sourceTransactionId = data.source_transaction_id;
+    const destTransactionId = data.destination_transaction_id;
+
+    // Fetch source transaction
+    const { data: sourceTransData, error: sourceError } = await supabase
+      .from('transactions')
+      .select(`
+        *,
+        accounts (name),
+        categories (category_name, category_type)
+      `)
+      .eq('transaction_id', sourceTransactionId)
+      .single();
+
+    if (sourceError) {
+      console.error("Error fetching source transaction:", sourceError);
+      throw new Error(`Transfer completed but could not fetch source transaction: ${sourceError.message}`);
     }
 
-    const transferAmount = amount;
-    const convertedAmount = amount * conversionRate;
+    // Fetch destination transaction
+    const { data: destTransData, error: destError } = await supabase
+      .from('transactions')
+      .select(`
+        *,
+        accounts (name),
+        categories (category_name, category_type)
+      `)
+      .eq('transaction_id', destTransactionId)
+      .single();
 
-    try {
-      // Begin transaction
-      await supabaseAny.rpc('begin_transaction');
-
-      // 1. Create outgoing transaction (expense) from source account
-      const sourceTransactionInput: TransactionInput = {
-        user_id: userId,
-        account_id: sourceAccountId,
-        amount: transferAmount,
-        currency: sourceCurrency,
-        date: date,
-        type: 'transfer', // Using transfer type instead of expense
-        description: description || `Transfer to ${destinationAccount.name}`,
-        notes: notes || `Transfer to account: ${destinationAccount.name}`
-      };
-
-      // 2. Create incoming transaction (income) to destination account
-      const destTransactionInput: TransactionInput = {
-        user_id: userId,
-        account_id: destinationAccountId,
-        amount: convertedAmount,
-        currency: destinationCurrency,
-        date: date,
-        type: 'transfer', // Using transfer type instead of income
-        description: description || `Transfer from ${sourceAccount.name}`,
-        notes: notes || `Transfer from account: ${sourceAccount.name}`
-      };
-
-      // 3. Get current balances
-      const { data: sourceAccountData, error: sourceAccountError } = await supabase
-        .from('accounts')
-        .select('balance')
-        .eq('account_id', sourceAccountId)
-        .single();
-
-      if (sourceAccountError) throw sourceAccountError;
-
-      const { data: destAccountData, error: destAccountError } = await supabase
-        .from('accounts')
-        .select('balance')
-        .eq('account_id', destinationAccountId)
-        .single();
-
-      if (destAccountError) throw destAccountError;
-
-      // 4. Calculate new balances
-      const newSourceBalance = (sourceAccountData.balance || 0) - transferAmount;
-      const newDestBalance = (destAccountData.balance || 0) + convertedAmount;
-
-      // 5. Update source account balance (deduct)
-      const { error: updateSourceError } = await supabase
-        .from('accounts')
-        .update({ 
-          balance: newSourceBalance,
-          updated_at: new Date().toISOString()
-        })
-        .eq('account_id', sourceAccountId);
-
-      if (updateSourceError) throw updateSourceError;
-
-      // 6. Update destination account balance (add)
-      const { error: updateDestError } = await supabase
-        .from('accounts')
-        .update({ 
-          balance: newDestBalance,
-          updated_at: new Date().toISOString()
-        })
-        .eq('account_id', destinationAccountId);
-
-      if (updateDestError) throw updateDestError;
-
-      // 7. Create both transaction records
-      const { data: sourceTransData, error: sourceTransError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: userId,
-          account_id: sourceAccountId,
-          amount: transferAmount,
-          currency: sourceCurrency,
-          date: date,
-          type: 'transfer',
-          description: sourceTransactionInput.description,
-          notes: sourceTransactionInput.notes
-        })
-        .select(`
-          *,
-          accounts (name),
-          categories (category_name, category_type)
-        `)
-        .single();
-
-      if (sourceTransError) throw sourceTransError;
-
-      const { data: destTransData, error: destTransError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: userId,
-          account_id: destinationAccountId,
-          amount: convertedAmount,
-          currency: destinationCurrency,
-          date: date,
-          type: 'transfer',
-          description: destTransactionInput.description,
-          notes: destTransactionInput.notes
-        })
-        .select(`
-          *,
-          accounts (name),
-          categories (category_name, category_type)
-        `)
-        .single();
-
-      if (destTransError) throw destTransError;
-
-      // Commit transaction
-      await supabaseAny.rpc('commit_transaction');
-
-      return {
-        sourceTransaction: mapSupabaseDataToTransaction(sourceTransData),
-        destinationTransaction: mapSupabaseDataToTransaction(destTransData)
-      };
-    } catch (error) {
-      // Rollback on error
-      await supabaseAny.rpc('rollback_transaction');
-      throw error;
+    if (destError) {
+      console.error("Error fetching destination transaction:", destError);
+      throw new Error(`Transfer completed but could not fetch destination transaction: ${destError.message}`);
     }
+
+    return {
+      sourceTransaction: mapSupabaseDataToTransaction(sourceTransData),
+      destinationTransaction: mapSupabaseDataToTransaction(destTransData)
+    };
   } catch (error) {
     console.error("Error in createTransferTransaction:", error);
     throw error;

@@ -143,3 +143,38 @@ CREATE INDEX idx_transactions_date ON public.transactions(date);
 
 CREATE INDEX idx_accounts_user_id ON public.accounts(user_id);
 CREATE INDEX idx_categories_user_id ON public.categories(user_id);
+
+-- Cards table
+CREATE TABLE IF NOT EXISTS public.cards (
+    card_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    account_id UUID REFERENCES public.accounts(account_id) ON DELETE SET NULL,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    last_four TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS on cards
+ALTER TABLE public.cards ENABLE ROW LEVEL SECURITY;
+
+-- Cards policies
+CREATE POLICY "Users can view own cards"
+    ON public.cards FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create cards"
+    ON public.cards FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own cards"
+    ON public.cards FOR UPDATE
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own cards"
+    ON public.cards FOR DELETE
+    USING (auth.uid() = user_id);
+
+CREATE INDEX idx_cards_user_id ON public.cards(user_id);
+CREATE INDEX idx_cards_account_id ON public.cards(account_id);

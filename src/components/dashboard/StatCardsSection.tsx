@@ -11,6 +11,7 @@ interface StatCardsSectionProps {
   balanceChange: number;
   incomeChange: number;
   expenseChange: number;
+  transactionCountChange: number;
   isLoading?: boolean;
 }
 
@@ -24,6 +25,7 @@ const StatCardsSection = ({
   balanceChange,
   incomeChange,
   expenseChange,
+  transactionCountChange,
   isLoading = false 
 }: StatCardsSectionProps) => {
   const { formatPossiblyConvertedCurrency, exchangeRates } = useCurrency();
@@ -88,7 +90,7 @@ const StatCardsSection = ({
         <StatCard
           title="Monthly Transaction Count"
           value={monthlyTransactionCount.toString()}
-          trend={0}
+          trend={transactionCountChange}
           icon={<Calendar className="w-6 h-6 text-violet-600 dark:text-violet-400" />}
           iconBgClass="bg-violet-100 dark:bg-violet-900/20"
           iconTextClass="text-violet-600 dark:text-violet-400"

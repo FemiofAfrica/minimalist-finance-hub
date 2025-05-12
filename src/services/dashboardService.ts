@@ -16,6 +16,7 @@ export type DashboardAnalytics = {
   incomeChange: number;
   expenseChange: number;
   balanceChange: number;
+  transactionCountChange: number;
 };
 
 /**
@@ -173,9 +174,23 @@ export const fetchDashboardAnalytics = async (): Promise<DashboardAnalytics> => 
     const previousBalance = previousIncome - previousExpense;
     
     // Calculate percentage changes
-    const incomeChange = previousIncome === 0 ? 100 : ((totalIncome - previousIncome) / previousIncome) * 100;
-    const expenseChange = previousExpense === 0 ? 100 : ((totalExpense - previousExpense) / previousExpense) * 100;
-    const balanceChange = previousBalance === 0 ? 100 : ((totalBalance - previousBalance) / Math.abs(previousBalance)) * 100;
+    const incomeChange = previousIncome === 0 
+      ? (totalIncome > 0 ? 100 : 0) 
+      : Number(((totalIncome - previousIncome) / previousIncome * 100).toFixed(1));
+    
+    const expenseChange = previousExpense === 0 
+      ? (totalExpense > 0 ? 100 : 0) 
+      : Number(((totalExpense - previousExpense) / previousExpense * 100).toFixed(1));
+    
+    const balanceChange = previousBalance === 0 
+      ? (totalBalance > 0 ? 100 : totalBalance < 0 ? -100 : 0)
+      : Number(((totalBalance - previousBalance) / Math.abs(previousBalance) * 100).toFixed(1));
+    
+    // Calculate transaction count change
+    const previousTransactionCount = previousMonthData?.length || 0;
+    const transactionCountChange = previousTransactionCount === 0
+      ? (monthlyTransactionCount > 0 ? 100 : 0)
+      : Number(((monthlyTransactionCount - previousTransactionCount) / previousTransactionCount * 100).toFixed(1));
     
     const analytics: DashboardAnalytics = {
       totalBalance,
@@ -184,7 +199,8 @@ export const fetchDashboardAnalytics = async (): Promise<DashboardAnalytics> => 
       monthlyTransactionCount,
       incomeChange,
       expenseChange,
-      balanceChange
+      balanceChange,
+      transactionCountChange
     };
     
     console.log('Dashboard analytics:', analytics);
@@ -199,7 +215,8 @@ export const fetchDashboardAnalytics = async (): Promise<DashboardAnalytics> => 
       monthlyTransactionCount: 0,
       incomeChange: 0,
       expenseChange: 0,
-      balanceChange: 0
+      balanceChange: 0,
+      transactionCountChange: 0
     };
   }
 };

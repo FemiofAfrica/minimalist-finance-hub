@@ -48,7 +48,8 @@ const Transactions = () => {
         const { data, error } = await supabase
           .from('transactions')
           .select('*')
-          .order('date', { ascending: false });
+          .order('date', { ascending: false })
+          .order('created_at', { ascending: false });
 
         if (error) {
           console.error('Error fetching transactions:', error);

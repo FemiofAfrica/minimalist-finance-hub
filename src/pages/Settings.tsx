@@ -176,172 +176,200 @@ export default function Settings() {
   
   return (
     <DashboardLayout>
-      <div className="container mx-auto py-6">
-        <div className="mb-6">
+      <div className="container max-w-5xl mx-auto py-6">
+        <div className="flex flex-col items-center mb-8 border-b pb-4 text-center">
           <h1 className="text-3xl font-bold">Settings</h1>
-          <p className="text-muted-foreground">Manage your account settings and preferences</p>
+          <p className="text-muted-foreground mt-1 text-lg">Manage your account settings and preferences</p>
         </div>
-        
-        <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="preferences">Preferences</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
-          </TabsList>
+
+        <div className="bg-white dark:bg-gray-900 rounded-lg border shadow-sm overflow-hidden">
+          <Tabs defaultValue="profile" className="w-full">
+            <div className="border-b">
+              <div className="px-4">
+                <TabsList className="bg-transparent h-12 w-full justify-center space-x-4 rounded-none p-0">
+                  <TabsTrigger 
+                    value="profile" 
+                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-12 rounded-none border-b-2 border-transparent px-4 text-base"
+                  >
+                    Profile
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="preferences" 
+                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-12 rounded-none border-b-2 border-transparent px-4 text-base"
+                  >
+                    Preferences
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="security" 
+                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-12 rounded-none border-b-2 border-transparent px-4 text-base"
+                  >
+                    Security
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            </div>
           
-          <TabsContent value="profile">
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile Information</CardTitle>
-                <CardDescription>
-                  Update your personal information
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
+            {/* Profile Tab */}
+            <TabsContent value="profile" className="p-6">
+              <div>
+                <h2 className="text-2xl font-semibold mb-6 text-center">Personal Details</h2>
+                <div className="grid grid-cols-1 gap-y-6 mb-8">
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="firstName" className="font-medium text-left text-lg w-1/3">First Name</Label>
                     <Input 
                       id="firstName" 
                       value={firstName} 
                       onChange={(e) => setFirstName(e.target.value)} 
                       placeholder="Enter your first name"
+                      className="bg-background w-2/3 text-base"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="lastName" className="font-medium text-left text-lg w-1/3">Last Name</Label>
                     <Input 
                       id="lastName" 
                       value={lastName} 
                       onChange={(e) => setLastName(e.target.value)} 
                       placeholder="Enter your last name"
+                      className="bg-background w-2/3 text-base"
                     />
                   </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email" 
-                    value={email} 
-                    disabled 
-                    placeholder="Your email address"
-                  />
-                  <p className="text-sm text-muted-foreground">Your email address cannot be changed</p>
+                <h2 className="text-2xl font-semibold mb-6 text-center">Account Information</h2>
+                <div className="flex flex-col space-y-6 mb-8">
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="email" className="font-medium text-left text-lg w-1/3">Email Address</Label>
+                    <div className="w-2/3">
+                      <Input 
+                        id="email" 
+                        value={email} 
+                        disabled 
+                        placeholder="Your email address"
+                        className="bg-muted/50 w-full text-base"
+                      />
+                      <p className="text-sm text-muted-foreground text-left mt-1">Your email address cannot be changed</p>
+                    </div>
+                  </div>
                 </div>
                 
-                <Button 
-                  onClick={handleProfileUpdate} 
-                  disabled={loading}
-                  className="mt-4"
-                >
-                  {loading ? 'Updating...' : 'Update Profile'}
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="preferences">
-            <Card>
-              <CardHeader>
-                <CardTitle>Preferences</CardTitle>
-                <CardDescription>
-                  Customize your application experience
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="currency">Currency</Label>
-                  <Select 
-                    value={currency} 
-                    onValueChange={setCurrency}
+                <div className="flex justify-end border-t pt-4 mt-6">
+                  <Button 
+                    onClick={handleProfileUpdate} 
+                    disabled={loading}
+                    className="px-8 py-2 text-base"
                   >
-                    <SelectTrigger id="currency" className="w-full md:w-[240px]">
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {supportedCurrencies.map((c) => (
-                        <SelectItem key={c.code} value={c.code}>
-                          {`${c.name} (${c.symbol})`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">Choose your preferred currency for displaying amounts</p>
+                    {loading ? 'Saving...' : 'Update Profile'}
+                  </Button>
                 </div>
-                
-                <Separator />
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="darkMode" className="text-base">Dark Mode</Label>
-                    <p className="text-sm text-muted-foreground">Toggle between light and dark theme</p>
-                  </div>
-                  <Switch 
-                    id="darkMode" 
-                    checked={darkMode}
-                    onCheckedChange={setDarkMode}
-                  />
-                </div>
-                
-                <Separator />
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="liveConversion" className="text-base">Live Currency Conversion</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Automatically convert amounts to the selected currency using live rates.
-                    </p>
-                  </div>
-                  <Switch 
-                    id="liveConversion" 
-                    checked={isLiveConversionEnabled}
-                    onCheckedChange={toggleLiveConversion}
-                  />
-                </div>
-                
-                <Button 
-                  onClick={handlePreferencesUpdate} 
-                  disabled={loading}
-                  className="mt-4"
-                >
-                  {loading ? 'Updating...' : 'Save Preferences'}
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </div>
+            </TabsContent>
           
-          <TabsContent value="security">
-            <Card>
-              <CardHeader>
-                <CardTitle>Security</CardTitle>
-                <CardDescription>
-                  Manage your account security settings
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="currentPassword">Current Password</Label>
-                  <Input id="currentPassword" type="password" placeholder="Enter your current password" />
+            {/* Preferences Tab */}
+            <TabsContent value="preferences" className="p-6">
+              <div>
+                <h2 className="text-2xl font-semibold mb-6 text-center">Currency Settings</h2>
+                <div className="mb-8">
+                  <div className="flex flex-col space-y-6">
+                    <div className="flex justify-between items-center">
+                      <Label htmlFor="currency" className="font-medium text-left text-lg w-1/3">Display Currency</Label>
+                      <div className="w-2/3">
+                        <Select value={currency} onValueChange={setCurrency}>
+                          <SelectTrigger id="currency" className="bg-background w-full text-base">
+                            <SelectValue placeholder="Select currency" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {supportedCurrencies.map((c) => (
+                              <SelectItem key={c.code} value={c.code}>
+                                {`${c.name} (${c.symbol})`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-sm text-muted-foreground text-left mt-1">Choose your preferred currency for displaying amounts</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="newPassword">New Password</Label>
-                  <Input id="newPassword" type="password" placeholder="Enter your new password" />
+                <h2 className="text-2xl font-semibold mb-6 text-center">Appearance & Features</h2>
+                <div className="space-y-4 mb-8">
+                  <div className="flex items-center justify-between p-4 bg-muted/5 rounded-lg border">
+                    <Label htmlFor="darkMode" className="font-medium text-lg">Dark Mode</Label>
+                    <Switch 
+                      id="darkMode" 
+                      checked={darkMode}
+                      onCheckedChange={setDarkMode}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-4 bg-muted/5 rounded-lg border">
+                    <Label htmlFor="liveConversion" className="font-medium text-lg">Live Currency Conversion</Label>
+                    <Switch 
+                      id="liveConversion" 
+                      checked={isLiveConversionEnabled}
+                      onCheckedChange={toggleLiveConversion}
+                    />
+                  </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                  <Input id="confirmPassword" type="password" placeholder="Confirm your new password" />
+                <div className="flex justify-end border-t pt-4 mt-6">
+                  <Button 
+                    onClick={handlePreferencesUpdate} 
+                    disabled={loading}
+                    className="px-8 py-2 text-base"
+                  >
+                    {loading ? 'Saving...' : 'Save Preferences'}
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+          
+            {/* Security Tab */}
+            <TabsContent value="security" className="p-6">
+              <div>
+                <h2 className="text-2xl font-semibold mb-6 text-center">Change Password</h2>
+                <div className="space-y-6 mb-8">
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="currentPassword" className="font-medium text-left text-lg w-1/3">Current Password</Label>
+                    <Input 
+                      id="currentPassword" 
+                      type="password" 
+                      placeholder="Enter your current password"
+                      className="bg-background w-2/3 text-base"
+                    />
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="newPassword" className="font-medium text-left text-lg w-1/3">New Password</Label>
+                    <Input 
+                      id="newPassword" 
+                      type="password" 
+                      placeholder="Enter your new password"
+                      className="bg-background w-2/3 text-base"
+                    />
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="confirmPassword" className="font-medium text-left text-lg w-1/3">Confirm New Password</Label>
+                    <Input 
+                      id="confirmPassword" 
+                      type="password" 
+                      placeholder="Confirm your new password"
+                      className="bg-background w-2/3 text-base"
+                    />
+                  </div>
                 </div>
                 
-                <Button className="mt-4">
-                  Change Password
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                <div className="flex justify-end border-t pt-4 mt-6">
+                  <Button className="px-8 py-2 text-base">
+                    Change Password
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </DashboardLayout>
   );

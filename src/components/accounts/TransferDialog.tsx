@@ -30,6 +30,7 @@ import {
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
 
 interface TransferDialogProps {
   isOpen: boolean;
@@ -114,29 +115,11 @@ const TransferDialog = ({ isOpen, onClose, initialSourceAccountId }: TransferDia
   }, [isOpen]);
 
   const handleSubmit = async () => {
-    // Validate form
-    if (!sourceAccountId) {
+    // Validate form inputs
+    if (!sourceAccountId || !destinationAccountId) {
       toast({
-        title: "Validation Error",
-        description: "Please select a source account",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!destinationAccountId) {
-      toast({
-        title: "Validation Error",
-        description: "Please select a destination account",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (sourceAccountId === destinationAccountId) {
-      toast({
-        title: "Validation Error",
-        description: "Source and destination accounts must be different",
+        title: "Error",
+        description: "Please select both source and destination accounts",
         variant: "destructive",
       });
       return;
@@ -144,8 +127,17 @@ const TransferDialog = ({ isOpen, onClose, initialSourceAccountId }: TransferDia
 
     if (!amount || parseFloat(amount) <= 0) {
       toast({
-        title: "Validation Error",
-        description: "Please enter a valid amount greater than zero",
+        title: "Error",
+        description: "Please enter a valid amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!date) {
+      toast({
+        title: "Error",
+        description: "Please select a date",
         variant: "destructive",
       });
       return;
@@ -155,16 +147,93 @@ const TransferDialog = ({ isOpen, onClose, initialSourceAccountId }: TransferDia
     try {
       // Format date to YYYY-MM-DD
       const formattedDate = format(date, "yyyy-MM-dd");
+      const transferAmount = parseFloat(amount);
       
-      // Create transfer transaction
-      await createTransferTransaction(
-        sourceAccountId,
-        destinationAccountId,
-        parseFloat(amount),
-        formattedDate,
-        description,
-        notes
-      );
+      console.log("Starting direct transfer process");
+      
+      // Find accounts from our loaded accounts array
+      const sourceAccount = accounts.find(acc => acc.account_id === sourceAccountId);
+      const destAccount = accounts.find(acc => acc.account_id === destinationAccountId);
+      
+      if (!sourceAccount || !destAccount) {
+        throw new Error("Could not find accounts in local state");
+      }
+      
+      // Check balance
+      if (sourceAccount.balance < transferAmount) {
+        throw new Error(`Insufficient funds in ${sourceAccount.name}. Available: ${sourceAccount.currency} ${sourceAccount.balance}`);
+      }
+      
+      // Get current user ID
+      const userId = await getCurrentUserId();
+      if (!userId) {
+        throw new Error("User not authenticated");
+      }
+      
+      // We'll handle transfers without a specific category ID
+      // The mapSupabaseDataToTransaction function already updates the display to show "Transfer"
+      
+      // 1. Update source account (deduct funds)
+      const { error: updateSourceError } = await supabase
+        .from('accounts')
+        .update({ 
+          balance: sourceAccount.balance - transferAmount,
+          updated_at: new Date().toISOString()
+        })
+        .eq('account_id', sourceAccountId);
+      
+      if (updateSourceError) throw updateSourceError;
+      
+      // 2. Update destination account (add funds)
+      const { error: updateDestError } = await supabase
+        .from('accounts')
+        .update({
+          balance: destAccount.balance + transferAmount,
+          updated_at: new Date().toISOString()
+        })
+        .eq('account_id', destinationAccountId);
+        
+      if (updateDestError) throw updateDestError;
+      
+      // 3. Create source transaction
+      const sourceTransDesc = description || `Transfer to ${destAccount.name}`;
+      const sourceTransNotes = notes || `Transfer to account: ${destAccount.name}`;
+      
+      const { error: createSourceError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: userId,
+          account_id: sourceAccountId,
+          amount: transferAmount,
+          currency: sourceAccount.currency,
+          date: formattedDate,
+          type: 'transfer',
+          description: sourceTransDesc,
+          notes: sourceTransNotes,
+        });
+        
+      if (createSourceError) throw createSourceError;
+      
+      // 4. Create destination transaction
+      const destTransDesc = description || `Transfer from ${sourceAccount.name}`;
+      const destTransNotes = notes || `Transfer from account: ${sourceAccount.name}`;
+      
+      const { error: createDestError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: userId,
+          account_id: destinationAccountId,
+          amount: transferAmount,
+          currency: destAccount.currency,
+          date: formattedDate,
+          type: 'transfer',
+          description: destTransDesc,
+          notes: destTransNotes,
+        });
+        
+      if (createDestError) throw createDestError;
+      
+      console.log("Transfer completed successfully");
       
       toast({
         title: "Success",

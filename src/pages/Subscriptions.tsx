@@ -398,9 +398,18 @@ const SubscriptionsPage: React.FC = () => {
 
   const handleDateChange = (date: Date | undefined) => {
     if (date) {
+      // Fix timezone issues by creating a new date with just the year, month, and day components
+      // This ensures the date selected is the date that's stored without timezone offset issues
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const day = date.getDate();
+      
+      // Create new date at noon to avoid any potential timezone boundary issues
+      const localDate = new Date(year, month, day, 12, 0, 0);
+      
       setFormData(prev => ({
         ...prev,
-        next_billing_date: date.toISOString().split('T')[0]
+        next_billing_date: localDate.toISOString().split('T')[0]
       }));
     }
   };
@@ -444,7 +453,15 @@ const SubscriptionsPage: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    // Create a date from the string and handle timezone issues
+    const dateParts = dateString.split('-');
+    // Create date at noon to avoid timezone issues at day boundaries
+    const date = new Date(
+      parseInt(dateParts[0]),     // year
+      parseInt(dateParts[1]) - 1, // month (0-indexed)
+      parseInt(dateParts[2]),     // day
+      12, 0, 0                    // noon
+    );
     return format(date, 'PPP');
   };
 
@@ -684,11 +701,11 @@ const SubscriptionsPage: React.FC = () => {
         )}
         
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[550px]">
             <DialogHeader>
-              <DialogTitle>Add Subscription</DialogTitle>
+              <DialogTitle>Add New Subscription</DialogTitle>
               <DialogDescription>
-                Add a new subscription to track recurring payments.
+                Track your recurring subscriptions and get reminders when they're due.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={(e) => {
@@ -873,7 +890,7 @@ const SubscriptionsPage: React.FC = () => {
         </Dialog>
         
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[550px]">
             <DialogHeader>
               <DialogTitle>Edit Subscription</DialogTitle>
               <DialogDescription>
@@ -1062,7 +1079,7 @@ const SubscriptionsPage: React.FC = () => {
         </Dialog>
         
         <Dialog open={isConfirmPaymentDialogOpen} onOpenChange={setIsConfirmPaymentDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[550px]">
             <DialogHeader>
               <DialogTitle>Confirm Payment</DialogTitle>
               <DialogDescription>
@@ -1099,7 +1116,7 @@ const SubscriptionsPage: React.FC = () => {
         </Dialog>
         
         <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[550px]">
             <DialogHeader>
               <DialogTitle>Cancel Subscription</DialogTitle>
               <DialogDescription>

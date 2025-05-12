@@ -20,7 +20,8 @@ const Index = () => {
     monthlyTransactionCount: 0,
     incomeChange: 0,
     expenseChange: 0,
-    balanceChange: 0
+    balanceChange: 0,
+    transactionCountChange: 0
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -63,7 +64,8 @@ const Index = () => {
         monthlyTransactionCount: 0,
         incomeChange: 0,
         expenseChange: 0,
-        balanceChange: 0
+        balanceChange: 0,
+        transactionCountChange: 0
       });
       setIsLoading(false);
     }
@@ -112,6 +114,7 @@ const Index = () => {
           balanceChange={dashboardData.balanceChange}
           incomeChange={dashboardData.incomeChange}
           expenseChange={dashboardData.expenseChange}
+          transactionCountChange={dashboardData.transactionCountChange}
           isLoading={isLoading}
         />
         <div className="flex flex-col gap-8">

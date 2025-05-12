@@ -231,23 +231,40 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
       <TableRow key={transaction.transaction_id} className="border-b border-muted hover:bg-muted/20 transition-colors">
         <TableCell className="font-medium py-3">
           <div className="flex items-center space-x-3">
-            <div className={`flex items-center justify-center w-6 h-6 rounded-full ${transaction.category_type?.toLowerCase() === "expense" ? "bg-red-100" : "bg-emerald-100"} shrink-0`}>
-              {transaction.category_type?.toLowerCase() === "expense" ? (
-                <ArrowDownRight className="w-4 h-4 text-red-500" />
-              ) : (
-                <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-              )}
+            <div className={`flex items-center justify-center w-6 h-6 rounded-full ${
+              transaction.type === "transfer" 
+                ? transaction.description?.toLowerCase().includes("to ") 
+                  ? "bg-red-100" 
+                  : "bg-emerald-100"
+                : transaction.category_type?.toLowerCase() === "expense" 
+                  ? "bg-red-100" 
+                  : "bg-emerald-100"
+            } shrink-0`}>
+              {transaction.type === "transfer" 
+                ? transaction.description?.toLowerCase().includes("to ") 
+                  ? <ArrowDownRight className="w-4 h-4 text-red-500" /> 
+                  : <ArrowUpRight className="w-4 h-4 text-emerald-500" />
+                : transaction.category_type?.toLowerCase() === "expense" 
+                  ? <ArrowDownRight className="w-4 h-4 text-red-500" /> 
+                  : <ArrowUpRight className="w-4 h-4 text-emerald-500" />
+              }
             </div>
             <div className="flex flex-col">
-              <span className="truncate">{transaction.description}</span>
+              <span className="truncate text-left">{transaction.description}</span>
               {transaction.notes && (
-                <span className="text-xs text-muted-foreground truncate">{transaction.notes}</span>
+                <span className="text-xs text-muted-foreground truncate text-left">{transaction.notes}</span>
               )}
             </div>
           </div>
         </TableCell>
-        <TableCell className="whitespace-nowrap py-3 text-left pl-4">{transaction.category_name || 'Uncategorized'}</TableCell>
-        <TableCell className="whitespace-nowrap py-3">{formatDate(transaction.date)}</TableCell>
+        <TableCell className="whitespace-nowrap py-3 text-left">
+          <div className="text-left pl-4">
+            {transaction.type === "transfer" ? "Transfer" : (transaction.category_name || 'Uncategorized')}
+          </div>
+        </TableCell>
+        <TableCell className="whitespace-nowrap py-3">
+          {formatDate(transaction.date)}
+        </TableCell>
         <TableCell className="whitespace-nowrap py-3">
           {(() => {
             const amountInUsd = convertNgnToUsd(transaction.amount);
@@ -256,10 +273,17 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
               return <span className="text-muted-foreground text-xs">Loading...</span>;
             }
 
-            const isExpense = transaction.category_type?.toLowerCase() === "expense";
-            const amountClass = isExpense
-              ? "text-red-500 font-medium"
-              : "text-emerald-500 font-medium";
+            // Determine color based on transaction type and direction
+            let amountClass = "";
+            if (transaction.type === "transfer") {
+              amountClass = transaction.description?.toLowerCase().includes("to ")
+                ? "text-red-500 font-medium"
+                : "text-emerald-500 font-medium";
+            } else {
+              amountClass = transaction.category_type?.toLowerCase() === "expense"
+                ? "text-red-500 font-medium"
+                : "text-emerald-500 font-medium";
+            }
             
             const formattedAmount = formatPossiblyConvertedCurrency(amountInUsd);
 
