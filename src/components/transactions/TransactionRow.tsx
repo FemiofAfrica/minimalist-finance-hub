@@ -229,7 +229,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
   return (
     <>
       <TableRow key={transaction.transaction_id} className="border-b border-muted hover:bg-muted/20 transition-colors">
-        <TableCell className="font-medium py-3">
+        <TableCell className="font-medium py-3 text-left">
           <div className="flex items-center space-x-3">
             <div className={`flex items-center justify-center w-6 h-6 rounded-full ${
               transaction.type === "transfer" 
@@ -262,10 +262,10 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
             {transaction.type === "transfer" ? "Transfer" : (transaction.category_name || 'Uncategorized')}
           </div>
         </TableCell>
-        <TableCell className="whitespace-nowrap py-3">
+        <TableCell className="whitespace-nowrap py-3 text-left">
           {formatDate(transaction.date)}
         </TableCell>
-        <TableCell className="whitespace-nowrap py-3">
+        <TableCell className="whitespace-nowrap py-3 text-left">
           {(() => {
             const amountInUsd = convertNgnToUsd(transaction.amount);
             
@@ -294,7 +294,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
             );
           })()}
         </TableCell>
-        <TableCell className="py-3">
+        <TableCell className="py-3 text-left">
           <div className="flex space-x-1">
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditDialogOpen(true)}>
               <Pencil className="h-4 w-4" />
