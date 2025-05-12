@@ -107,24 +107,24 @@ export function DashboardSidebar() {
                 variant={location.pathname === link.href ? "secondary" : "ghost"}
                 className={cn(
                   "justify-start pl-2 hover:bg-primary hover:text-primary-foreground",
-                  isMobile && "h-12 text-base py-6 my-1" // Taller buttons on mobile for easier tapping
+                  isMobile && "h-12 text-base py-6 my-2 rounded-md" // Taller buttons on mobile with better spacing and rounded corners
                 )}
                 asChild
               >
                 <Link to={link.href}>
                   {link.icon}
-                  {link.label}
+                  <span className={cn(isMobile && "ml-2 text-base")}>{link.label}</span>
                 </Link>
               </Button>
             ))}
           </nav>
         </ScrollArea>
-        <div className={cn("border-t border-border p-3", isMobile && "mt-2")}>
+        <div className={cn("border-t border-border p-3", isMobile && "mt-2 p-6 pt-4")}>
           <div className="flex flex-col gap-2">
             <Button 
               className={cn(
                 "w-full justify-start",
-                isMobile && "h-12 text-base py-6" // Taller buttons on mobile for easier tapping
+                isMobile && "h-12 text-base py-6 my-2 rounded-md" // Match the styling of navigation buttons
               )}
               variant="ghost" 
               onClick={toggleTheme} 
@@ -133,19 +133,19 @@ export function DashboardSidebar() {
               {theme === "light" ? (
                 <>
                   <Moon className={cn("mr-2 h-4 w-4", isMobile && "h-5 w-5")} />
-                  Dark Mode
+                  <span className={cn(isMobile && "ml-2")}>Dark Mode</span>
                 </>
               ) : (
                 <>
                   <Sun className={cn("mr-2 h-4 w-4", isMobile && "h-5 w-5")} />
-                  Light Mode
+                  <span className={cn(isMobile && "ml-2")}>Light Mode</span>
                 </>
               )}
             </Button>
             <Button 
               className={cn(
                 "w-full justify-start",
-                isMobile && "h-12 text-base py-6" // Taller buttons on mobile for easier tapping
+                isMobile && "h-12 text-base py-6 my-2 rounded-md" // Match the styling of navigation buttons
               )}
               variant="ghost" 
               onClick={handleSignOut} 
@@ -153,7 +153,7 @@ export function DashboardSidebar() {
               size={isMobile ? "default" : "sm"}
             >
               <LogOut className={cn("mr-2 h-4 w-4", isMobile && "h-5 w-5")} />
-              {isLoggingOut ? "Logging out..." : "Logout"}
+              <span className={cn(isMobile && "ml-2")}>{isLoggingOut ? "Logging out..." : "Logout"}</span>
             </Button>
           </div>
         </div>

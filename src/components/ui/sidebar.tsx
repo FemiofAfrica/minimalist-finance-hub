@@ -197,7 +197,7 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:top-3 [&>button]:right-3 [&>button]:z-50 max-w-[300px] border-r border-border shadow-xl"
+            className="w-[--sidebar-width] bg-background p-0 text-foreground [&>button]:top-3 [&>button]:right-3 [&>button]:z-50 max-w-[300px] border-r border-border shadow-xl"
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -205,13 +205,13 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
-            <SheetHeader className="p-4 border-b bg-sidebar-accent/10">
+            <SheetHeader className="p-4 border-b bg-accent/10">
               <SheetTitle className="text-left text-lg">Menu</SheetTitle>
               <SheetDescription className="text-left text-sm">
                 Select a page to navigate to.
               </SheetDescription>
             </SheetHeader>
-            <div className="flex h-full w-full flex-col overflow-y-auto">{children}</div>
+            <div className="flex h-full w-full flex-col overflow-y-auto bg-background">{children}</div>
           </SheetContent>
         </Sheet>
       )
