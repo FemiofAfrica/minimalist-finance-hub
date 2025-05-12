@@ -99,7 +99,7 @@ export function DashboardSidebar() {
         </Link>
       </div>
       <div className="flex flex-1 flex-col overflow-hidden">
-        <ScrollArea className="flex-1 px-6">
+        <ScrollArea className="flex-1 px-6 pb-4">
           <nav className="flex flex-col gap-1">
             {links.map((link) => (
               <Button
@@ -119,7 +119,7 @@ export function DashboardSidebar() {
             ))}
           </nav>
         </ScrollArea>
-        <div className={cn("border-t border-border p-3", isMobile && "mt-2 p-6 pt-4")}>
+        <div className={cn("border-t border-border p-3 mt-auto", isMobile && "mt-2 p-6 pt-4")}>
           <div className="flex flex-col gap-2">
             <Button 
               className={cn(

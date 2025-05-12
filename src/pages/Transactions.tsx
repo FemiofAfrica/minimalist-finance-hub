@@ -124,13 +124,13 @@ const Transactions = () => {
         <p className="text-muted-foreground">Manage and review all your financial transactions.</p>
       </div>
       
-      <div className="grid gap-6 md:grid-cols-3 mb-8">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3 mb-8">
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 text-center">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Income</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center">
+            <div className="flex items-center justify-center">
               <ArrowUpRight className="w-5 h-5 mr-2 text-emerald-500" />
               <div className="text-2xl font-bold">{formatNaira(totalIncome)}</div>
             </div>
@@ -138,11 +138,11 @@ const Transactions = () => {
         </Card>
         
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 text-center">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Expenses</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center">
+            <div className="flex items-center justify-center">
               <ArrowDownRight className="w-5 h-5 mr-2 text-red-500" />
               <div className="text-2xl font-bold">{formatNaira(totalExpense)}</div>
             </div>
@@ -150,11 +150,11 @@ const Transactions = () => {
         </Card>
         
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 text-center">
             <CardTitle className="text-sm font-medium text-muted-foreground">Net Balance</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center">
+            <div className="flex items-center justify-center">
               <DollarSign className="w-5 h-5 mr-2 text-primary" />
               <div className="text-2xl font-bold">{formatNaira(totalIncome - totalExpense)}</div>
             </div>
