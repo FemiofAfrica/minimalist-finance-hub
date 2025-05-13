@@ -17,6 +17,7 @@ import {
   sendNotificationToUser, 
   sendNotificationToAllUsers 
 } from '@/services/notificationService';
+import { NotificationType } from '@/types/notification';
 import { Loader2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -35,7 +36,7 @@ export default function Settings() {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [notificationTitle, setNotificationTitle] = useState<string>("");
   const [notificationMessage, setNotificationMessage] = useState<string>("");
-  const [notificationType, setNotificationType] = useState<string>("info");
+  const [notificationType, setNotificationType] = useState<NotificationType>("info");
   const [notificationLink, setNotificationLink] = useState<string>("");
   const [expiryDays, setExpiryDays] = useState<number>(7);
   const [isSending, setIsSending] = useState<boolean>(false);
@@ -222,7 +223,7 @@ export default function Settings() {
       const count = await sendNotificationToAllUsers(
         notificationTitle,
         notificationMessage,
-        notificationType as any,
+        notificationType,
         notificationLink || undefined,
         expiryDays
       );
@@ -261,35 +262,37 @@ export default function Settings() {
         <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
           <Tabs defaultValue="profile" className="w-full">
             <div className="border-b">
-              <div className="px-6">
-                <TabsList className="h-14 w-full justify-start space-x-6 rounded-none p-0 bg-transparent">
-                  <TabsTrigger 
-                    value="profile" 
-                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-14 rounded-none border-b-2 border-transparent px-4 font-medium text-base transition-all"
-                  >
-                    Profile
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="preferences" 
-                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-14 rounded-none border-b-2 border-transparent px-4 font-medium text-base transition-all"
-                  >
-                    Preferences
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="security" 
-                    className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-14 rounded-none border-b-2 border-transparent px-4 font-medium text-base transition-all"
-                  >
-                    Security
-                  </TabsTrigger>
-                  {isAdmin && (
+              <div className="flex justify-center w-full text-center">
+                <div className="inline-flex justify-center">
+                  <TabsList className={`grid ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'} bg-transparent rounded-none p-0`}>
                     <TabsTrigger 
-                      value="admin" 
-                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-14 rounded-none border-b-2 border-transparent px-4 font-medium text-base transition-all"
+                      value="profile" 
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-14 rounded-none border-b-2 border-transparent font-medium text-base transition-all px-8 mx-4"
                     >
-                      Admin
+                      Profile
                     </TabsTrigger>
-                  )}
-                </TabsList>
+                    <TabsTrigger 
+                      value="preferences" 
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-14 rounded-none border-b-2 border-transparent font-medium text-base transition-all px-8 mx-4"
+                    >
+                      Preferences
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="security" 
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-14 rounded-none border-b-2 border-transparent font-medium text-base transition-all px-8 mx-4"
+                    >
+                      Security
+                    </TabsTrigger>
+                    {isAdmin && (
+                      <TabsTrigger 
+                        value="admin" 
+                        className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-14 rounded-none border-b-2 border-transparent font-medium text-base transition-all px-8 mx-4"
+                      >
+                        Admin
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
+                </div>
               </div>
             </div>
           
@@ -332,12 +335,12 @@ export default function Settings() {
                         placeholder="Your email address"
                         className="bg-muted/50 w-full text-base"
                       />
-                      <p className="text-sm text-muted-foreground mt-1">Your email address cannot be changed</p>
+                      <p className="text-sm text-muted-foreground text-left mt-1">Your email address cannot be changed</p>
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex justify-end border-t pt-6 mt-8">
+                <div className="flex justify-center border-t pt-6 mt-8">
                   <Button 
                     onClick={handleProfileUpdate} 
                     disabled={loading}
@@ -370,7 +373,7 @@ export default function Settings() {
                             ))}
                           </SelectContent>
                         </Select>
-                        <p className="text-sm text-muted-foreground mt-1">Choose your preferred currency for displaying amounts</p>
+                        <p className="text-sm text-muted-foreground text-left mt-1">Choose your preferred currency for displaying amounts</p>
                       </div>
                     </div>
                   </div>
@@ -389,7 +392,7 @@ export default function Settings() {
                   
                   <div className="flex items-center justify-between p-4 bg-muted/5 rounded-lg border">
                     <div>
-                      <Label htmlFor="liveConversion" className="font-medium text-base block">Live Currency Conversion</Label>
+                      <Label htmlFor="liveConversion" className="font-medium text-base text-left block">Live Currency Conversion</Label>
                       <p className="text-sm text-muted-foreground mt-1">Convert amounts automatically to your selected currency</p>
                     </div>
                     <Switch 
@@ -400,7 +403,7 @@ export default function Settings() {
                   </div>
                 </div>
                 
-                <div className="flex justify-end border-t pt-6 mt-8">
+                <div className="flex justify-center border-t pt-6 mt-8">
                   <Button 
                     onClick={handlePreferencesUpdate} 
                     disabled={loading}
@@ -448,7 +451,7 @@ export default function Settings() {
                   </div>
                 </div>
                 
-                <div className="flex justify-end border-t pt-6 mt-8">
+                <div className="flex justify-center border-t pt-6 mt-8">
                   <Button className="px-8 py-2 h-11 text-base">
                     Change Password
                   </Button>
@@ -469,36 +472,40 @@ export default function Settings() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="notification-title">Notification Title</Label>
+                    <div className="grid gap-y-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
+                        <Label htmlFor="notification-title" className="font-medium text-base sm:w-1/3">Notification Title</Label>
                         <Input
                           id="notification-title"
                           placeholder="Enter notification title"
                           value={notificationTitle}
                           onChange={e => setNotificationTitle(e.target.value)}
+                          className="sm:w-2/3 text-base"
                         />
                       </div>
                       
-                      <div className="space-y-2">
-                        <Label htmlFor="notification-message">Notification Message</Label>
+                      <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-8">
+                        <Label htmlFor="notification-message" className="font-medium text-base sm:w-1/3 pt-2">Notification Message</Label>
                         <Textarea
                           id="notification-message"
                           placeholder="Enter notification message"
                           value={notificationMessage}
                           onChange={e => setNotificationMessage(e.target.value)}
                           rows={3}
+                          className="sm:w-2/3 text-base"
                         />
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="notification-type">Notification Type</Label>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
+                        <Label htmlFor="notification-type" className="font-medium text-base sm:w-1/3">Notification Type</Label>
+                        <div className="sm:w-2/3">
                           <Select
                             value={notificationType}
-                            onValueChange={setNotificationType}
+                            onValueChange={(value: string) => {
+                              setNotificationType(value as NotificationType);
+                            }}
                           >
-                            <SelectTrigger>
+                            <SelectTrigger id="notification-type" className="text-base">
                               <SelectValue placeholder="Select notification type" />
                             </SelectTrigger>
                             <SelectContent>
@@ -509,11 +516,13 @@ export default function Settings() {
                             </SelectContent>
                           </Select>
                         </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="expiry-days">
-                            Expiry (days)
-                          </Label>
+                      </div>
+                      
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
+                        <Label htmlFor="expiry-days" className="font-medium text-base sm:w-1/3">
+                          Expiry (days)
+                        </Label>
+                        <div className="sm:w-2/3">
                           <Input
                             id="expiry-days"
                             type="number"
@@ -521,43 +530,49 @@ export default function Settings() {
                             max={30}
                             value={expiryDays}
                             onChange={e => setExpiryDays(parseInt(e.target.value))}
+                            className="text-base"
                           />
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground mt-1">
                             Days until this notification expires
                           </p>
                         </div>
                       </div>
                       
-                      <div className="space-y-2">
-                        <Label htmlFor="notification-link">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
+                        <Label htmlFor="notification-link" className="font-medium text-base sm:w-1/3">
                           Link (Optional)
                         </Label>
-                        <Input
-                          id="notification-link"
-                          placeholder="e.g., /settings or /transactions"
-                          value={notificationLink}
-                          onChange={e => setNotificationLink(e.target.value)}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Enter a relative path to navigate to when the notification is clicked
-                        </p>
+                        <div className="sm:w-2/3">
+                          <Input
+                            id="notification-link"
+                            placeholder="e.g., /settings or /transactions"
+                            value={notificationLink}
+                            onChange={e => setNotificationLink(e.target.value)}
+                            className="text-base"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Enter a relative path to navigate to when the notification is clicked
+                          </p>
+                        </div>
                       </div>
                     </div>
                     
-                    <Button
-                      onClick={handleSendToAll}
-                      disabled={isSending || !notificationTitle || !notificationMessage}
-                      className="w-full h-11"
-                    >
-                      {isSending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Sending...
-                        </>
-                      ) : (
-                        "Send to All Users"
-                      )}
-                    </Button>
+                    <div className="flex justify-center mt-6 pt-4 border-t">
+                      <Button
+                        onClick={handleSendToAll}
+                        disabled={isSending || !notificationTitle || !notificationMessage}
+                        className="px-8 py-2 h-11 text-base"
+                      >
+                        {isSending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          "Send to All Users"
+                        )}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
