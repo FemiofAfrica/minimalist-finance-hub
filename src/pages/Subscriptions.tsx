@@ -20,6 +20,7 @@ import { CalendarIcon, PlusCircle, Trash2, Edit, CheckCircle, AlertCircle, Credi
 import { useToast } from '@/hooks/use-toast';
 import { TransactionAutocomplete } from '@/components/ui/transaction-autocomplete';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { checkSubscriptionRenewals } from '@/services/notificationService';
 
 // Define the original base currency of the incoming data
 const APP_BASE_CURRENCY = "NGN";
@@ -222,6 +223,10 @@ const SubscriptionsPage: React.FC = () => {
 
   useEffect(() => {
     loadSubscriptions();
+    // Check for subscription renewals to generate notifications
+    checkSubscriptionRenewals().catch(err => {
+      console.error("Error checking subscription renewals:", err);
+    });
   }, []);
 
   const loadSubscriptions = async () => {

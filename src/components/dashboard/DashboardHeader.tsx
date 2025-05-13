@@ -7,6 +7,7 @@ import { Menu } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useLocation } from 'react-router-dom';
+import { NotificationBell } from './NotificationBell';
 
 interface DashboardHeaderProps {
   userEmail?: string | null;
@@ -128,7 +129,10 @@ const DashboardHeader = ({ userEmail }: DashboardHeaderProps) => {
           {isLoadingGreeting ? 'Loading greeting...' : greeting}
         </p>
       </div>
-      <CurrencySelector />
+      <div className="flex items-center gap-2">
+        <NotificationBell />
+        <CurrencySelector />
+      </div>
     </>
   );
 };

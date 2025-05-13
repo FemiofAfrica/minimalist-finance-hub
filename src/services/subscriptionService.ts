@@ -291,8 +291,20 @@ export const updateSubscription = async (subscription: Partial<Subscription> & {
       frequency: subscription.frequency,
       next_billing_date: subscription.next_billing_date,
       description: subscription.description,
-      name: subscription.name
+      name: subscription.name,
+      category_name: subscription.category_name,
+      category_type: subscription.category_type,
+      auto_renew: subscription.auto_renew,
+      reminder_days: subscription.reminder_days,
+      provider_id: subscription.provider_id
     };
+    
+    // Filter out undefined values to avoid overwriting with null
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
     
     const { data, error } = await supabase
       .from('subscriptions')

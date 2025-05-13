@@ -13,6 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import { Separator } from '@/components/ui/separator';
+import { 
+  sendNotificationToUser, 
+  sendNotificationToAllUsers 
+} from '@/services/notificationService';
+import { Loader2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -26,6 +32,14 @@ export default function Settings() {
   const [email, setEmail] = useState('');
   const [currency, setCurrency] = useState(currentCurrency.code);
   const [darkMode, setDarkMode] = useState(theme === 'dark');
+  const [adminTab, setAdminTab] = useState<string>("profile");
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [notificationTitle, setNotificationTitle] = useState<string>("");
+  const [notificationMessage, setNotificationMessage] = useState<string>("");
+  const [notificationType, setNotificationType] = useState<string>("info");
+  const [notificationLink, setNotificationLink] = useState<string>("");
+  const [expiryDays, setExpiryDays] = useState<number>(7);
+  const [isSending, setIsSending] = useState<boolean>(false);
   
   // Load user data
   useEffect(() => {
@@ -174,6 +188,69 @@ export default function Settings() {
     }
   };
   
+  // Check if user is admin
+  useEffect(() => {
+    const checkIfAdmin = async () => {
+      if (user) {
+        try {
+          // Check if user has admin flag in user_metadata
+          const isUserAdmin = user.user_metadata?.is_admin === true;
+          setIsAdmin(isUserAdmin);
+        } catch (error) {
+          console.error('Error checking admin status:', error);
+          setIsAdmin(false);
+        }
+      }
+    };
+    
+    checkIfAdmin();
+  }, [user]);
+
+  // Function to send notification to all users
+  const handleSendToAll = async () => {
+    if (!notificationTitle || !notificationMessage) {
+      toast({
+        title: "Error",
+        description: "Please provide both title and message",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      setIsSending(true);
+      
+      const count = await sendNotificationToAllUsers(
+        notificationTitle,
+        notificationMessage,
+        notificationType as any,
+        notificationLink || undefined,
+        expiryDays
+      );
+      
+      toast({
+        title: "Success",
+        description: `Sent notification to ${count} users`,
+      });
+      
+      // Reset form
+      setNotificationTitle("");
+      setNotificationMessage("");
+      setNotificationType("info");
+      setNotificationLink("");
+      setExpiryDays(7);
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send notification. Make sure you have admin privileges.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+  
   return (
     <DashboardLayout>
       <div className="container max-w-5xl mx-auto py-6">
@@ -205,6 +282,7 @@ export default function Settings() {
                   >
                     Security
                   </TabsTrigger>
+                  {isAdmin && <TabsTrigger value="admin">Admin</TabsTrigger>}
                 </TabsList>
               </div>
             </div>
@@ -370,6 +448,126 @@ export default function Settings() {
             </TabsContent>
           </Tabs>
         </div>
+
+        {isAdmin && (
+          <TabsContent value="admin" className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium">Admin Settings</h3>
+              <p className="text-sm text-gray-500">
+                Manage administrative functions for the application.
+              </p>
+            </div>
+            
+            <Separator />
+            
+            <div className="space-y-4">
+              <Tabs defaultValue="notifications" className="w-full">
+                <TabsList className="grid w-full grid-cols-1">
+                  <TabsTrigger value="notifications">Notification Management</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="notifications" className="space-y-4">
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Send Notification to All Users</h4>
+                    <p className="text-sm text-gray-500">
+                      Use this form to send notifications to all users on the platform.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="notification-title">Notification Title</Label>
+                        <Input
+                          id="notification-title"
+                          placeholder="Enter notification title"
+                          value={notificationTitle}
+                          onChange={e => setNotificationTitle(e.target.value)}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="notification-message">Notification Message</Label>
+                        <Textarea
+                          id="notification-message"
+                          placeholder="Enter notification message"
+                          value={notificationMessage}
+                          onChange={e => setNotificationMessage(e.target.value)}
+                          rows={3}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="notification-type">Notification Type</Label>
+                        <Select
+                          value={notificationType}
+                          onValueChange={setNotificationType}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select notification type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="info">Information</SelectItem>
+                            <SelectItem value="success">Success</SelectItem>
+                            <SelectItem value="warning">Warning</SelectItem>
+                            <SelectItem value="error">Error</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="notification-link">
+                          Link (Optional)
+                        </Label>
+                        <Input
+                          id="notification-link"
+                          placeholder="e.g., /settings or /transactions"
+                          value={notificationLink}
+                          onChange={e => setNotificationLink(e.target.value)}
+                        />
+                        <p className="text-xs text-gray-500">
+                          Enter a relative path to navigate to when the notification is clicked.
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="expiry-days">
+                          Expiry (days)
+                        </Label>
+                        <Input
+                          id="expiry-days"
+                          type="number"
+                          min={1}
+                          max={30}
+                          value={expiryDays}
+                          onChange={e => setExpiryDays(parseInt(e.target.value))}
+                        />
+                        <p className="text-xs text-gray-500">
+                          Number of days until this notification expires.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <Button
+                      onClick={handleSendToAll}
+                      disabled={isSending || !notificationTitle || !notificationMessage}
+                      className="w-full"
+                    >
+                      {isSending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        "Send to All Users"
+                      )}
+                    </Button>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </TabsContent>
+        )}
       </div>
     </DashboardLayout>
   );

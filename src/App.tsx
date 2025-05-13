@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { Toaster } from '@/components/ui/toaster';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 import Login from '@/pages/Login';
 import ResetPassword from '@/pages/ResetPassword';
 import Index from '@/pages/Index';
@@ -39,82 +40,33 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   return (
-    <AuthProvider>
-      <CurrencyProvider>
-        <ThemeProvider>
-          <OnboardingProvider>
-            <Router>
-              <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route
-                path="/"
-                element={
-                  <PrivateRoute>
-                    <Index />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/transactions"
-                element={
-                  <PrivateRoute>
-                    <Transactions />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/subscriptions"
-                element={
-                  <PrivateRoute>
-                    <Subscriptions />
-                  </PrivateRoute>
-                }
-              />
-              {/* Budgeting functionality temporarily hidden from public access
-              <Route
-                path="/budgeting"
-                element={
-                  <PrivateRoute>
-                    <Budgeting />
-                  </PrivateRoute>
-                }
-              />
-              */}
-              <Route
-                path="/accounts"
-                element={
-                  <PrivateRoute>
-                    <AccountsAndCards />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/reports"
-                element={
-                  <PrivateRoute>
-                    <Reports />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <PrivateRoute>
-                    <Settings />
-                  </PrivateRoute>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Router>
-            <Toaster />
-            <Analytics />
-            <SpeedInsights />
-          </OnboardingProvider>
-        </ThemeProvider>
-      </CurrencyProvider>
-    </AuthProvider>
+    <Router>
+      <ThemeProvider>
+        <AuthProvider>
+          <CurrencyProvider>
+            <OnboardingProvider>
+              <NotificationProvider>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/" element={<PrivateRoute><Index /></PrivateRoute>} />
+                  <Route path="/transactions" element={<PrivateRoute><Transactions /></PrivateRoute>} />
+                  <Route path="/subscriptions" element={<PrivateRoute><Subscriptions /></PrivateRoute>} />
+                  <Route path="/accounts" element={<PrivateRoute><AccountsAndCards /></PrivateRoute>} />
+                  <Route path="/budgeting" element={<PrivateRoute><Budgeting /></PrivateRoute>} />
+                  <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
+                  <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <Toaster />
+                <Analytics />
+                <SpeedInsights />
+              </NotificationProvider>
+            </OnboardingProvider>
+          </CurrencyProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </Router>
   );
 }
 
