@@ -52,6 +52,12 @@ const SubscriptionsPage: React.FC = () => {
   };
   
   const formatAmount = (amountNgn: number) => {
+    // Display amounts in their original currency without conversion
+    return formatNaira(amountNgn);
+    
+    // Note: The currency conversion code below is commented out as it was causing confusion
+    // for users who input subscription values in their local currency but see converted values
+    /*
     // First convert from NGN to USD (base currency for the context)
     const amountUsd = convertNgnToUsd(amountNgn);
     
@@ -59,6 +65,7 @@ const SubscriptionsPage: React.FC = () => {
     return amountUsd !== null 
       ? formatPossiblyConvertedCurrency(amountUsd) 
       : formatNaira(amountNgn); // Fallback to direct NGN formatting
+    */
   };
 
   const adjustBillingDateIfNeeded = (billingDate: string, frequency: string): string => {
@@ -762,17 +769,19 @@ const SubscriptionsPage: React.FC = () => {
                   <Label htmlFor="amount" className="text-right">
                     Amount
                   </Label>
-                  <Input
-                    id="amount"
-                    name="amount"
-                    type="number"
-                    value={formData.amount}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                    placeholder="0.00"
-                    step="0.01"
-                    min="0"
-                  />
+                  <div className="col-span-3">
+                    <Input
+                      id="amount"
+                      name="amount"
+                      type="number"
+                      value={formData.amount}
+                      onChange={handleInputChange}
+                      className="col-span-3"
+                      placeholder="0.00"
+                      step="0.01"
+                      min="0"
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="frequency" className="text-right">
@@ -951,17 +960,19 @@ const SubscriptionsPage: React.FC = () => {
                   <Label htmlFor="amount" className="text-right">
                     Amount
                   </Label>
-                  <Input
-                    id="amount"
-                    name="amount"
-                    type="number"
-                    value={formData.amount}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                    placeholder="0.00"
-                    step="0.01"
-                    min="0"
-                  />
+                  <div className="col-span-3">
+                    <Input
+                      id="amount"
+                      name="amount"
+                      type="number"
+                      value={formData.amount}
+                      onChange={handleInputChange}
+                      className="col-span-3"
+                      placeholder="0.00"
+                      step="0.01"
+                      min="0"
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="frequency" className="text-right">

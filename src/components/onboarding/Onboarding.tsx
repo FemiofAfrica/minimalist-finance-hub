@@ -6,6 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Steps } from '@/components/ui/steps';
 import { X } from 'lucide-react';
+import { useCurrency } from '@/contexts/CurrencyContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 
 const featureHighlights = [
   {
@@ -53,8 +57,10 @@ export const Onboarding = () => {
   const [currentFeature, setCurrentFeature] = useState(0);
   const { completeOnboarding } = useOnboarding();
   const navigate = useNavigate();
+  const { supportedCurrencies, currentCurrency, setCurrentCurrency, isLiveConversionEnabled, toggleLiveConversion } = useCurrency();
+  const [selectedCurrencyCode, setSelectedCurrencyCode] = useState(currentCurrency.code);
 
-  const steps = ["Welcome", "Features", "Ready!"];
+  const steps = ["Welcome", "Features", "Currency", "Ready!"];
 
   useEffect(() => {
     // Auto-rotate through features every 4 seconds in the Features step
@@ -70,6 +76,14 @@ export const Onboarding = () => {
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
+      
+      // Apply currency selection when moving from the currency step
+      if (currentStep === 2) {
+        const selectedCurrency = supportedCurrencies.find(c => c.code === selectedCurrencyCode);
+        if (selectedCurrency) {
+          setCurrentCurrency(selectedCurrency);
+        }
+      }
     } else {
       handleComplete();
     }
@@ -82,6 +96,12 @@ export const Onboarding = () => {
   };
 
   const handleComplete = () => {
+    // Ensure the selected currency is applied
+    const selectedCurrency = supportedCurrencies.find(c => c.code === selectedCurrencyCode);
+    if (selectedCurrency) {
+      setCurrentCurrency(selectedCurrency);
+    }
+    
     completeOnboarding();
     setOpen(false);
     // Navigate to dashboard
@@ -190,6 +210,72 @@ export const Onboarding = () => {
 
             {currentStep === 2 && (
               <motion.div
+                key="currency"
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                variants={containerVariants}
+                className="space-y-6 text-center py-4"
+              >
+                <motion.div variants={textVariants} className="text-4xl font-bold mb-6">
+                  💲 Choose Your Currency
+                </motion.div>
+                
+                <motion.div variants={textVariants} className="text-lg opacity-90 mb-8">
+                  Select your primary currency for displaying amounts throughout the app.
+                </motion.div>
+                
+                <motion.div variants={textVariants} className="bg-white/10 p-6 rounded-lg space-y-6">
+                  <div className="flex flex-col items-start space-y-2">
+                    <Label className="text-white text-lg" htmlFor="currency">
+                      Display Currency
+                    </Label>
+                    <Select
+                      value={selectedCurrencyCode}
+                      onValueChange={setSelectedCurrencyCode}
+                    >
+                      <SelectTrigger className="w-full bg-white/20 border-white/20 text-white">
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {supportedCurrencies.map((currency) => (
+                          <SelectItem key={currency.code} value={currency.code}>
+                            {`${currency.name} (${currency.symbol})`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-white/70 mt-1">
+                      This will be used as your default currency throughout the app.
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center justify-between pt-4 border-t border-white/20">
+                    <div>
+                      <Label className="text-white text-lg" htmlFor="live-conversion">
+                        Live Currency Conversion
+                      </Label>
+                      <p className="text-sm text-white/70">
+                        Convert amounts to your selected currency
+                      </p>
+                    </div>
+                    <Switch
+                      id="live-conversion"
+                      checked={isLiveConversionEnabled}
+                      onCheckedChange={toggleLiveConversion}
+                      className="bg-white/20 data-[state=checked]:bg-white"
+                    />
+                  </div>
+                </motion.div>
+                
+                <motion.div variants={textVariants} className="text-sm text-white/70 italic mt-4">
+                  Note: For subscriptions, amounts will display in their original input currency.
+                </motion.div>
+              </motion.div>
+            )}
+
+            {currentStep === 3 && (
+              <motion.div
                 key="ready"
                 initial="hidden"
                 animate="visible"
@@ -222,7 +308,7 @@ export const Onboarding = () => {
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-white mt-1">🌍</span>
-                      <span>Lagos today and London tomorrow? Use Live Currency Conversion to track your finances in your local currency</span>
+                      <span>Your selected currency ({supportedCurrencies.find(c => c.code === selectedCurrencyCode)?.name}) will be used throughout the app</span>
                     </li>
                   </ul>
                 </motion.div>
