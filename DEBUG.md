@@ -2,26 +2,27 @@
 
 This document explains how to use and manage debug features in the application.
 
-## ⚠️ IMPORTANT: Debug Elements Must Be Removed For Production
+## ⚠️ CRITICAL: Debug Elements MUST NEVER Be in Production Code
 
-**DO NOT** rely on environment variables to conditionally hide debug features in production. These can fail and expose debugging tools to users.
+**DO NOT RELY ON ENVIRONMENT VARIABLES** to conditionally hide debug features in production. These can fail and expose debugging tools to users.
 
-Instead, before deployment:
-1. Remove all debug UI elements entirely
-2. Ensure debug function calls are removed
-3. Run a final review to check for any debugging features
+**ALWAYS COMPLETELY REMOVE** all debug features before deploying to production:
+
+1. Delete all debug UI elements, not just comment them out or conditionally render
+2. Remove all debug function calls and imports
+3. Remove debug service imports
+4. Run a final review specifically to check for any debug components or functions
 
 ## Safe Debugging Approach
-
-### Development-Only Branches
 
 The safest approach is to keep debug features in development-only branches:
 
 1. Create a feature branch for development with debug tools
-2. When ready for production, create a clean PR that excludes debug elements
+2. When ready for production, create a clean PR that excludes all debug elements
 3. Review the PR to ensure no debug features are included
+4. Use a pre-commit hook to prevent debug code from being committed
 
-### Using Comments for Local Development
+### Recommended Code Markers
 
 ```tsx
 // ==== DEBUG ONLY - REMOVE BEFORE COMMIT ====
@@ -36,17 +37,14 @@ The safest approach is to keep debug features in development-only branches:
 // ==== END DEBUG SECTION ====
 ```
 
-These special comment markers:
 - Make debug code easy to find
-- Remind developers to remove the code
-- Can be detected by linters and pre-commit hooks
+- Use distinctive comments that can be searched for
 
-## Recommended Pre-Commit Hook
+### Pre-commit Hook Example
 
 Add a pre-commit hook that fails if debug markers are found:
 
 ```bash
-#!/bin/sh
 # Check for debug markers
 if grep -r "DEBUG ONLY - REMOVE BEFORE COMMIT" --include="*.tsx" --include="*.ts" ./src; then
   echo "ERROR: Debug markers found. Remove debug code before committing."
@@ -54,90 +52,33 @@ if grep -r "DEBUG ONLY - REMOVE BEFORE COMMIT" --include="*.tsx" --include="*.ts
 fi
 ```
 
-## Feature Flags Alternative
+## Environment-Based Debug Features - DON'T USE FOR PRODUCTION SECURITY
 
-For safer handling of features that should be toggled between environments, consider using a feature flag service rather than environment variables.
+❌ **NEVER RELY ON ENVIRONMENT VARIABLES FOR SECURITY**
 
-## Environment-Based Debug Features
-
-Debug features like the debug button in the Accounts & Cards page are configured to only appear in development environments. The application checks `process.env.NODE_ENV` to determine whether to show these features.
-
-### How It Works
-
-In components like `CardsList.tsx`, debug UI elements are conditionally rendered:
-
-```tsx
-{process.env.NODE_ENV !== 'production' && (
-  <Button 
-    variant="outline" 
-    onClick={handleDebug} 
-    className="flex items-center gap-2"
-    title="Debug account balances"
-  >
-    <Bug className="h-4 w-4" />
-  </Button>
-)}
-```
-
-### Environment Configuration
-
-For local development:
-- The app will run in development mode by default
-- Debug features will be visible
-
-For production builds:
-- Set `NODE_ENV=production` during the build process
-- Debug features will be automatically hidden
-
-## Build Configuration
-
-### Vite
-
-If using Vite, production builds automatically set NODE_ENV to 'production'. No additional configuration is needed.
-
-```bash
-# Development - debug features visible
-npm run dev
-
-# Production - debug features hidden
-npm run build
-```
-
-### Other Build Systems
-
-For other build systems, ensure NODE_ENV is set appropriately:
-
-```bash
-# For production builds
-NODE_ENV=production npm run build
-```
+Environment variables should only be used for configuration, not for hiding features that should never be accessible to users.
 
 ## Additional Debug Controls
 
-For more granular control, you can create additional environment variables like:
+If you must use environment variables for non-security-critical configuration:
 
-```
+```bash
 VITE_ENABLE_DEBUG_FEATURES=1  # For development
 VITE_ENABLE_DEBUG_FEATURES=0  # For production
 ```
 
-And then check this value in your code:
+But remember that the safest approach is to physically remove debug code from production builds.
 
-```tsx
-{import.meta.env.VITE_ENABLE_DEBUG_FEATURES === '1' && (
-  <DebugComponent />
-)}
-```
+## Recent Production Issue
 
-## Git Practices
+We had a critical issue where debug buttons appeared in production because:
 
-To avoid accidentally committing debug code:
+1. The button was only commented out, not physically removed
+2. Debug functions and imports remained in the codebase
+3. The code relied on environment variables instead of complete removal
 
-1. Use pre-commit hooks to check for debug-specific code patterns
-2. Consider using feature flags managed by a feature flag service
-3. For temporary debug code, use specially formatted comments that linters can detect:
-
-```tsx
-// DEBUG_ONLY_REMOVE_BEFORE_COMMIT
-<DebugButton />
-``` 
+Moving forward, the correct approach is:
+1. Delete all debug UI elements completely
+2. Remove debug-related functions and imports
+3. Use separate development branches for debug features
+4. Run specific pre-deployment checks focused on finding debug code 

@@ -5,7 +5,7 @@ import { getAccountById, fetchAccounts } from "@/services/accountService";
 import { Account } from "@/types/account";
 import CardItem from "./CardItem";
 import { Button } from "@/components/ui/button";
-import { Plus, RefreshCw, Bug } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CardDialog from "./CardDialog";
 import {
@@ -19,7 +19,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { verifyAccountBalances } from "@/services/debugService";
 
 interface CardsListProps {
   accountId?: string;
@@ -197,24 +196,6 @@ const CardsList = ({ accountId }: CardsListProps) => {
     loadCards();
   };
 
-  const handleDebug = async () => {
-    try {
-      console.log("Starting debug process...");
-      await verifyAccountBalances();
-      toast({
-        title: "Success",
-        description: "Debug process completed successfully",
-      });
-    } catch (error) {
-      console.error("Error during debug process:", error);
-      toast({
-        title: "Error",
-        description: "Failed to complete debug process",
-        variant: "destructive",
-      });
-    }
-  };
-
   if (loading) {
     return (
       <div className="p-8 flex justify-center">
@@ -236,7 +217,6 @@ const CardsList = ({ accountId }: CardsListProps) => {
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
-          {/* Debug button removed for production */}
           <Button onClick={handleAddCard} className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
             Add Card

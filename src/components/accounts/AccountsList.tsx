@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Account } from "@/types/account";
 import AccountCard from "./AccountCard";
 import { Button } from "@/components/ui/button";
-import { Plus, RefreshCw, ArrowLeftRight, Bug } from "lucide-react";
+import { Plus, RefreshCw, ArrowLeftRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AccountDialog from "./AccountDialog";
 import TransferDialog from "./TransferDialog";
@@ -19,7 +19,6 @@ import {
 import { useNavigate, useLocation } from "react-router-dom";
 import { deleteAccount } from "@/services/accountService";
 import { useAccountStore } from "@/stores/accountStore";
-import { verifyAccountBalances, forceUpdateAccountBalances } from "@/services/debugService";
 
 const AccountsList = () => {
   // Account store for global state
@@ -139,47 +138,6 @@ const AccountsList = () => {
     refreshAccounts();
   };
 
-  const handleDebug = async () => {
-    try {
-      console.log("Running account balance verification...");
-      const result = await verifyAccountBalances();
-      console.log("Debug results:", result);
-      
-      // Compare direct DB results with service results
-      if (result.directDbAccounts.length > 0 && result.serviceAccounts.length > 0) {
-        console.log("Comparing account balances:");
-        
-        result.directDbAccounts.forEach(dbAccount => {
-          const serviceAccount = result.serviceAccounts.find(sa => sa.account_id === dbAccount.account_id);
-          if (serviceAccount) {
-            const balanceMatch = dbAccount.balance === serviceAccount.balance;
-            console.log(`Account ${dbAccount.name}: DB=${dbAccount.balance}, Service=${serviceAccount.balance}, Match=${balanceMatch}`);
-          }
-        });
-      }
-      
-      // Force update all account balances to trigger UI refresh
-      console.log("Forcing update of all account balances...");
-      const forceUpdateSuccess = await forceUpdateAccountBalances();
-      console.log("Force update result:", forceUpdateSuccess ? "Success" : "Failed");
-      
-      toast({
-        title: "Debug Complete",
-        description: `Verified ${result.directDbAccounts.length} accounts. Force update: ${forceUpdateSuccess ? "Success" : "Failed"}`,
-      });
-      
-      // Force refresh after verification
-      refreshAccounts();
-    } catch (error) {
-      console.error("Debug verification failed:", error);
-      toast({
-        title: "Debug Error",
-        description: "Failed to verify account balances. See console for details.",
-        variant: "destructive",
-      });
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="p-8 flex justify-center">
@@ -200,14 +158,6 @@ const AccountsList = () => {
             title="Refresh accounts data"
           >
             <RefreshCw className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleDebug} 
-            className="flex items-center gap-2"
-            title="Debug account balances"
-          >
-            <Bug className="h-4 w-4" />
           </Button>
           {accounts.length > 1 && (
             <Button 
