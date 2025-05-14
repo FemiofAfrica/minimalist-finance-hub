@@ -12,11 +12,33 @@ import AccountDialog from "@/components/accounts/AccountDialog";
 const AccountsAndCards = () => {
   const [activeTab, setActiveTab] = useState("accounts");
   const [isAccountDialogOpen, setIsAccountDialogOpen] = useState(false);
+  const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const location = useLocation();
 
+  // This effect runs when the location changes
+  useEffect(() => {
+    // Extract the query parameters from the URL
+    const searchParams = new URLSearchParams(location.search);
+    const tabParam = searchParams.get("tab");
+    const accountId = searchParams.get("accountId");
+    
+    // Update active tab if specified in URL
+    if (tabParam === "cards" || tabParam === "accounts") {
+      setActiveTab(tabParam);
+    }
+    
+    // Update current account ID
+    setCurrentAccountId(accountId);
+    
+    // Log for debugging
+    console.log(`URL changed: tab=${tabParam}, accountId=${accountId}`);
+    
+  }, [location.search]);
+
+  // This effect handles user authentication
   useEffect(() => {
     if (!user) {
       toast({
@@ -26,27 +48,26 @@ const AccountsAndCards = () => {
       });
       navigate("/login");
     }
-
-    // Check if there's a tab parameter in the URL
-    const searchParams = new URLSearchParams(location.search);
-    const tabParam = searchParams.get("tab");
-    if (tabParam === "cards" || tabParam === "accounts") {
-      setActiveTab(tabParam);
-    }
-  }, [user, navigate, toast, location.search]);
+  }, [user, navigate, toast]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    // Update URL without reloading the page
+    
+    // Preserve the accountId when changing tabs
     const url = new URL(window.location.toString());
     url.searchParams.set("tab", value);
+    
+    // If we're switching to cards tab and have an accountId, keep it
+    // If we're switching to accounts tab, remove the accountId
+    if (value === "accounts") {
+      url.searchParams.delete("accountId");
+    }
+    
     window.history.pushState({}, "", url.toString());
   };
 
   const handleAccountDialogClose = (refresh: boolean = false) => {
     setIsAccountDialogOpen(false);
-    // If refresh is true, we could refresh the accounts list here
-    // But the AccountsList component handles that internally
   };
 
   return (
@@ -74,7 +95,11 @@ const AccountsAndCards = () => {
             <AccountsList />
           </TabsContent>
           <TabsContent value="cards" className="mt-6">
-            <CardsList />
+            {/* Key prop forces the component to re-render when accountId changes */}
+            <CardsList 
+              key={`cards-list-${currentAccountId || 'all'}`} 
+              accountId={currentAccountId || undefined} 
+            />
           </TabsContent>
         </Tabs>
       </div>

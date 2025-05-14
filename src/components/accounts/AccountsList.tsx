@@ -103,7 +103,7 @@ const AccountsList = () => {
   const handleViewCards = (accountId: string) => {
     // Navigate to cards tab with the account ID
     console.log(`Navigating to cards for account ${accountId}`);
-    navigate(`/accounts-cards?tab=cards&accountId=${accountId}`);
+    navigate(`/accounts?tab=cards&accountId=${accountId}`);
   };
 
   const handleAddAccount = () => {
