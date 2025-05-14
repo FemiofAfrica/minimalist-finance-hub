@@ -236,17 +236,7 @@ const CardsList = ({ accountId }: CardsListProps) => {
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
-          {/* Debug button only shown in development */}
-          {import.meta.env.DEV && (
-            <Button 
-              variant="outline" 
-              onClick={handleDebug} 
-              className="flex items-center gap-2"
-              title="Debug account balances"
-            >
-              <Bug className="h-4 w-4" />
-            </Button>
-          )}
+          {/* Debug button removed for production */}
           <Button onClick={handleAddCard} className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
             Add Card
