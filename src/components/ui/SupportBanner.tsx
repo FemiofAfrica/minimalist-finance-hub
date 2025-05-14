@@ -49,7 +49,7 @@ export function SupportBanner({ className = '' }: SupportBannerProps) {
           /* Apply marquee only on smaller screens */
           @media (max-width: 767px) { /* Tailwind's 'md' breakpoint is 768px */
             .marquee-text-container {
-              animation: marquee 20s linear infinite; /* Updated duration */
+              animation: marquee 60s linear infinite; /* Updated duration */
               display: inline-block;
               white-space: nowrap;
               will-change: transform;
