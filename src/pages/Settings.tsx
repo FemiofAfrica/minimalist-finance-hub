@@ -258,9 +258,9 @@ export default function Settings() {
           <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
           <p className="text-muted-foreground mt-2 text-lg">Manage your account settings and preferences</p>
         </div>
-
+        
         <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
-          <Tabs defaultValue="profile" className="w-full">
+        <Tabs defaultValue="profile" className="w-full">
             <div className="border-b">
               <div className="flex justify-center w-full text-center">
                 <div className="inline-flex justify-center">
@@ -291,7 +291,7 @@ export default function Settings() {
                         Admin
                       </TabsTrigger>
                     )}
-                  </TabsList>
+          </TabsList>
                 </div>
               </div>
             </div>
@@ -328,29 +328,29 @@ export default function Settings() {
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
                     <Label htmlFor="email" className="font-medium text-base sm:w-1/3 sm:text-right">Email Address</Label>
                     <div className="sm:w-2/3">
-                      <Input 
-                        id="email" 
-                        value={email} 
-                        disabled 
-                        placeholder="Your email address"
+                  <Input 
+                    id="email" 
+                    value={email} 
+                    disabled 
+                    placeholder="Your email address"
                         className="bg-muted/50 w-full text-base"
-                      />
+                  />
                       <p className="text-sm text-muted-foreground text-left mt-1">Your email address cannot be changed</p>
                     </div>
                   </div>
                 </div>
                 
                 <div className="flex justify-center border-t pt-6 mt-8">
-                  <Button 
-                    onClick={handleProfileUpdate} 
-                    disabled={loading}
+                <Button 
+                  onClick={handleProfileUpdate} 
+                  disabled={loading}
                     className="px-8 py-2 h-11 text-base"
-                  >
+                >
                     {loading ? 'Saving...' : 'Update Profile'}
-                  </Button>
+                </Button>
                 </div>
               </div>
-            </TabsContent>
+          </TabsContent>
           
             {/* Preferences Tab */}
             <TabsContent value="preferences" className="p-8">
@@ -363,16 +363,16 @@ export default function Settings() {
                       <div className="sm:w-2/3">
                         <Select value={currency} onValueChange={setCurrency}>
                           <SelectTrigger id="currency" className="bg-background w-full text-base">
-                            <SelectValue placeholder="Select currency" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {supportedCurrencies.map((c) => (
-                              <SelectItem key={c.code} value={c.code}>
-                                {`${c.name} (${c.symbol})`}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {supportedCurrencies.map((c) => (
+                        <SelectItem key={c.code} value={c.code}>
+                          {`${c.name} (${c.symbol})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                         <p className="text-sm text-muted-foreground text-left mt-1">Choose your preferred currency for displaying amounts</p>
                       </div>
                     </div>
@@ -383,37 +383,37 @@ export default function Settings() {
                 <div className="space-y-6 mb-10">
                   <div className="flex items-center justify-between p-4 bg-muted/5 rounded-lg border">
                     <Label htmlFor="darkMode" className="font-medium text-base">Dark Mode</Label>
-                    <Switch 
-                      id="darkMode" 
-                      checked={darkMode}
-                      onCheckedChange={setDarkMode}
-                    />
-                  </div>
-                  
+                  <Switch 
+                    id="darkMode" 
+                    checked={darkMode}
+                    onCheckedChange={setDarkMode}
+                  />
+                </div>
+                
                   <div className="flex items-center justify-between p-4 bg-muted/5 rounded-lg border">
                     <div>
                       <Label htmlFor="liveConversion" className="font-medium text-base text-left block">Live Currency Conversion</Label>
                       <p className="text-sm text-muted-foreground mt-1">Convert amounts automatically to your selected currency</p>
-                    </div>
-                    <Switch 
-                      id="liveConversion" 
-                      checked={isLiveConversionEnabled}
-                      onCheckedChange={toggleLiveConversion}
-                    />
+                  </div>
+                  <Switch 
+                    id="liveConversion" 
+                    checked={isLiveConversionEnabled}
+                    onCheckedChange={toggleLiveConversion}
+                  />
                   </div>
                 </div>
                 
                 <div className="flex justify-center border-t pt-6 mt-8">
-                  <Button 
-                    onClick={handlePreferencesUpdate} 
-                    disabled={loading}
+                <Button 
+                  onClick={handlePreferencesUpdate} 
+                  disabled={loading}
                     className="px-8 py-2 h-11 text-base"
-                  >
+                >
                     {loading ? 'Saving...' : 'Save Preferences'}
-                  </Button>
+                </Button>
                 </div>
               </div>
-            </TabsContent>
+          </TabsContent>
           
             {/* Security Tab */}
             <TabsContent value="security" className="p-8">
@@ -555,8 +555,8 @@ export default function Settings() {
                           </p>
                         </div>
                       </div>
-                    </div>
-                    
+                </div>
+                
                     <div className="flex justify-center mt-6 pt-4 border-t">
                       <Button
                         onClick={handleSendToAll}
@@ -571,13 +571,13 @@ export default function Settings() {
                         ) : (
                           "Send to All Users"
                         )}
-                      </Button>
+                </Button>
                     </div>
-                  </CardContent>
-                </Card>
+              </CardContent>
+            </Card>
               </div>
-            </TabsContent>
-          </Tabs>
+          </TabsContent>
+        </Tabs>
         </div>
       </div>
     </DashboardLayout>

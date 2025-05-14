@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   LayoutDashboard, 
   LineChart, 
@@ -21,6 +21,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import { BANNER_HEIGHT } from "@/components/ui/SupportBanner";
 
 const links = [
   { 
@@ -69,6 +70,29 @@ export function DashboardSidebar() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isBannerVisible, setIsBannerVisible] = useState(true);
+  
+  // Listen for banner visibility changes
+  useEffect(() => {
+    // Initialize from localStorage if available
+    const storedVisibility = localStorage.getItem('support-banner-visible');
+    if (storedVisibility !== null) {
+      setIsBannerVisible(storedVisibility === 'true');
+    }
+    
+    // Listen for visibility change events
+    const handleVisibilityChange = (e: CustomEvent<{visible: boolean}>) => {
+      setIsBannerVisible(e.detail.visible);
+    };
+    
+    document.addEventListener('banner-visibility-change', 
+      handleVisibilityChange as EventListener);
+    
+    return () => {
+      document.removeEventListener('banner-visibility-change', 
+        handleVisibilityChange as EventListener);
+    };
+  }, []);
   
   const handleSignOut = async () => {
     try {
@@ -162,8 +186,24 @@ export function DashboardSidebar() {
   );
   
   return (
-    <Sidebar>
-      {navigation}
-    </Sidebar>
+    <div style={{ 
+      position: 'relative', 
+      zIndex: 40 
+    }}>
+      <Sidebar>
+        {navigation}
+      </Sidebar>
+      {/* Add CSS to adjust sidebar position */}
+      <style jsx global>{`
+        /* For Mobile Sidebar (SheetContent) */
+        [data-sidebar="sidebar"][data-mobile="true"],
+        /* For Desktop Sidebar (the fixed panel inside the data-state container) */
+        div[data-state][data-variant="sidebar"] > div.fixed.inset-y-0 {
+          top: ${isBannerVisible ? `${BANNER_HEIGHT}px` : '0'} !important;
+          height: ${isBannerVisible ? `calc(100svh - ${BANNER_HEIGHT}px)` : '100svh'} !important;
+          transition: top 0.2s ease-in-out, height 0.2s ease-in-out !important;
+        }
+      `}</style>
+    </div>
   );
 }
