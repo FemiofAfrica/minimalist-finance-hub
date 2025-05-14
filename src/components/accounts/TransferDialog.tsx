@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { 
   Dialog, 
   DialogContent, 
@@ -31,6 +31,7 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
+import { useAccountStore } from "@/stores/accountStore";
 
 interface TransferDialogProps {
   isOpen: boolean;
@@ -39,7 +40,9 @@ interface TransferDialogProps {
 }
 
 const TransferDialog = ({ isOpen, onClose, initialSourceAccountId }: TransferDialogProps) => {
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const { accounts, refreshAccounts } = useAccountStore();
+  const { toast } = useToast();
+  
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [sourceAccountId, setSourceAccountId] = useState<string>("");
@@ -48,48 +51,45 @@ const TransferDialog = ({ isOpen, onClose, initialSourceAccountId }: TransferDia
   const [description, setDescription] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [date, setDate] = useState<Date>(new Date());
-  const { toast } = useToast();
 
-  // Fetch accounts when dialog opens
-  useEffect(() => {
-    const getAccounts = async () => {
-      if (isOpen) {
-        try {
-          setLoading(true);
-          const accountsList = await fetchAccounts();
-          setAccounts(accountsList);
-          
-          // Set initial source account if provided
-          if (initialSourceAccountId && accountsList.some(a => a.account_id === initialSourceAccountId)) {
-            setSourceAccountId(initialSourceAccountId);
-          } else if (accountsList.length > 0) {
-            // Set default source account to first account
-            setSourceAccountId(accountsList[0].account_id);
-          }
-          
-          // Set destination account to second account if available
-          if (accountsList.length > 1) {
-            // Find an account that's not the source account
-            const destAccount = accountsList.find(a => a.account_id !== (initialSourceAccountId || accountsList[0].account_id));
-            if (destAccount) {
-              setDestinationAccountId(destAccount.account_id);
-            }
-          }
-        } catch (error) {
-          console.error("Failed to fetch accounts:", error);
-          toast({
-            title: "Error",
-            description: "Failed to load accounts",
-            variant: "destructive",
-          });
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
+  // Initialize account selections based on available accounts
+  const initializeAccounts = useCallback(() => {
+    // Set initial source account if provided
+    if (initialSourceAccountId && accounts.some(a => a.account_id === initialSourceAccountId)) {
+      setSourceAccountId(initialSourceAccountId);
+    } else if (accounts.length > 0) {
+      // Set default source account to first account
+      setSourceAccountId(accounts[0].account_id);
+    }
     
-    getAccounts();
-  }, [isOpen, initialSourceAccountId, toast]); // Remove sourceAccountId from dependency array
+    // Set destination account to second account if available
+    if (accounts.length > 1) {
+      // Find an account that's not the source account
+      const destAccount = accounts.find(a => 
+        a.account_id !== (initialSourceAccountId || (accounts[0]?.account_id))
+      );
+      if (destAccount) {
+        setDestinationAccountId(destAccount.account_id);
+      }
+    }
+  }, [accounts, initialSourceAccountId, setDestinationAccountId, setSourceAccountId]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLoading(true);
+      
+      // If account store is empty, refresh it
+      if (accounts.length === 0) {
+        refreshAccounts().then(() => {
+          initializeAccounts();
+          setLoading(false);
+        });
+      } else {
+        initializeAccounts();
+        setLoading(false);
+      }
+    }
+  }, [isOpen, accounts.length, initializeAccounts, refreshAccounts]);
 
   // Update destination account when source account changes
   useEffect(() => {
@@ -149,98 +149,28 @@ const TransferDialog = ({ isOpen, onClose, initialSourceAccountId }: TransferDia
       const formattedDate = format(date, "yyyy-MM-dd");
       const transferAmount = parseFloat(amount);
       
-      console.log("Starting direct transfer process");
+      console.log("Starting transfer process");
       
-      // Find accounts from our loaded accounts array
-      const sourceAccount = accounts.find(acc => acc.account_id === sourceAccountId);
-      const destAccount = accounts.find(acc => acc.account_id === destinationAccountId);
-      
-      if (!sourceAccount || !destAccount) {
-        throw new Error("Could not find accounts in local state");
-      }
-      
-      // Check balance
-      if (sourceAccount.balance < transferAmount) {
-        throw new Error(`Insufficient funds in ${sourceAccount.name}. Available: ${sourceAccount.currency} ${sourceAccount.balance}`);
-      }
-      
-      // Get current user ID
-      const userId = await getCurrentUserId();
-      if (!userId) {
-        throw new Error("User not authenticated");
-      }
-      
-      // We'll handle transfers without a specific category ID
-      // The mapSupabaseDataToTransaction function already updates the display to show "Transfer"
-      
-      // 1. Update source account (deduct funds)
-      const { error: updateSourceError } = await supabase
-        .from('accounts')
-        .update({ 
-          balance: sourceAccount.balance - transferAmount,
-          updated_at: new Date().toISOString()
-        })
-        .eq('account_id', sourceAccountId);
-      
-      if (updateSourceError) throw updateSourceError;
-      
-      // 2. Update destination account (add funds)
-      const { error: updateDestError } = await supabase
-        .from('accounts')
-        .update({
-          balance: destAccount.balance + transferAmount,
-          updated_at: new Date().toISOString()
-        })
-        .eq('account_id', destinationAccountId);
-        
-      if (updateDestError) throw updateDestError;
-      
-      // 3. Create source transaction
-      const sourceTransDesc = description || `Transfer to ${destAccount.name}`;
-      const sourceTransNotes = notes || `Transfer to account: ${destAccount.name}`;
-      
-      const { error: createSourceError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: userId,
-          account_id: sourceAccountId,
-          amount: transferAmount,
-          currency: sourceAccount.currency,
-          date: formattedDate,
-          type: 'transfer',
-          description: sourceTransDesc,
-          notes: sourceTransNotes,
-        });
-        
-      if (createSourceError) throw createSourceError;
-      
-      // 4. Create destination transaction
-      const destTransDesc = description || `Transfer from ${sourceAccount.name}`;
-      const destTransNotes = notes || `Transfer from account: ${sourceAccount.name}`;
-      
-      const { error: createDestError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: userId,
-          account_id: destinationAccountId,
-          amount: transferAmount,
-          currency: destAccount.currency,
-          date: formattedDate,
-          type: 'transfer',
-          description: destTransDesc,
-          notes: destTransNotes,
-        });
-        
-      if (createDestError) throw createDestError;
-      
-      console.log("Transfer completed successfully");
+      // Use the service function to handle the transfer
+      await createTransferTransaction(
+        sourceAccountId,
+        destinationAccountId,
+        transferAmount,
+        formattedDate,
+        description || undefined,
+        notes || undefined
+      );
       
       toast({
         title: "Success",
         description: "Funds transferred successfully",
       });
       
-      onClose(true); // Close dialog and refresh parent
+      // Just refresh accounts once after successful transfer
+      await refreshAccounts();
+      
+      // Close dialog and indicate refresh needed
+      onClose(true);
     } catch (error) {
       console.error("Failed to transfer funds:", error);
       toast({

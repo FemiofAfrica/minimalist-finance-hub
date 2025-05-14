@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Account } from "@/types/account";
-import { fetchAccounts, deleteAccount } from "@/services/accountService";
 import AccountCard from "./AccountCard";
 import { Button } from "@/components/ui/button";
-import { Plus, RefreshCw, ArrowLeftRight } from "lucide-react";
+import { Plus, RefreshCw, ArrowLeftRight, Bug } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AccountDialog from "./AccountDialog";
 import TransferDialog from "./TransferDialog";
@@ -18,10 +17,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useNavigate, useLocation } from "react-router-dom";
+import { deleteAccount } from "@/services/accountService";
+import { useAccountStore } from "@/stores/accountStore";
+import { verifyAccountBalances, forceUpdateAccountBalances } from "@/services/debugService";
 
 const AccountsList = () => {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Account store for global state
+  const { accounts, isLoading, refreshAccounts, fetchBalances } = useAccountStore();
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
@@ -32,42 +35,31 @@ const AccountsList = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const loadAccounts = useCallback(async () => {
-    try {
-      setLoading(true);
-      console.log("Loading accounts...");
-      const data = await fetchAccounts();
-      console.log(`Loaded ${data.length} accounts`);
-      
-      // Sort accounts: default accounts first, then by creation date (newest first)
-      const sortedAccounts = [...data].sort((a, b) => {
-        // First sort by default status (true comes before false)
-        if (a.is_default && !b.is_default) return -1;
-        if (!a.is_default && b.is_default) return 1;
-        
-        // Then sort by created_at date (newest first)
-        if (a.created_at && b.created_at) {
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        }
-        return 0;
-      });
-      
-      setAccounts(sortedAccounts);
-    } catch (error) {
-      console.error("Error loading accounts:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load accounts",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
+  // Load accounts on mount and set up polling for balance updates
   useEffect(() => {
-    loadAccounts();
-  }, [loadAccounts]);
+    // Initial load
+    refreshAccounts();
+    
+    // Set up polling for balances - every 2 seconds
+    const balanceInterval = setInterval(() => {
+      fetchBalances();
+    }, 2000);
+    
+    // Set up event listeners
+    const handleRefresh = () => {
+      console.log("Refresh event received in AccountsList - refreshing accounts");
+      refreshAccounts();
+    };
+    
+    document.addEventListener('refresh', handleRefresh);
+    document.addEventListener('refresh-transactions', handleRefresh);
+    
+    return () => {
+      clearInterval(balanceInterval);
+      document.removeEventListener('refresh', handleRefresh);
+      document.removeEventListener('refresh-transactions', handleRefresh);
+    };
+  }, [refreshAccounts, fetchBalances]);
 
   const handleEditAccount = (account: Account) => {
     console.log("Editing account:", account);
@@ -94,7 +86,7 @@ const AccountsList = () => {
         description: "Account deleted successfully",
       });
       // Refresh accounts list after deletion
-      loadAccounts();
+      refreshAccounts();
     } catch (error) {
       console.error("Error deleting account:", error);
       toast({
@@ -130,7 +122,7 @@ const AccountsList = () => {
     setIsDialogOpen(false);
     if (refresh) {
       console.log("Refreshing accounts after dialog closed");
-      loadAccounts();
+      refreshAccounts();
     }
   };
 
@@ -138,16 +130,57 @@ const AccountsList = () => {
     setIsTransferDialogOpen(false);
     if (refresh) {
       console.log("Refreshing accounts after transfer");
-      loadAccounts();
+      refreshAccounts();
     }
   };
 
   const handleRefresh = () => {
     console.log("Manual refresh requested");
-    loadAccounts();
+    refreshAccounts();
   };
 
-  if (loading) {
+  const handleDebug = async () => {
+    try {
+      console.log("Running account balance verification...");
+      const result = await verifyAccountBalances();
+      console.log("Debug results:", result);
+      
+      // Compare direct DB results with service results
+      if (result.directDbAccounts.length > 0 && result.serviceAccounts.length > 0) {
+        console.log("Comparing account balances:");
+        
+        result.directDbAccounts.forEach(dbAccount => {
+          const serviceAccount = result.serviceAccounts.find(sa => sa.account_id === dbAccount.account_id);
+          if (serviceAccount) {
+            const balanceMatch = dbAccount.balance === serviceAccount.balance;
+            console.log(`Account ${dbAccount.name}: DB=${dbAccount.balance}, Service=${serviceAccount.balance}, Match=${balanceMatch}`);
+          }
+        });
+      }
+      
+      // Force update all account balances to trigger UI refresh
+      console.log("Forcing update of all account balances...");
+      const forceUpdateSuccess = await forceUpdateAccountBalances();
+      console.log("Force update result:", forceUpdateSuccess ? "Success" : "Failed");
+      
+      toast({
+        title: "Debug Complete",
+        description: `Verified ${result.directDbAccounts.length} accounts. Force update: ${forceUpdateSuccess ? "Success" : "Failed"}`,
+      });
+      
+      // Force refresh after verification
+      refreshAccounts();
+    } catch (error) {
+      console.error("Debug verification failed:", error);
+      toast({
+        title: "Debug Error",
+        description: "Failed to verify account balances. See console for details.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (isLoading) {
     return (
       <div className="p-8 flex justify-center">
         <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
@@ -167,6 +200,14 @@ const AccountsList = () => {
             title="Refresh accounts data"
           >
             <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleDebug} 
+            className="flex items-center gap-2"
+            title="Debug account balances"
+          >
+            <Bug className="h-4 w-4" />
           </Button>
           {accounts.length > 1 && (
             <Button 

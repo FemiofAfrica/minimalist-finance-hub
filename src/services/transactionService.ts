@@ -201,172 +201,58 @@ export const createTransaction = async (transaction: TransactionInput): Promise<
     const userId = await getUserId();
 
     // --- Validate required inputs ---
-    // Ensure essential fields from the input are present before proceeding
-    if (transaction.account_id == null) { // Check for null or undefined
-        throw new Error("Account ID is required to create a transaction.");
-    }
-     if (transaction.amount == null) { // Check for null or undefined
+    if (transaction.amount == null) {
         throw new Error("Amount is required to create a transaction.");
     }
-    // Add checks for other absolutely essential inputs if necessary
+    
+    // Prepare transaction data
+    const transactionData = {
+      user_id: userId,
+      description: transaction.description,
+      amount: transaction.amount,
+      type: transaction.type,
+      date: transaction.date,
+      account_id: transaction.account_id,
+      category_id: transaction.category_id,
+      category_name: transaction.category_name,
+      currency: transaction.currency || 'NGN',
+      notes: transaction.notes
+    };
 
-    // --- Category Handling ---
-    let categoryId = transaction.category_id;
+    // Create the transaction using Supabase RPC function
+    // This ensures account balance is updated atomically with transaction creation
+    const { data, error } = await supabaseAny.rpc('create_transaction', {
+      transaction_data: transactionData
+    });
 
-    // Ensure we use category_name and category_type consistently here
-    if (transaction.category_name && !categoryId) {
-        // Get category type from transaction type if not provided
-        const categoryType = transaction.type === 'income' ? 'INCOME' : 'EXPENSE';
-        
-        // @ts-expect-error - TypeScript has issues with deep type instantiation for Supabase queries
-        const { data: existingCategory, error: findCatError } = await supabase
-            .from('categories')
-            .select('category_id')
-            .eq('category_name', transaction.category_name)
-            .eq('user_id', userId)
-            .eq('category_type', categoryType)
-            .maybeSingle();
-
-        if (findCatError) {
-            console.error("Error finding category:", findCatError);
-            throw findCatError; // Rethrow
-        }
-
-        if (existingCategory) {
-            categoryId = existingCategory.category_id;
-        } else {
-            // Create category using category_name and category_type
-            console.log(`Creating category: ${transaction.category_name} (${categoryType})`);
-            const { data: newCategory, error: insertCatError } = await supabase
-                .from('categories')
-                .insert({ 
-                    name: transaction.category_name, // Categories table uses 'name' not 'category_name'
-                    user_id: userId, 
-                    category_type: categoryType
-                })
-                .select('category_id')
-                .single();
-                
-            if (insertCatError) { 
-                console.error("Error creating category:", insertCatError);
-                throw insertCatError; // Rethrow
-            } 
-            // Check if newCategory is null which indicates insert failed unexpectedly
-            if (!newCategory) { 
-               throw new Error("Category creation did not return expected data.");
-            }
-            categoryId = newCategory.category_id;
-        }
+    if (error) {
+      console.error('Error creating transaction:', error);
+      throw new Error(`Failed to create transaction: ${error.message}`);
     }
 
-    // --- Currency Handling ---
-    let determinedCurrency = transaction.currency;
-    if (!determinedCurrency && transaction.account_id) {
-       const { data: accountData, error: accountError } = await supabase
-         .from('accounts')
-         .select('currency')
-         .eq('account_id', transaction.account_id)
-         .maybeSingle();
-       if (accountError) throw accountError;
-       determinedCurrency = accountData?.currency ?? 'NGN'; // Default if account/currency is missing
-    } else if (!determinedCurrency) {
-        determinedCurrency = 'NGN'; // Overall default
+    if (!data || !data.transaction_id) {
+      throw new Error('Transaction created but no ID returned');
     }
-    // Ensure currency is not null/undefined before insertion if it's required
-     if (!determinedCurrency) {
-         throw new Error("Could not determine currency for the transaction.");
-     }
 
-    // --- Insert and Update Operations ---
-    try {
-      // --- Prepare Data for DB Insertion (Build Object Conditionally) ---
-      const insertData: TransactionInsert = {
-          user_id: userId,
-          account_id: transaction.account_id,
-          category_id: categoryId || null,
-          description: transaction.description || null,
-          amount: transaction.amount,
-          currency: determinedCurrency,
-          date: transaction.date, // Assume this is properly formatted by the client
-          type: transaction.type, 
-          notes: transaction.notes || null
-      };
+    // Fetch the newly created transaction with all relations
+    const { data: newTransaction, error: fetchError } = await supabase
+      .from('transactions')
+      .select(`
+        *,
+        accounts (name),
+        categories (category_name, category_type)
+      `)
+      .eq('transaction_id', data.transaction_id)
+      .single();
 
-      // --- Begin transaction with Supabase (need to manage this manually) ---
-      await supabaseAny.rpc('begin_transaction');
-
-      // Perform the actual insert
-      // Use explicit type assertion instead of @ts-expect-error
-      const result = await supabase
-          .from('transactions')
-          .insert(insertData)
-          .select(`
-              *,
-              accounts (name),
-              categories (category_name, category_type)
-          `)
-          .single() as unknown as {
-            data: TransactionWithRelations | null;
-            error: Error | null;
-          };
-      
-      const { data, error } = result;
-
-      if (error) {
-          console.error("Error inserting transaction:", error);
-          throw error;
-      }
-
-      if (!data) {
-          throw new Error("Transaction creation did not return expected data.");
-      }
-
-      // --- Update Account Balance ---
-      let balanceChange = transaction.amount;
-      if (transaction.type === 'expense') {
-          balanceChange = -transaction.amount; // Negate for expenses
-      }
-      // For transfers, we'll handle the destination account separately
-
-      // Get current account balance
-      const { data: accountData, error: accountError } = await supabase
-          .from('accounts')
-          .select('balance')
-          .eq('account_id', transaction.account_id)
-          .single();
-
-      if (accountError) {
-          throw accountError;
-      }
-
-      // Calculate new balance
-      const newBalance = (accountData.balance || 0) + balanceChange;
-
-      // Update the source account balance
-      const { error: updateError } = await supabase
-          .from('accounts')
-          .update({ 
-              balance: newBalance,
-              updated_at: new Date().toISOString()
-          })
-          .eq('account_id', transaction.account_id);
-
-      if (updateError) {
-          throw updateError;
-      }
-
-      // --- Commit transaction ---
-      await supabaseAny.rpc('commit_transaction');
-
-      // Map the result to the application type and return
-      return mapSupabaseDataToTransaction(data);
-    } catch (error) {
-      // Rollback transaction on any error
-      await supabaseAny.rpc('rollback_transaction');
-      throw error;
+    if (fetchError) {
+      console.error('Error fetching new transaction:', fetchError);
+      throw new Error(`Transaction created but could not fetch details: ${fetchError.message}`);
     }
+
+    return mapSupabaseDataToTransaction(newTransaction);
   } catch (error) {
-    console.error("Error in createTransaction:", error);
+    console.error('Error in createTransaction:', error);
     throw error;
   }
 };
@@ -390,7 +276,7 @@ export const updateTransaction = async (
       .from('transactions')
       .select('*')
       .eq('transaction_id', transactionId)
-      .eq('user_id', userId)
+            .eq('user_id', userId)
       .single() as unknown as {
         data: TransactionRow | null;
         error: Error | null;
@@ -512,9 +398,7 @@ export const updateTransaction = async (
   }
 };
 
-/**
- * Creates a transfer transaction between two accounts
- */
+// --- Create transfer transaction (improved version) ---
 export const createTransferTransaction = async (
   sourceAccountId: string,
   destinationAccountId: string,
@@ -525,87 +409,88 @@ export const createTransferTransaction = async (
 ): Promise<{ sourceTransaction: Transaction; destinationTransaction: Transaction }> => {
   try {
     const userId = await getUserId();
-
-    // Validate inputs
-    if (!sourceAccountId) throw new Error("Source account ID is required");
-    if (!destinationAccountId) throw new Error("Destination account ID is required");
-    if (sourceAccountId === destinationAccountId) 
-      throw new Error("Source and destination accounts must be different");
-    if (!amount || amount <= 0) throw new Error("Transfer amount must be greater than zero");
-
-    console.log('Calling create_transfer RPC function with params:', {
-      source_account_id: sourceAccountId,
-      destination_account_id: destinationAccountId,
-      amount,
-      date_str: date,
-      description,
-      notes
+    
+    if (!userId) {
+      throw new Error("User must be authenticated to create a transfer");
+    }
+    
+    if (!sourceAccountId || !destinationAccountId) {
+      throw new Error("Source and destination accounts are required");
+    }
+    
+    if (!amount || amount <= 0) {
+      throw new Error("Transfer amount must be greater than zero");
+    }
+    
+    // Use the transfer_funds RPC function to perform the entire transfer in a transaction
+    // This ensures atomicity and prevents partial transfers
+    // Use explicit type assertion to handle TypeScript limitations with Supabase
+    const result = await supabaseAny.rpc('transfer_funds', {
+      p_source_account_id: sourceAccountId,
+      p_destination_account_id: destinationAccountId,
+      p_amount: amount,
+      p_date: date,
+      p_description: description || 'Transfer between accounts',
+      p_notes: notes || null
     });
-
-    // Use a more direct type assertion to fix TypeScript error
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any).rpc('create_transfer', {
-      source_account_id: sourceAccountId,
-      destination_account_id: destinationAccountId,
-      amount,
-      date_str: date,
-      description,
-      notes
-    });
-
+    
+    const { data, error } = result;
+    
     if (error) {
-      console.error("Error in create_transfer RPC:", error);
-      throw new Error(`Transfer failed: ${error.message}`);
+      console.error('Error in transfer_funds RPC:', error);
+      // Provide a more user-friendly error message
+      if (error.message.includes('insufficient_funds')) {
+        throw new Error('Insufficient funds in source account');
+      }
+      throw error;
     }
-
+    
     if (!data) {
-      throw new Error("Transfer completed but returned no data");
+      throw new Error('Transfer failed: No data returned from server');
     }
-
-    console.log('Transfer completed successfully:', data);
-
+    
+    console.log("Transfer completed successfully via RPC");
+    
+    // The RPC returns the created transaction IDs
+    const { source_transaction_id, destination_transaction_id } = data;
+    
     // Fetch the created transactions to return them
-    const sourceTransactionId = data.source_transaction_id;
-    const destTransactionId = data.destination_transaction_id;
+    const { data: sourceTransData, error: sourceTransError } = await supabase
+      .from('transactions')
+      .select(`
+          *,
+        accounts (name),
+        categories (category_name, category_type)
+      `)
+      .eq('transaction_id', source_transaction_id)
+      .single();
 
-    // Fetch source transaction
-    const { data: sourceTransData, error: sourceError } = await supabase
+    if (sourceTransError) {
+      console.error('Error fetching source transaction:', sourceTransError);
+      throw sourceTransError;
+    }
+    
+    const { data: destTransData, error: destTransError } = await supabase
       .from('transactions')
       .select(`
         *,
         accounts (name),
         categories (category_name, category_type)
       `)
-      .eq('transaction_id', sourceTransactionId)
+      .eq('transaction_id', destination_transaction_id)
       .single();
-
-    if (sourceError) {
-      console.error("Error fetching source transaction:", sourceError);
-      throw new Error(`Transfer completed but could not fetch source transaction: ${sourceError.message}`);
+      
+    if (destTransError) {
+      console.error('Error fetching destination transaction:', destTransError);
+      throw destTransError;
     }
-
-    // Fetch destination transaction
-    const { data: destTransData, error: destError } = await supabase
-      .from('transactions')
-      .select(`
-        *,
-        accounts (name),
-        categories (category_name, category_type)
-      `)
-      .eq('transaction_id', destTransactionId)
-      .single();
-
-    if (destError) {
-      console.error("Error fetching destination transaction:", destError);
-      throw new Error(`Transfer completed but could not fetch destination transaction: ${destError.message}`);
-    }
-
+    
     return {
       sourceTransaction: mapSupabaseDataToTransaction(sourceTransData),
       destinationTransaction: mapSupabaseDataToTransaction(destTransData)
     };
   } catch (error) {
-    console.error("Error in createTransferTransaction:", error);
+    console.error('Error in createTransferTransaction:', error);
     throw error;
   }
 };

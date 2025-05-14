@@ -186,7 +186,6 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       // Check if the category exists in the database
       const categoryTypeLower = parsedData.category_type.toLowerCase() as 'income' | 'expense' | 'transfer';
       
-      // Disable TypeScript error for this specific line
       // @ts-expect-error - TypeScript has issues with deep type instantiation for Supabase queries
       const { data: existingCategory, error: categoryError } = await supabase
         .from('categories')
@@ -448,7 +447,8 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
     setInput("");
     
     // Notify other components about the new transaction
-    console.log("Dispatching 'refresh-transactions' event.");
+    console.log("Dispatching refresh events for transfer");
+    document.dispatchEvent(new Event('refresh'));
     document.dispatchEvent(new CustomEvent('refresh-transactions'));
     
     // Call the provided callback function

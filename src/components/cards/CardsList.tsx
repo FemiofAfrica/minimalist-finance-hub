@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card as CardType } from "@/types/card";
 import { fetchCards, getCardsByAccount, deleteCard } from "@/services/cardService";
 import { getAccountById, fetchAccounts } from "@/services/accountService";
 import { Account } from "@/types/account";
 import CardItem from "./CardItem";
 import { Button } from "@/components/ui/button";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw, Bug } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CardDialog from "./CardDialog";
 import {
@@ -18,6 +18,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { verifyAccountBalances } from "@/services/debugService";
 
 interface CardsListProps {
   accountId?: string;
@@ -51,7 +53,7 @@ const CardsList = ({ accountId }: CardsListProps) => {
     }
   };
 
-  const loadCards = async () => {
+  const loadCards = useCallback(async () => {
     try {
       setLoading(true);
       console.log("Loading cards...", accountId ? `for account ${accountId}` : "all cards");
@@ -117,11 +119,24 @@ const CardsList = ({ accountId }: CardsListProps) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accountId, toast]);
 
   useEffect(() => {
     loadCards();
-  }, [accountId]);
+    
+    // Create a single function to handle refresh events
+    const handleRefresh = () => {
+      console.log("Refreshing cards");
+      loadCards();
+    };
+    
+    // Add a single event listener for refreshes
+    document.addEventListener('refresh-transactions', handleRefresh);
+    
+    return () => {
+      document.removeEventListener('refresh-transactions', handleRefresh);
+    };
+  }, [accountId, loadCards]);
 
   const handleEditCard = (card: CardType) => {
     console.log("Editing card:", card);
@@ -182,6 +197,24 @@ const CardsList = ({ accountId }: CardsListProps) => {
     loadCards();
   };
 
+  const handleDebug = async () => {
+    try {
+      console.log("Starting debug process...");
+      await verifyAccountBalances();
+      toast({
+        title: "Success",
+        description: "Debug process completed successfully",
+      });
+    } catch (error) {
+      console.error("Error during debug process:", error);
+      toast({
+        title: "Error",
+        description: "Failed to complete debug process",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8 flex justify-center">
@@ -203,6 +236,17 @@ const CardsList = ({ accountId }: CardsListProps) => {
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
+          {/* Debug button only shown in development */}
+          {import.meta.env.DEV && (
+            <Button 
+              variant="outline" 
+              onClick={handleDebug} 
+              className="flex items-center gap-2"
+              title="Debug account balances"
+            >
+              <Bug className="h-4 w-4" />
+            </Button>
+          )}
           <Button onClick={handleAddCard} className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
             Add Card

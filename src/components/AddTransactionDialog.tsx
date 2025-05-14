@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,10 +19,11 @@ import { Account } from "@/types/account";
 import { Card } from "@/types/card";
 import { createTransaction } from "@/services/transactionService";
 import { TransactionFlowType, TransactionType } from "@/types/transaction";
+import { supabase } from "@/integrations/supabase/client";
+import { useAccountStore } from "@/stores/accountStore";
 
 const AddTransactionDialog = () => {
   const [open, setOpen] = useState(false);
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<{
     description: string;
@@ -41,79 +42,48 @@ const AddTransactionDialog = () => {
     account_id: '',
     transaction_type: 'REGULAR' as TransactionFlowType
   });
+  
+  // Get accounts from global store
+  const { accounts, refreshAccounts } = useAccountStore();
   const { toast } = useToast();
+
+  const setDefaultAccount = useCallback(() => {
+    if (Array.isArray(accounts) && accounts.length > 0) {
+      console.log(`Found ${accounts.length} accounts`);
+      
+      // Get the default account or first account
+      const defaultAccount = accounts.find(acc => acc.is_default) || accounts[0];
+      
+      if (defaultAccount) {
+        console.log("Using account:", defaultAccount.name);
+        setFormData(prev => ({
+          ...prev,
+          account_id: defaultAccount.account_id 
+        }));
+      } else {
+        console.error("No accounts available despite array having length");
+        setFormData(prev => ({ ...prev, account_id: '' })); 
+      }
+    } else {
+      console.error("No accounts found or accounts store is empty");
+      setFormData(prev => ({ ...prev, account_id: '' }));
+      toast({
+        title: "Warning",
+        description: "No accounts found. Please create an account first.",
+        variant: "destructive"
+      });
+    }
+  }, [accounts, toast]);
 
   useEffect(() => {
     if (open) {
-      loadAccountsAndSetDefault();
-    }
-  }, [open]);
-
-  const loadAccountsAndSetDefault = async () => {
-    setLoading(true);
-    try {
-      // Fetch all accounts for the dropdown
-      console.log("Fetching accounts for dialog...");
-      const accountsData = await fetchAccounts();
-      
-      if (Array.isArray(accountsData) && accountsData.length > 0) {
-        console.log(`Found ${accountsData.length} accounts`);
-        setAccounts(accountsData);
-        
-        // Get the default account or first account
-        const defaultAccount = accountsData.find(acc => acc.is_default) || accountsData[0];
-        
-        if (defaultAccount) {
-          console.log("Using account:", defaultAccount.name);
-          setFormData(prev => ({
-            ...prev,
-            account_id: defaultAccount.account_id 
-          }));
-        } else {
-          console.error("No accounts available despite array having length");
-          setFormData(prev => ({ ...prev, account_id: '' })); 
-        }
+      if (!accounts.length) {
+        refreshAccounts();
       } else {
-        console.error("No accounts found or fetchAccounts returned empty array");
-        setAccounts([]);
-        setFormData(prev => ({ ...prev, account_id: '' }));
-        toast({
-          title: "Warning",
-          description: "No accounts found. Please create an account first.",
-          variant: "destructive"
-        });
+        setDefaultAccount();
       }
-    } catch (error) {
-      // Catch errors from either fetchAccounts or getDefaultAccount
-      console.error('Error loading accounts and setting default:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load account information",
-        variant: "destructive"
-      });
-      setAccounts([]); // Clear accounts list on error
-      setFormData(prev => ({ ...prev, account_id: '' })); 
-    } finally {
-      setLoading(false);
     }
-  };
-
-  const loadAccounts = async () => {
-    try {
-      setLoading(true);
-      const accountsData = await fetchAccounts();
-      setAccounts(accountsData);
-    } catch (error) {
-      console.error('Error loading accounts:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load accounts",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [open, accounts, refreshAccounts, setDefaultAccount]);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -174,6 +144,7 @@ const AddTransactionDialog = () => {
         currency: 'NGN' // Default currency
       };
       
+      // Create the transaction using the service
       await createTransaction(transaction);
       
       toast({
@@ -181,20 +152,8 @@ const AddTransactionDialog = () => {
         description: "Transaction added successfully"
       });
       
-      // Reset form
-      setFormData({
-        description: '',
-        amount: '',
-        type: 'expense',
-        category: 'uncategorized',
-        date: new Date().toISOString().split('T')[0],
-        account_id: '',
-        transaction_type: 'REGULAR'
-      });
-      
-      // Dispatch refresh event
-      const refreshEvent = new Event('refresh');
-      document.dispatchEvent(refreshEvent);
+      // Simply refresh accounts once after transaction is created
+      await refreshAccounts();
       
       setOpen(false);
     } catch (error) {

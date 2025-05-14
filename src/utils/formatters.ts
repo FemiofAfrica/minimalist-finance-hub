@@ -1,9 +1,17 @@
-
-// Format number to Nigerian Naira
-export const formatNaira = (amount: number) => {
+/**
+ * Format a number as Naira currency (₦)
+ */
+export const formatNaira = (amount: number | null | undefined): string => {
+  if (amount === null || amount === undefined) {
+    return '₦0.00';
+  }
+  
+  // Format with thousand separators and 2 decimal places
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',
     currency: 'NGN',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   }).format(amount);
 };
 

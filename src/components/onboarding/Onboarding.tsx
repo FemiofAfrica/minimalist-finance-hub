@@ -68,7 +68,7 @@ export const Onboarding = () => {
     if (currentStep === 1) {
       interval = setInterval(() => {
         setCurrentFeature((prev) => (prev + 1) % featureHighlights.length);
-      }, 4000);
+      }, 6000);
     }
     return () => clearInterval(interval);
   }, [currentStep]);
@@ -115,7 +115,7 @@ export const Onboarding = () => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden bg-gradient-to-br from-[#004D40] to-[#00695C] text-white border-none">
+      <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden bg-gradient-to-br from-[#004D40] to-[#00695C] text-white border-none flex flex-col max-h-[90vh]">
         {/* Skip button */}
         <div className="absolute right-4 top-4 z-10">
           <Button
@@ -129,7 +129,7 @@ export const Onboarding = () => {
           </Button>
         </div>
         
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto" id="onboarding-content">
           <Steps
             steps={steps}
             currentStep={currentStep}
@@ -217,11 +217,11 @@ export const Onboarding = () => {
                 variants={containerVariants}
                 className="space-y-6 text-center py-4"
               >
-                <motion.div variants={textVariants} className="text-4xl font-bold mb-6">
-                  💲 Choose Your Currency
+                <motion.div variants={textVariants} className="text-4xl font-bold mb-4">
+                  Choose Your Currency
                 </motion.div>
                 
-                <motion.div variants={textVariants} className="text-lg opacity-90 mb-8">
+                <motion.div variants={textVariants} className="text-lg opacity-90 mb-6">
                   Select your primary currency for displaying amounts throughout the app.
                 </motion.div>
                 
@@ -245,9 +245,6 @@ export const Onboarding = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-sm text-white/70 mt-1">
-                      This will be used as your default currency throughout the app.
-                    </p>
                   </div>
                   
                   <div className="flex items-center justify-between pt-4 border-t border-white/20">
@@ -263,12 +260,12 @@ export const Onboarding = () => {
                       id="live-conversion"
                       checked={isLiveConversionEnabled}
                       onCheckedChange={toggleLiveConversion}
-                      className="bg-white/20 data-[state=checked]:bg-white"
+                      className="bg-white/20 data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-500/50"
                     />
                   </div>
                 </motion.div>
                 
-                <motion.div variants={textVariants} className="text-sm text-white/70 italic mt-4">
+                <motion.div variants={textVariants} className="text-sm text-white/70 italic">
                   Note: For subscriptions, amounts will display in their original input currency.
                 </motion.div>
               </motion.div>
@@ -315,9 +312,48 @@ export const Onboarding = () => {
               </motion.div>
             )}
           </AnimatePresence>
+          
+          {/* Scroll indicator - only shows when content overflows */}
+          <div className="scroll-indicator hidden justify-center items-center py-2 text-white/70 text-sm">
+            <motion.div
+              animate={{ y: [0, 5, 0] }}
+              transition={{ repeat: Infinity, duration: 2 }}
+              className="flex flex-col items-center"
+            >
+              <span className="sr-only">Scroll for more content</span>
+              ↓
+            </motion.div>
+          </div>
         </div>
 
-        <DialogFooter className="bg-black/20 p-6 flex flex-row justify-between">
+        <style>
+          {`
+            #onboarding-content {
+              scrollbar-width: thin;
+              scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+            }
+            
+            #onboarding-content::-webkit-scrollbar {
+              width: 6px;
+            }
+            
+            #onboarding-content::-webkit-scrollbar-track {
+              background: transparent;
+            }
+            
+            #onboarding-content::-webkit-scrollbar-thumb {
+              background-color: rgba(255, 255, 255, 0.3);
+              border-radius: 3px;
+            }
+            
+            /* Show scroll indicator when content overflows */
+            #onboarding-content.overflow-y-auto:not(.overflow-hidden) .scroll-indicator {
+              display: flex;
+            }
+          `}
+        </style>
+
+        <DialogFooter className="bg-black/20 p-6 flex flex-row justify-between mt-auto sticky bottom-0 border-t border-white/10 shadow-[0_-4px_6px_rgba(0,0,0,0.1)]">
           {currentStep > 0 ? (
             <Button
               variant="outline"

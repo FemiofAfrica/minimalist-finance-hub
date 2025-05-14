@@ -1,6 +1,20 @@
 import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
 import { Card, normalizeDatabaseCard, prepareDatabaseCard } from "@/types/card";
 import { getAccountById, fetchAccounts } from "@/services/accountService";
+import { Account } from "@/types/account";
+
+// Define a type for the cards table that's missing from the Supabase types
+// This helps make the code more type-safe while working around the missing table in the database types
+interface CardsTable {
+  card_id: string;
+  user_id: string;
+  account_id?: string;
+  name: string;
+  type: string;
+  last_four: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
 // Utility function to ensure cards have their account balances
 async function syncCardWithAccountBalance(card: Card): Promise<Card> {
@@ -30,7 +44,21 @@ async function syncCardWithAccountBalance(card: Card): Promise<Card> {
 }
 
 // Cache for accounts to reduce duplicate fetches
-let accountsCache: Record<string, any> = {};
+let accountsCache: Record<string, Account> = {};
+
+// Initialize event listener for transaction refresh events
+if (typeof document !== 'undefined') {
+  document.addEventListener('refresh-transactions', async () => {
+    console.log('Transaction refresh event detected - refreshing accounts cache');
+    await refreshAccountsCache();
+  });
+  
+  // Also listen for general refresh events
+  document.addEventListener('refresh', async () => {
+    console.log('General refresh event detected - refreshing accounts cache');
+    await refreshAccountsCache();
+  });
+}
 
 // Function to refresh the accounts cache
 async function refreshAccountsCache(): Promise<void> {
@@ -39,7 +67,7 @@ async function refreshAccountsCache(): Promise<void> {
     accountsCache = accounts.reduce((acc, account) => {
       acc[account.account_id] = account;
       return acc;
-    }, {} as Record<string, any>);
+    }, {} as Record<string, Account>);
     console.log('Accounts cache refreshed with', Object.keys(accountsCache).length, 'accounts');
   } catch (error) {
     console.error('Error refreshing accounts cache:', error);
@@ -54,11 +82,13 @@ export const fetchCards = async (): Promise<Card[]> => {
     // Refresh accounts cache first
     await refreshAccountsCache();
     
-    const { data, error } = await supabase
-      .from('cards')
+    // Use type assertion to work around missing 'cards' table in type definitions
+    const { data, error } = await (supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from('cards' as any)
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false }));
 
     if (error) {
       console.error('Error fetching cards:', error);
@@ -122,11 +152,13 @@ export const createCard = async (card: Omit<Card, 'card_id'>): Promise<Card> => 
     
     console.log("Creating card with data:", cardWithUserId);
     
-    const { data, error } = await supabase
-      .from('cards')
+    // Use type assertion to work around missing 'cards' table in type definitions
+    const { data, error } = await (supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from('cards' as any)
       .insert(cardWithUserId)
       .select()
-      .single();
+      .single());
 
     if (error) {
       console.error('Error creating card:', error);
@@ -164,12 +196,14 @@ export const updateCard = async (cardId: string, updates: Partial<Card>): Promis
       ...updates
     });
     
-    const { data, error } = await supabase
-      .from('cards')
+    // Use type assertion to work around missing 'cards' table in type definitions
+    const { data, error } = await (supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from('cards' as any)
       .update(cardUpdates)
       .eq('card_id', cardId)
       .select()
-      .single();
+      .single());
 
     if (error) {
       console.error('Error updating card:', error);
@@ -190,10 +224,12 @@ export const updateCard = async (cardId: string, updates: Partial<Card>): Promis
 
 export const deleteCard = async (cardId: string): Promise<void> => {
   try {
-    const { error } = await supabase
-      .from('cards')
+    // Use type assertion to work around missing 'cards' table in type definitions
+    const { error } = await (supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from('cards' as any)
       .delete()
-      .eq('card_id', cardId);
+      .eq('card_id', cardId));
 
     if (error) {
       console.error('Error deleting card:', error);
@@ -212,11 +248,13 @@ export const getCardById = async (cardId: string): Promise<Card | null> => {
     // Refresh accounts cache
     await refreshAccountsCache();
     
-    const { data, error } = await supabase
-      .from('cards')
+    // Use type assertion to work around missing 'cards' table in type definitions
+    const { data, error } = await (supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from('cards' as any)
       .select('*')
       .eq('card_id', cardId)
-      .maybeSingle();
+      .maybeSingle());
 
     if (error) {
       console.error('Error fetching card:', error);
@@ -262,12 +300,14 @@ export const getCardsByAccount = async (accountId: string): Promise<Card[]> => {
     
     console.log(`Account found with balance: ${account.balance}`);
     
-    const { data, error } = await supabase
-      .from('cards')
+    // Use type assertion to work around missing 'cards' table in type definitions
+    const { data, error } = await (supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from('cards' as any)
       .select('*')
       .eq('account_id', accountId)
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false }));
 
     if (error) {
       console.error('Error fetching cards by account:', error);
