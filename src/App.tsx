@@ -1,6 +1,8 @@
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/react"
 
+import { MixpanelService } from '@/integrations/mixpanel';
+
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
@@ -19,6 +21,7 @@ import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
 import './App.css';
 import { OnboardingProvider } from '@/contexts/OnboardingContext';
+import { useEffect } from 'react';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -38,11 +41,37 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return children;
 }
 
+// Separate component for Mixpanel tracking that uses the auth context
+function MixpanelInit() {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      MixpanelService.identify(user.id);
+      MixpanelService.setUserProfile({
+        $email: user.email,
+        $name: user.user_metadata?.full_name || '',
+      });
+      MixpanelService.trackEvent('App Launched', { 
+        loggedIn: true 
+      });
+    } else {
+      MixpanelService.trackEvent('App Launched', { 
+        loggedIn: false 
+      });
+    }
+  }, [user]);
+
+  return null;
+}
+
 function App() {
   return (
     <Router>
       <ThemeProvider>
         <AuthProvider>
+          {/* MixpanelInit must be inside AuthProvider to use useAuth hook */}
+          <MixpanelInit />
           <CurrencyProvider>
             <OnboardingProvider>
               <NotificationProvider>

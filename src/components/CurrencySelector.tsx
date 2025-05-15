@@ -8,6 +8,7 @@ import {
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { FinanceEvents } from "@/integrations/mixpanel/events";
 
 const supportedCurrencies = [
   { code: "NGN", symbol: "₦", name: "Nigerian Naira" },
@@ -19,6 +20,17 @@ const supportedCurrencies = [
 export function CurrencySelector() {
   const { currentCurrency, setCurrentCurrency } = useCurrency();
   const isMobile = useIsMobile();
+
+  const handleCurrencyChange = (currency: typeof currentCurrency) => {
+    setCurrentCurrency(currency);
+    
+    // Track currency selection event
+    FinanceEvents.trackLiveCurrency({
+      currencies: [currency.code],
+      baseCurrency: currency.code,
+      viewType: 'selector'
+    });
+  };
 
   return (
     <DropdownMenu>
@@ -37,7 +49,7 @@ export function CurrencySelector() {
         {supportedCurrencies.map((currency) => (
           <DropdownMenuItem
             key={currency.code}
-            onClick={() => setCurrentCurrency(currency)}
+            onClick={() => handleCurrencyChange(currency)}
           >
             {currency.symbol} {currency.code} - {currency.name}
           </DropdownMenuItem>

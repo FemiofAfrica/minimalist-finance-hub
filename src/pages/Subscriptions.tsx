@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { TransactionAutocomplete } from '@/components/ui/transaction-autocomplete';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { checkSubscriptionRenewals } from '@/services/notificationService';
+import { FinanceEvents } from '@/integrations/mixpanel/events';
 
 // Define the original base currency of the incoming data
 const APP_BASE_CURRENCY = "NGN";
@@ -134,6 +135,14 @@ const SubscriptionsPage: React.FC = () => {
         auto_renew: formData.auto_renew,
         reminder_days: formData.reminder_days,
         provider_id: formData.provider_id
+      });
+      
+      // Track subscription added event
+      FinanceEvents.trackAddSubscription({
+        subscriptionName: formData.name,
+        amount: formData.amount,
+        billingCycle: formData.frequency.toLowerCase() as any,
+        category: formData.category_name
       });
       
       setSubscriptions([...subscriptions, newSubscription]);

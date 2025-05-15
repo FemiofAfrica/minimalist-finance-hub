@@ -21,6 +21,7 @@ import { createTransaction } from "@/services/transactionService";
 import { TransactionFlowType, TransactionType } from "@/types/transaction";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccountStore } from "@/stores/accountStore";
+import { FinanceEvents } from "@/integrations/mixpanel/events";
 
 const AddTransactionDialog = () => {
   const [open, setOpen] = useState(false);
@@ -146,6 +147,15 @@ const AddTransactionDialog = () => {
       
       // Create the transaction using the service
       await createTransaction(transaction);
+      
+      // Track the transaction event
+      FinanceEvents.trackAddTransaction({
+        transactionType: formData.type as 'income' | 'expense' | 'transfer',
+        category: formData.category,
+        amount: parseFloat(formData.amount),
+        paymentMethod: 'manual',
+        recurring: false
+      });
       
       toast({
         title: "Success",

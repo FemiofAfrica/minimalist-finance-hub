@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { FinanceEvents } from '@/integrations/mixpanel/events';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -101,6 +102,13 @@ const Login = () => {
         }
         
         await signUp(email, password, { firstName, lastName });
+        
+        // Track signup event
+        FinanceEvents.trackSignUp({
+          method: 'email',
+          source: 'signup_form'
+        });
+        
         toast({
           title: "Account created!",
           description: "Please check your email to verify your account.",

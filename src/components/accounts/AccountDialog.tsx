@@ -23,6 +23,7 @@ import { createAccount, updateAccount, deleteAccount } from "@/services/accountS
 import { Wallet, Building } from "lucide-react";
 import { BankSelector, getBankNameById } from "@/components/BankSelector";
 import { Checkbox } from "@/components/ui/checkbox";
+import { FinanceEvents } from "@/integrations/mixpanel/events";
 
 interface AccountDialogProps {
   isOpen: boolean;
@@ -146,6 +147,15 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
         });
       } else {
         await createAccount(formData as Omit<Account, 'account_id'>);
+        
+        // Track bank account creation
+        FinanceEvents.trackCreateBankAccount({
+          accountType: formData.type?.toLowerCase() || 'unknown',
+          bank: formData.bank_name || 'unknown',
+          currency: formData.currency || 'NGN',
+          initialBalance: formData.balance || 0
+        });
+        
         toast({
           title: "Success",
           description: "Account created successfully",
