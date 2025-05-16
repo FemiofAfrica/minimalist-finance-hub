@@ -20,6 +20,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from '@/integrations/supabase/client';
 import PublicLayout from '@/components/PublicLayout';
+import { Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -41,6 +42,11 @@ const Login = () => {
   const [isCodeResetView, setIsCodeResetView] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  // Password visibility toggles
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
   
   const { signIn, signUp, resetPassword, resendVerificationEmail } = useAuth();
   const navigate = useNavigate();
@@ -124,8 +130,18 @@ const Login = () => {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An error occurred";
       
+      // Check if error is about existing user
+      if (errorMessage.includes("already registered") || errorMessage.includes("already exists") || errorMessage.includes("try logging in")) {
+        // Switch to login mode
+        setIsSignUp(false);
+        
+        toast({
+          title: "Account already exists",
+          description: "This email is already registered. Please login instead.",
+        });
+      }
       // Show verification dialog if the error is about unverified email
-      if (errorMessage.includes("Email not confirmed")) {
+      else if (errorMessage.includes("Email not confirmed")) {
         setVerificationEmail(email);
         setIsVerifyDialogOpen(true);
       } else {
@@ -302,15 +318,25 @@ const Login = () => {
                   </div>
                   <div>
                     <Label htmlFor="password" className="text-sm font-medium text-gray-200">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={password}
-                      onChange={handlePasswordChange}
-                      required
-                      className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
-                      placeholder="Enter your password"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={handlePasswordChange}
+                        required
+                        className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300 pr-10"
+                        placeholder="Enter your password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-200 hover:text-white"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </div>
                     <div className="mt-2">
                       <Progress value={passwordStrength} className="h-2" />
                       <div className="flex justify-between text-xs mt-1 text-gray-200">
@@ -321,15 +347,25 @@ const Login = () => {
                   </div>
                   <div>
                     <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-200">Confirm Password</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={handleConfirmPasswordChange}
-                      required
-                      className={`mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300 ${!passwordsMatch && confirmPassword.length > 0 ? 'border-red-500' : ''}`}
-                      placeholder="Confirm your password"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={handleConfirmPasswordChange}
+                        required
+                        className={`mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300 pr-10 ${!passwordsMatch && confirmPassword.length > 0 ? 'border-red-500' : ''}`}
+                        placeholder="Confirm your password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-200 hover:text-white"
+                        tabIndex={-1}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </div>
                     {!passwordsMatch && confirmPassword.length > 0 && (
                       <p className="text-red-400 text-xs mt-1">Passwords don't match</p>
                     )}
@@ -351,15 +387,25 @@ const Login = () => {
                   </div>
                   <div>
                     <Label htmlFor="password" className="text-sm font-medium text-gray-200">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
-                      placeholder="Enter your password"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300 pr-10"
+                        placeholder="Enter your password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-200 hover:text-white"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
@@ -477,28 +523,48 @@ const Login = () => {
                   
                   <div className="grid gap-2">
                     <Label htmlFor="newPassword" className="text-white">New Password</Label>
-                    <Input
-                      id="newPassword"
-                      type="password"
-                      value={newPassword}
-                      onChange={handleNewPasswordChange}
-                      required
-                      placeholder="Enter your new password"
-                      className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="newPassword"
+                        type={showNewPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={handleNewPasswordChange}
+                        required
+                        placeholder="Enter your new password"
+                        className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-200 hover:text-white"
+                        tabIndex={-1}
+                      >
+                        {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </div>
                   </div>
                   
                   <div className="grid gap-2">
                     <Label htmlFor="confirmNewPassword" className="text-white">Confirm Password</Label>
-                    <Input
-                      id="confirmNewPassword"
-                      type="password"
-                      value={confirmNewPassword}
-                      onChange={handleConfirmNewPasswordChange}
-                      required
-                      placeholder="Confirm your new password"
-                      className={`mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300 ${!newPasswordsMatch && confirmNewPassword.length > 0 ? 'border-red-500' : ''}`}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="confirmNewPassword"
+                        type={showConfirmNewPassword ? "text" : "password"}
+                        value={confirmNewPassword}
+                        onChange={handleConfirmNewPasswordChange}
+                        required
+                        placeholder="Confirm your new password"
+                        className={`mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300 pr-10 ${!newPasswordsMatch && confirmNewPassword.length > 0 ? 'border-red-500' : ''}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-200 hover:text-white"
+                        tabIndex={-1}
+                      >
+                        {showConfirmNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </div>
                     {!newPasswordsMatch && confirmNewPassword.length > 0 && (
                       <p className="text-red-400 text-xs mt-1">Passwords don't match</p>
                     )}

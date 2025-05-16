@@ -87,6 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // Double check for identityId - when this is undefined it can indicate an existing user
+      // in some Supabase versions even when no error is returned
+      if (data?.user && !data.user.identities?.some(identity => identity.identity_data?.email === email)) {
+        throw new Error('This email is already registered. Please try logging in instead.');
+      }
+
       if (!data?.user) {
         throw new Error('No user data returned from signup. Please try again.');
       }
