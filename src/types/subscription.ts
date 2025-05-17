@@ -1,5 +1,40 @@
 // Define the Subscription types
-export type SubscriptionFrequency = "monthly" | "yearly" | "quarterly" | "weekly" | string;
+export type SubscriptionFrequency = "MONTHLY" | "ANNUALLY" | "QUARTERLY" | "WEEKLY" | "CUSTOM";
+
+// Map from DB enum to our internal types
+export function mapDBFrequencyToAppFrequency(dbFrequency: string): SubscriptionFrequency {
+  // Handle case sensitivity
+  const normalizedFreq = dbFrequency.toUpperCase();
+  switch (normalizedFreq) {
+    case 'MONTHLY':
+    case 'ANNUALLY':
+    case 'QUARTERLY':
+    case 'WEEKLY':
+    case 'CUSTOM':
+      return normalizedFreq as SubscriptionFrequency;
+    case 'YEARLY':
+      return 'ANNUALLY';
+    default:
+      return 'CUSTOM';
+  }
+}
+
+// Map from our types to DB enum
+export function mapAppFrequencyToDBFrequency(appFrequency: SubscriptionFrequency): string {
+  switch (appFrequency) {
+    case 'MONTHLY':
+      return 'monthly';
+    case 'ANNUALLY':
+      return 'yearly';
+    case 'QUARTERLY':
+      return 'quarterly';
+    case 'WEEKLY':
+      return 'weekly';
+    case 'CUSTOM':
+    default:
+      return 'custom';
+  }
+}
 
 export interface Subscription {
   subscription_id: string;

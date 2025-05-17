@@ -13,6 +13,7 @@ export interface TransactionBase {
   description?: string | null;
   notes?: string | null;
   name?: string | null;
+  linked_transaction_id?: string | null; // For transfer transactions - links to the other half of the transfer
 }
 
 // Account-related properties
@@ -30,8 +31,8 @@ export interface TransactionCardInfo {
 // Category-related properties
 export interface TransactionCategoryInfo {
   category_id?: string | null;
-  category_name?: string | null;
-  category_type?: "INCOME" | "EXPENSE" | "TRANSFER" | null;
+  name?: string | null;
+  type?: "INCOME" | "EXPENSE" | "TRANSFER" | null;
 }
 
 // Legacy flow types for backward compatibility
@@ -63,7 +64,6 @@ export interface TransactionInput {
   notes?: string;
   account_id?: string;
   category_id?: string;
-  category_name?: string;
   name?: string;
 }
 
@@ -81,6 +81,7 @@ export interface Transaction {
   notes?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  linked_transaction_id?: string | null; // For transfer transactions
   // Fields derived from joins or needed for UI
   account_name?: string | null; 
   category_name?: string | null;

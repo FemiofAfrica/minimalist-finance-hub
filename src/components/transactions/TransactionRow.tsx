@@ -25,6 +25,8 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { fetchAccounts } from '@/services/accountService';
+import { deleteTransaction, deleteTransferTransactions } from '@/services/transactionService';
 
 interface TransactionRowProps {
   transaction: Transaction;
@@ -37,17 +39,19 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [categories, setCategories] = useState<{ category_id: string; category_name: string; category_type: string }[]>([]);
+  const [categories, setCategories] = useState<{ category_id: string; name: string; type: string }[]>([]);
   const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
   const [categoryError, setCategoryError] = useState<Error | null>(null);
   const { formatPossiblyConvertedCurrency, exchangeRates } = useCurrency();
+  const [accounts, setAccounts] = useState([]);
   const [editedTransaction, setEditedTransaction] = useState({
     description: transaction.description ?? '',
     amount: transaction.amount,
-    category_name: transaction.category_name ?? '',
-    category_type: transaction.category_type?.toLowerCase() || 'expense',
+    name: transaction.category_name ?? '',
+    type: transaction.category_type?.toLowerCase() || 'expense',
     date: transaction.date.split('T')[0],
     notes: transaction.notes || '',
+    account_id: transaction.account_id || '',
   });
   const { toast } = useToast();
 
@@ -56,8 +60,8 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
       try {
         const { data, error } = await supabase
           .from('categories')
-          .select('category_id, category_name, category_type')
-          .order('category_name');
+          .select('category_id, name, type')
+          .order('name');
 
         if (error) {
           console.error('Error fetching categories:', error);
@@ -70,15 +74,15 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
           
           const safeData = rawData as Array<{
             category_id: string;
-            category_name: string;
-            category_type: string;
+            name: string;
+            type: string;
             description?: string | null;
           }>;
           
           const typedCategories = safeData.map(category => ({
             category_id: category.category_id,
-            category_name: category.category_name,
-            category_type: category.category_type.toLowerCase()
+            name: category.name,
+            type: category.type.toLowerCase()
           }));
           setCategories(typedCategories);
         } else {
@@ -91,6 +95,10 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
     };
 
     fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    fetchAccounts().then(setAccounts);
   }, []);
 
   const convertNgnToUsd = (amountNgn: number): number | null => {
@@ -109,8 +117,8 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
       let categoryId = null;
       
       const existingCategory = categories.find(
-        c => c.category_name.toLowerCase() === editedTransaction.category_name.toLowerCase() && 
-             c.category_type.toLowerCase() === editedTransaction.category_type.toLowerCase()
+        c => c.name.toLowerCase() === editedTransaction.name.toLowerCase() && 
+             c.type.toLowerCase() === editedTransaction.type.toLowerCase()
       );
       
       if (existingCategory) {
@@ -119,9 +127,9 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
         const { data: newCategory, error: categoryError } = await supabase
           .from('categories')
           .insert({
-            category_name: editedTransaction.category_name,
+            name: editedTransaction.name,
             user_id: transaction.user_id,
-            category_type: editedTransaction.category_type
+            type: editedTransaction.type
           })
           .select('category_id')
           .single();
@@ -145,9 +153,8 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
         amount: parseFloat(String(editedTransaction.amount)),
         date: formattedDate,
         category_id: categoryId,
-        category_name: editedTransaction.category_name,
-        category_type: editedTransaction.category_type,
         notes: editedTransaction.notes,
+        account_id: editedTransaction.account_id,
         updated_at: new Date().toISOString()
       };
       
@@ -184,13 +191,16 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
     try {
       setIsSubmitting(true);
       
-      const { error } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('transaction_id', transaction.transaction_id);
-
-      if (error) {
-        throw error;
+      // Check if this is a transfer transaction
+      if (transaction.type === 'transfer' && transaction.linked_transaction_id) {
+        // Handle deleting transfer transactions
+        await deleteTransferTransactions(
+          transaction.transaction_id,
+          transaction.linked_transaction_id
+        );
+      } else {
+        // Handle deleting regular transactions with proper balance updates
+        await deleteTransaction(transaction.transaction_id);
       }
 
       toast({
@@ -204,7 +214,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
       console.error('Error deleting transaction:', error);
       toast({
         title: "Error",
-        description: "Failed to delete transaction",
+        description: "Failed to delete transaction. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -215,13 +225,13 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
   // --- Prepare data for Combobox ---
   // Filter categories based on selected type for the dropdown
   const filteredCategoriesByType = categories.filter(
-      cat => cat.category_type === editedTransaction.category_type
+      cat => cat.type === editedTransaction.type
   );
   // Get the current search term/value from state
-  const currentCategorySearch = editedTransaction.category_name.trim();
+  const currentCategorySearch = editedTransaction.name.trim();
   // Check if the current input exactly matches an existing category for the current type
   const exactMatchExists = filteredCategoriesByType.some(
-      cat => cat.category_name.toLowerCase() === currentCategorySearch.toLowerCase()
+      cat => cat.name.toLowerCase() === currentCategorySearch.toLowerCase()
   );
   // Determine whether to show the "Create" option
   const showCreateOption = currentCategorySearch !== "" && !exactMatchExists;
@@ -236,7 +246,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                 ? transaction.description?.toLowerCase().includes("to ") 
                   ? "bg-red-100" 
                   : "bg-emerald-100"
-                : transaction.category_type?.toLowerCase() === "expense" 
+                : transaction.type?.toLowerCase() === "expense" 
                   ? "bg-red-100" 
                   : "bg-emerald-100"
             } shrink-0`}>
@@ -244,7 +254,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                 ? transaction.description?.toLowerCase().includes("to ") 
                   ? <ArrowDownRight className="w-4 h-4 text-red-500" /> 
                   : <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-                : transaction.category_type?.toLowerCase() === "expense" 
+                : transaction.type?.toLowerCase() === "expense" 
                   ? <ArrowDownRight className="w-4 h-4 text-red-500" /> 
                   : <ArrowUpRight className="w-4 h-4 text-emerald-500" />
               }
@@ -280,7 +290,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                 ? "text-red-500 font-medium"
                 : "text-emerald-500 font-medium";
             } else {
-              amountClass = transaction.category_type?.toLowerCase() === "expense"
+              amountClass = transaction.type?.toLowerCase() === "expense"
                 ? "text-red-500 font-medium"
                 : "text-emerald-500 font-medium";
             }
@@ -346,16 +356,16 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="category_type" className="text-right">
+              <Label htmlFor="type" className="text-right">
                 Type
               </Label>
               <Select
-                value={editedTransaction.category_type}
+                value={editedTransaction.type}
                 onValueChange={(value) =>
                   setEditedTransaction({
                     ...editedTransaction,
-                    category_type: value,
-                    category_name: ''
+                    type: value,
+                    name: ''
                   })
                 }
               >
@@ -369,7 +379,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="category_name" className="text-right">
+              <Label htmlFor="name" className="text-right">
                 Category
               </Label>
               <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
@@ -380,7 +390,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                     aria-expanded={categoryPopoverOpen}
                     className="col-span-3 justify-between font-normal"
                   >
-                    {editedTransaction.category_name || "Select category..."}
+                    {editedTransaction.name || "Select category..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -389,7 +399,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                      onValueChange={(searchValue) => {
                        setEditedTransaction(prevState => ({
                          ...prevState,
-                         category_name: searchValue 
+                         name: searchValue 
                        }));
                      }}
                    >
@@ -400,11 +410,11 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                         {filteredCategoriesByType.map((category) => (
                             <CommandItem
                               key={category.category_id}
-                              value={category.category_name}
+                              value={category.name}
                               onSelect={(currentValue) => {
                                 setEditedTransaction({
                                   ...editedTransaction,
-                                  category_name: category.category_name, 
+                                  name: category.name, 
                                 })
                                 setCategoryPopoverOpen(false)
                               }}
@@ -412,12 +422,12 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                               <Check
                                 className={cn(
                                   "mr-2 h-4 w-4",
-                                  editedTransaction.category_name.toLowerCase() === category.category_name.toLowerCase()
+                                  editedTransaction.name.toLowerCase() === category.name.toLowerCase()
                                     ? "opacity-100"
                                     : "opacity-0"
                                 )}
                               />
-                              {category.category_name}
+                              {category.name}
                             </CommandItem>
                           ))}
                         {showCreateOption && (
@@ -426,19 +436,19 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                              value={currentCategorySearch}
                              onSelect={(selectedValue) => {
                                const newCategoryName = selectedValue.trim();
-                               const currentCategoryType = editedTransaction.category_type;
+                               const currentCategoryType = editedTransaction.type;
                                
                                if (newCategoryName) {
                                  const newCategoryObj = {
                                    category_id: `temp-${Date.now()}`,
-                                   category_name: newCategoryName,
-                                   category_type: currentCategoryType
+                                   name: newCategoryName,
+                                   type: currentCategoryType
                                  };
                                  setCategories(prev => [...prev, newCategoryObj]);
                                  
                                  setEditedTransaction(prevState => ({
                                    ...prevState,
-                                   category_name: newCategoryName
+                                   name: newCategoryName
                                  }));
                                }
                                console.log(`Optimistically adding: ${newCategoryName} (${currentCategoryType})`);
@@ -487,6 +497,26 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                 }
                 className="col-span-3"
               />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="account_id" className="text-right">
+                Account
+              </Label>
+              <Select
+                value={editedTransaction.account_id}
+                onValueChange={(value) => setEditedTransaction({ ...editedTransaction, account_id: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map((account) => (
+                    <SelectItem key={account.account_id} value={account.account_id}>
+                      {account.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>

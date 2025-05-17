@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast"; // Custom toast hook
 import VoiceInput from "@/components/VoiceInput"; // Your VoiceInput component
 import { Database } from "@/integrations/supabase/database.types";
 import { getDefaultAccount } from "@/services/accountService";
-import { createTransferTransaction } from "@/services/transactionService"; // Added import
+import { createTransferTransaction, createTransaction } from "@/services/transactionService"; // Added import
 
 // Define types for parsed transaction data
 interface ParsedTransactionData {
@@ -19,6 +19,7 @@ interface ParsedTransactionData {
   is_transfer?: boolean;
   source_account?: string;
   destination_account?: string;
+  account_name?: string;
 }
 
 interface AccountData {
@@ -134,6 +135,9 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
     setIsProcessing(true); // Set processing state
     // Clear any active preview timer if submitting manually
     handleInputInteraction();
+    
+    // Default currency if we can't determine it later
+    let transactionCurrency = 'NGN';
 
     try {
       console.log('Sending text to parse-transaction-groq function:', input);
@@ -186,11 +190,10 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       // Check if the category exists in the database
       const categoryTypeLower = parsedData.category_type.toLowerCase() as 'income' | 'expense' | 'transfer';
       
-      // @ts-expect-error - TypeScript has issues with deep type instantiation for Supabase queries
       const { data: existingCategory, error: categoryError } = await supabase
         .from('categories')
         .select('category_id')
-        .eq('category_name', parsedData.category_name)
+        .eq('name', parsedData.category_name)
         .maybeSingle();
       
       if (categoryError) {
@@ -218,7 +221,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
             user_id: userResponse.user.id, // Associate with the current user
             color: null, // Default color
             icon: null, // Default icon
-            category_type: categoryTypeLower // Add category type
+            type: categoryTypeLower // Use 'type' instead of 'category_type'
           })
           .select('category_id') // Select the ID of the newly created category
           .single(); // Expect exactly one result after insertion
@@ -251,32 +254,64 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
           throw new Error('No default account found for the user.');
         }
         
+        // Fetch all accounts to find the mentioned account if provided
+        let accountToUse = defaultAccount;
+        
+        if (parsedData.account_name) {
+          console.log(`Account name mentioned in transaction: ${parsedData.account_name}`);
+          
+          // Get all user accounts
+          const { data: accounts, error: accountsError } = await supabase
+            .from('accounts')
+            .select('account_id, name, currency')
+            .eq('user_id', userResponse.user.id);
+            
+          if (accountsError) {
+            console.error('Error fetching accounts:', accountsError);
+          } else if (accounts && accounts.length > 0) {
+            // Look for an account that matches the mentioned name
+            const accountNameLower = parsedData.account_name.toLowerCase();
+            const matchingAccount = accounts.find(account => 
+              account.name.toLowerCase() === accountNameLower || 
+              account.name.toLowerCase().includes(accountNameLower) ||
+              accountNameLower.includes(account.name.toLowerCase())
+            );
+            
+            if (matchingAccount) {
+              console.log(`Found matching account: ${matchingAccount.name} (${matchingAccount.account_id})`);
+              accountToUse = {
+                ...defaultAccount,
+                account_id: matchingAccount.account_id,
+                name: matchingAccount.name,
+                currency: matchingAccount.currency || defaultAccount.currency
+              };
+            } else {
+              console.log(`No matching account found for: ${parsedData.account_name}, using default account`);
+            }
+          }
+        }
+        
         const transactionToInsert = {
           description: parsedData.description,
-          amount: Number(parsedData.amount),
+          amount: Math.abs(Number(parsedData.amount)), // Ensure amount is positive
           type: categoryTypeLower,
           category_id: categoryId as string,
-          category_name: parsedData.category_name,
-          category_type: parsedData.category_type,
           date: parsedData.date,
           user_id: userResponse.user.id,
-          account_id: defaultAccount.account_id,
-          currency: 'USD'
+          account_id: accountToUse.account_id,
+          currency: accountToUse.currency || 'NGN' // Use the account's currency instead of hardcoded USD
         };
         
         console.log('Inserting transaction:', transactionToInsert);
         
-        const { data: insertedData, error: insertError } = await supabase
-          .from('transactions')
-          .insert(transactionToInsert)
-          .select(); // Optionally select the inserted row
+        // Call the service function instead of direct insert
+        const insertedData = await createTransaction(transactionToInsert);
         
-        if (insertError) {
-          console.error('Error inserting transaction:', insertError);
-          throw new Error(`Database error saving transaction: ${insertError.message}`);
-        }
-        
-        console.log('Transaction inserted successfully:', insertedData);
+        console.log('Transaction inserted successfully via service:', insertedData);
+
+        // Store the currency for use in the toast
+        transactionCurrency = transactionToInsert.currency;
+
       } catch (error) {
         if (error instanceof Error && error.message.includes('No default account')) {
           // Provide a more helpful error message that guides the user
@@ -288,7 +323,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       // --- Post-Submission Actions ---
       toast({
         title: `${parsedData.category_type === "INCOME" ? "Income" : "Expense"} Added`,
-        description: `${parsedData.description} (${parsedData.amount} NGN) recorded for ${parsedData.date}.`,
+        description: `${parsedData.description} (${parsedData.amount} ${transactionCurrency}) recorded for ${parsedData.date}.`,
       });
 
       setInput(""); // Clear the input field
@@ -323,6 +358,8 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
    */
   const handleTransferTransaction = async (parsedData: ParsedTransactionData) => {
     try {
+      console.log('Starting transfer transaction processing:', JSON.stringify(parsedData, null, 2));
+      
       if (!parsedData.amount || parsedData.amount <= 0) {
         throw new Error("Transfer amount must be greater than zero");
       }
@@ -358,23 +395,36 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       
       // Function to find best matching account
       const findMatchingAccount = (searchTerm: string | undefined): AccountData | null => {
-        if (!searchTerm) return null;
+        if (!searchTerm) {
+          console.log('No search term provided for account matching');
+          return null;
+        }
         
         // Normalize the search term
         const normalizedSearch = searchTerm.toLowerCase().trim();
+        console.log(`Looking for account matching "${normalizedSearch}" among ${accounts.length} accounts`);
         
         // First try exact match
         const exactMatch = accounts.find(account => 
           account.name.toLowerCase() === normalizedSearch
         );
         
-        if (exactMatch) return exactMatch;
+        if (exactMatch) {
+          console.log(`Found exact match for account: ${exactMatch.name} (${exactMatch.account_id})`);
+          return exactMatch;
+        }
         
         // Then try contains match
         const containsMatch = accounts.find(account => 
           account.name.toLowerCase().includes(normalizedSearch) ||
           normalizedSearch.includes(account.name.toLowerCase())
         );
+        
+        if (containsMatch) {
+          console.log(`Found partial match for account: ${containsMatch.name} (${containsMatch.account_id})`);
+        } else {
+          console.log(`No matching account found for "${normalizedSearch}"`);
+        }
         
         return containsMatch || null;
       };
@@ -427,6 +477,8 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
     // Format date to YYYY-MM-DD
     const date = parsedData.date || new Date().toISOString().split("T")[0];
     
+    console.log(`Executing transfer: ${sourceAccountId} -> ${destinationAccountId}, Amount: ${parsedData.amount}, Date: ${date}`);
+    
     // Execute the transfer
     const result = await createTransferTransaction(
       sourceAccountId,
@@ -436,6 +488,8 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       parsedData.description || "Transfer between accounts",
       null // no notes
     );
+    
+    console.log('Transfer result:', JSON.stringify(result, null, 2));
     
     // Show success message
     toast({

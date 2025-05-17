@@ -63,8 +63,8 @@ export type Database = {
       categories: {
         Row: {
           category_id: string
-          category_name: string
-          category_type: string
+          name: string
+          type: string
           color: string | null
           created_at: string | null
           description: string | null
@@ -75,8 +75,8 @@ export type Database = {
         }
         Insert: {
           category_id?: string
-          category_name: string
-          category_type?: string
+          name: string
+          type?: string
           color?: string | null
           created_at?: string | null
           description?: string | null
@@ -87,8 +87,8 @@ export type Database = {
         }
         Update: {
           category_id?: string
-          category_name?: string
-          category_type?: string
+          name?: string
+          type?: string
           color?: string | null
           created_at?: string | null
           description?: string | null
@@ -255,8 +255,6 @@ export type Database = {
           account_id: string
           amount: number
           category_id: string | null
-          category_name: string | null
-          category_type: string | null
           created_at: string | null
           currency: string
           date: string
@@ -271,8 +269,6 @@ export type Database = {
           account_id: string
           amount: number
           category_id?: string | null
-          category_name?: string | null
-          category_type?: string | null
           created_at?: string | null
           currency: string
           date: string
@@ -287,8 +283,6 @@ export type Database = {
           account_id?: string
           amount?: number
           category_id?: string | null
-          category_name?: string | null
-          category_type?: string | null
           created_at?: string | null
           currency?: string
           date?: string

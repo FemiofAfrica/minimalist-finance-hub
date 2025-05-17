@@ -1,37 +1,42 @@
--- Create notifications table
+-- Create notifications table for users
 CREATE TABLE IF NOT EXISTS public.notifications (
     notification_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     message TEXT NOT NULL,
     type TEXT NOT NULL DEFAULT 'info', -- 'info', 'warning', 'success', 'error'
     link TEXT, -- Optional link to navigate to when clicked
-    is_read BOOLEAN DEFAULT false,
+    is_read BOOLEAN NOT NULL DEFAULT false,
     is_dismissed BOOLEAN DEFAULT false,
     source TEXT NOT NULL, -- e.g., 'subscription', 'system', 'admin'
     related_id TEXT, -- UUID of the related entity (e.g., subscription_id)
-    created_at TIMESTAMPTZ DEFAULT NOW(),
+    data JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
     expires_at TIMESTAMPTZ -- When the notification should expire/disappear, NULL means never
 );
 
 -- Index for user notifications
-CREATE INDEX idx_notifications_user_id ON public.notifications(user_id);
-CREATE INDEX idx_notifications_is_read ON public.notifications(is_read);
-CREATE INDEX idx_notifications_created_at ON public.notifications(created_at);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON public.notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(created_at);
 
 -- Enable RLS on notifications
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.notifications ENABLE ROW LEVEL SECURITY;
 
 -- Notifications policies
-CREATE POLICY "Users can view own notifications"
+DROP POLICY IF EXISTS "Users can view their own notifications" ON public.notifications;
+CREATE POLICY "Users can view their own notifications"
     ON public.notifications FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
 CREATE POLICY "Users can update own notifications"
     ON public.notifications FOR UPDATE
     USING (auth.uid() = user_id);
 
 -- Admin policies for notifications
+DROP POLICY IF EXISTS "Admins can create notifications for any user" ON public.notifications;
 CREATE POLICY "Admins can create notifications for any user"
     ON public.notifications FOR INSERT
     WITH CHECK (
@@ -246,4 +251,66 @@ BEGIN
         RAISE NOTICE 'pg_cron extension is not available. You will need to set up a different method to run check_subscription_renewals() daily.';
     END IF;
 END;
-$$; 
+$$;
+
+-- Create RPC for marking notifications as read
+CREATE OR REPLACE FUNCTION mark_notification_read(p_notification_id UUID, p_is_read BOOLEAN DEFAULT true)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_user_id UUID;
+    v_notification_exists BOOLEAN;
+BEGIN
+    -- Get current user ID
+    v_user_id := auth.uid();
+    
+    -- Check if notification exists and belongs to user
+    SELECT EXISTS (
+        SELECT 1 FROM notifications 
+        WHERE notification_id = p_notification_id 
+        AND user_id = v_user_id
+    ) INTO v_notification_exists;
+    
+    IF NOT v_notification_exists THEN
+        RETURN false;
+    END IF;
+    
+    -- Update notification
+    UPDATE notifications
+    SET 
+        is_read = p_is_read,
+        updated_at = now()
+    WHERE 
+        notification_id = p_notification_id
+        AND user_id = v_user_id;
+    
+    RETURN true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create RPC for marking all notifications as read
+CREATE OR REPLACE FUNCTION mark_all_notifications_read()
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    -- Get current user ID
+    v_user_id := auth.uid();
+    
+    -- Update all notifications for this user
+    UPDATE notifications
+    SET 
+        is_read = true,
+        updated_at = now()
+    WHERE 
+        user_id = v_user_id
+        AND is_read = false;
+    
+    RETURN true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant access to authenticated users
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT ALL ON public.notifications TO authenticated;
+GRANT EXECUTE ON FUNCTION mark_notification_read(UUID, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION mark_all_notifications_read() TO authenticated; 

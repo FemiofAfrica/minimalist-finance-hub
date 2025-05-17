@@ -13,6 +13,24 @@ export type CategoryIncome = {
   value: number;
 };
 
+// Specific type for transaction data used in category fetching
+interface TransactionWithCategoryName extends Pick<Transaction, 'amount'> {
+  categories: { name: string } | null; 
+}
+
+// Specific type for current month transaction data in analytics
+interface CurrentMonthTransactionData {
+  amount: number;
+  type: Transaction['type']; // Use the Transaction type for 'type'
+}
+
+// Specific type for previous month transaction data in analytics
+interface PreviousMonthTransactionData {
+  amount: number;
+  type: Transaction['type']; // Use the Transaction type for 'type'
+  categories: { type?: string } | null; // Made type optional
+}
+
 // Type for dashboard analytics data
 export type DashboardAnalytics = {
   totalBalance: number;
@@ -45,7 +63,7 @@ export const fetchCategoryExpenses = async (): Promise<CategoryExpense[]> => {
       .select(`
         amount,
         category_id,
-        categories (category_name)
+        categories (name)
       `)
       .eq('user_id', userId)
       .eq('type', 'expense')
@@ -60,9 +78,9 @@ export const fetchCategoryExpenses = async (): Promise<CategoryExpense[]> => {
     // Group expenses by category
     const categoryMap = new Map<string, number>();
     
-    data?.forEach((transaction: any) => {
-      if (transaction.categories && transaction.categories.category_name) {
-        const categoryName = transaction.categories.category_name;
+    data?.forEach((transaction: TransactionWithCategoryName) => {
+      if (transaction.categories && transaction.categories.name) {
+        const categoryName = transaction.categories.name;
         const amount = Math.abs(Number(transaction.amount));
         
         if (categoryMap.has(categoryName)) {
@@ -106,7 +124,7 @@ export const fetchCategoryIncome = async (): Promise<CategoryIncome[]> => {
       .select(`
         amount,
         category_id,
-        categories (category_name)
+        categories (name)
       `)
       .eq('user_id', userId)
       .eq('type', 'income')
@@ -121,9 +139,9 @@ export const fetchCategoryIncome = async (): Promise<CategoryIncome[]> => {
     // Group income by category
     const categoryMap = new Map<string, number>();
     
-    data?.forEach((transaction: any) => {
-      if (transaction.categories && transaction.categories.category_name) {
-        const categoryName = transaction.categories.category_name;
+    data?.forEach((transaction: TransactionWithCategoryName) => {
+      if (transaction.categories && transaction.categories.name) {
+        const categoryName = transaction.categories.name;
         const amount = Number(transaction.amount);
         
         if (categoryMap.has(categoryName)) {
@@ -168,8 +186,7 @@ export const fetchDashboardAnalytics = async (): Promise<DashboardAnalytics> => 
       .from('transactions')
       .select(`
         amount,
-        type,
-        categories (category_type)
+        type
       `)
       .eq('user_id', userId)
       .gte('date', currentMonthStart)
@@ -186,7 +203,7 @@ export const fetchDashboardAnalytics = async (): Promise<DashboardAnalytics> => 
       .select(`
         amount,
         type,
-        categories (category_type)
+        categories (type)
       `)
       .eq('user_id', userId)
       .gte('date', previousMonthStart)
@@ -201,13 +218,10 @@ export const fetchDashboardAnalytics = async (): Promise<DashboardAnalytics> => 
     let totalIncome = 0;
     let totalExpense = 0;
     
-    currentMonthData?.forEach((transaction: any) => {
+    currentMonthData?.forEach((transaction: CurrentMonthTransactionData) => {
       const amount = Number(transaction.amount);
       // Use transaction.type directly (which is from the transactions table)
-      // or derive from categories if needed
-      const transactionType = transaction.type ? transaction.type.toUpperCase() : 
-                             (transaction.categories && transaction.categories.category_type ? 
-                              transaction.categories.category_type.toUpperCase() : 'EXPENSE');
+      const transactionType = transaction.type ? transaction.type.toUpperCase() : 'EXPENSE'; // Simplified default
       
       if (transactionType === 'INCOME') {
         totalIncome += amount;
@@ -223,13 +237,13 @@ export const fetchDashboardAnalytics = async (): Promise<DashboardAnalytics> => 
     let previousIncome = 0;
     let previousExpense = 0;
     
-    previousMonthData?.forEach((transaction: any) => {
+    previousMonthData?.forEach((transaction: PreviousMonthTransactionData) => {
       const amount = Number(transaction.amount);
       // Use transaction.type directly (which is from the transactions table)
       // or derive from categories if needed
       const transactionType = transaction.type ? transaction.type.toUpperCase() : 
-                             (transaction.categories && transaction.categories.category_type ? 
-                              transaction.categories.category_type.toUpperCase() : 'EXPENSE');
+                             (transaction.categories && transaction.categories.type ? 
+                              transaction.categories.type.toUpperCase() : 'EXPENSE');
       
       if (transactionType === 'INCOME') {
         previousIncome += amount;

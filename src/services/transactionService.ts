@@ -12,7 +12,7 @@ type TransactionRow = Database['public']['Tables']['transactions']['Row'];
 // Type for the structure returned by SELECT with joins
 type TransactionWithRelations = TransactionRow & {
   accounts: Pick<Database['public']['Tables']['accounts']['Row'], 'name'> | null;
-  categories: Pick<Database['public']['Tables']['categories']['Row'], 'category_name' | 'category_type'> | null;
+  categories: Pick<Database['public']['Tables']['categories']['Row'], 'name' | 'type'> | null;
 };
 
 // Work around TypeScript's deep instantiation error by casting supabase to any for specific operations
@@ -36,18 +36,18 @@ function mapSupabaseDataToTransaction(dbData: Record<string, unknown>): Transact
     }
     const accountsData = dbData.accounts as { name: string } | null;
     const categoriesData = dbData.categories as { 
-      category_name?: string; 
-      category_type?: string;
+      name?: string; 
+      type?: string;
     } | null;
     
     // For transfer transactions, use "Transfer" as the category name instead of "Uncategorized"
     const isTransfer = dbData.type === 'transfer';
-    const categoryName = isTransfer ? 'Transfer' : (categoriesData?.category_name ?? 'Uncategorized');
+    const categoryName = isTransfer ? 'Transfer' : (categoriesData?.name ?? 'Uncategorized');
     
     // Also set the category type appropriately for transfers
     const categoryType = isTransfer 
       ? 'TRANSFER' 
-      : (categoriesData?.category_type?.toUpperCase() as Transaction['category_type'] ?? 
+      : (categoriesData?.type?.toUpperCase() as Transaction['category_type'] ?? 
          (dbData.type === 'income' ? 'INCOME' : 'EXPENSE'));
          
     const accountName = accountsData?.name ?? null;
@@ -87,7 +87,7 @@ export const fetchTransactions = async (limit?: number): Promise<{ transactions:
       .select(`
         *,
         accounts (name),
-        categories (category_name, category_type)
+        categories (name, type)
       `)
       .eq('user_id', userId)
       .order('date', { ascending: false })
@@ -138,7 +138,7 @@ export const fetchTransactionsByAccount = async (accountId: string): Promise<Tra
       .select(`
         *,
         accounts (name),
-        categories (category_name, category_type)
+        categories (name, type)
       `)
       .eq('user_id', userId)
       .eq('account_id', accountId)
@@ -175,7 +175,7 @@ export const fetchTransactionsByCard = async (cardId: string): Promise<Transacti
       .select(`
         *,
         accounts (name),
-        categories (category_name, category_type)
+        categories (name, type)
       `)
       .eq('user_id', userId)
       .eq('card_id', cardId)
@@ -214,7 +214,6 @@ export const createTransaction = async (transaction: TransactionInput): Promise<
       date: transaction.date,
       account_id: transaction.account_id,
       category_id: transaction.category_id,
-      category_name: transaction.category_name,
       currency: transaction.currency || 'NGN',
       notes: transaction.notes
     };
@@ -240,7 +239,7 @@ export const createTransaction = async (transaction: TransactionInput): Promise<
       .select(`
         *,
         accounts (name),
-        categories (category_name, category_type)
+        categories (name, type)
       `)
       .eq('transaction_id', data.transaction_id)
       .single();
@@ -318,7 +317,7 @@ export const updateTransaction = async (
         .select(`
           *,
           accounts (name),
-          categories (category_name, category_type)
+          categories (name, type)
         `)
         .single() as unknown as {
           data: TransactionWithRelations | null;
@@ -422,6 +421,14 @@ export const createTransferTransaction = async (
       throw new Error("Transfer amount must be greater than zero");
     }
     
+    console.log('Calling transfer_funds RPC with params:', {
+      p_source_account_id: sourceAccountId,
+      p_destination_account_id: destinationAccountId,
+      p_amount: amount,
+      p_date: date,
+      p_description: description || 'Transfer between accounts'
+    });
+    
     // Use the transfer_funds RPC function to perform the entire transfer in a transaction
     // This ensures atomicity and prevents partial transfers
     // Use explicit type assertion to handle TypeScript limitations with Supabase
@@ -460,7 +467,7 @@ export const createTransferTransaction = async (
       .select(`
           *,
         accounts (name),
-        categories (category_name, category_type)
+        categories (name, type)
       `)
       .eq('transaction_id', source_transaction_id)
       .single();
@@ -475,7 +482,7 @@ export const createTransferTransaction = async (
       .select(`
         *,
         accounts (name),
-        categories (category_name, category_type)
+        categories (name, type)
       `)
       .eq('transaction_id', destination_transaction_id)
       .single();
@@ -491,6 +498,101 @@ export const createTransferTransaction = async (
     };
   } catch (error) {
     console.error('Error in createTransferTransaction:', error);
+    throw error;
+  }
+};
+
+// --- Delete transaction (with account balance update) ---
+export const deleteTransaction = async (transactionId: string): Promise<{ success: boolean }> => {
+  try {
+    const userId = await getUserId();
+    
+    if (!userId) {
+      throw new Error("User must be authenticated to delete a transaction");
+    }
+    
+    if (!transactionId) {
+      throw new Error("Transaction ID is required");
+    }
+    
+    // Get the transaction to check if it's a transfer
+    const { data: transactionData, error: fetchError } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('transaction_id', transactionId)
+      .eq('user_id', userId)
+      .single();
+    
+    if (fetchError) {
+      console.error('Error fetching transaction details:', fetchError);
+      throw fetchError;
+    }
+    
+    if (!transactionData) {
+      throw new Error('Transaction not found or does not belong to user');
+    }
+    
+    // Use the delete_transaction RPC to ensure account balance is updated
+    const { data, error } = await supabaseAny.rpc('delete_transaction', {
+      transaction_id_param: transactionId
+    });
+    
+    if (error) {
+      console.error('Error in delete_transaction RPC:', error);
+      throw error;
+    }
+    
+    if (!data || !data.success) {
+      throw new Error('Failed to delete transaction: ' + (data?.error || 'Unknown error'));
+    }
+    
+    // Dispatch refresh event to update related components
+    document.dispatchEvent(new CustomEvent('refresh-transactions'));
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error in deleteTransaction:', error);
+    throw error;
+  }
+};
+
+// --- Delete transfer transactions ---
+export const deleteTransferTransactions = async (
+  sourceTransactionId: string, 
+  destinationTransactionId: string
+): Promise<{ success: boolean }> => {
+  try {
+    const userId = await getUserId();
+    
+    if (!userId) {
+      throw new Error("User must be authenticated to delete transfer transactions");
+    }
+    
+    if (!sourceTransactionId || !destinationTransactionId) {
+      throw new Error("Both source and destination transaction IDs are required");
+    }
+    
+    // Use the delete_transfer_transactions RPC to handle both transactions and account updates
+    const { data, error } = await supabaseAny.rpc('delete_transfer_transactions', {
+      source_transaction_id: sourceTransactionId,
+      destination_transaction_id: destinationTransactionId
+    });
+    
+    if (error) {
+      console.error('Error in delete_transfer_transactions RPC:', error);
+      throw error;
+    }
+    
+    if (!data || !data.success) {
+      throw new Error('Failed to delete transfer transactions: ' + (data?.error || 'Unknown error'));
+    }
+    
+    // Dispatch refresh event to update related components
+    document.dispatchEvent(new CustomEvent('refresh-transactions'));
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error in deleteTransferTransactions:', error);
     throw error;
   }
 };

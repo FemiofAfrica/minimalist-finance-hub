@@ -57,10 +57,24 @@ const AddTransactionDialog = () => {
       
       if (defaultAccount) {
         console.log("Using account:", defaultAccount.name);
-        setFormData(prev => ({
-          ...prev,
-          account_id: defaultAccount.account_id 
-        }));
+        
+        // Update formData with the default account
+        setFormData(prev => {
+          // Get current transaction type from previous state
+          const currentType = prev.type;
+          
+          // Re-evaluate flow type now that we have a concrete account
+          let transactionType: TransactionFlowType = 'REGULAR';
+          if (currentType === 'expense') {
+            transactionType = 'ACCOUNT_TO_EXTERNAL';
+          }
+          
+          return {
+            ...prev,
+            account_id: defaultAccount.account_id,
+            transaction_type: transactionType
+          };
+        });
       } else {
         console.error("No accounts available despite array having length");
         setFormData(prev => ({ ...prev, account_id: '' })); 
@@ -121,7 +135,13 @@ const AddTransactionDialog = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.description || !formData.amount || !formData.date || !formData.type) {
+    const amountNumber = parseFloat(formData.amount.replace(/,/g, ''));
+    if (
+      !formData.description ||
+      isNaN(amountNumber) ||
+      !formData.date ||
+      !formData.type
+    ) {
       toast({
         title: "Validation Error",
         description: "Please fill all required fields",
@@ -132,6 +152,29 @@ const AddTransactionDialog = () => {
 
     try {
       setLoading(true);
+      let accountId = formData.account_id;
+      // If no account_id is specified, fetch the default account
+      if (!accountId) {
+        const defaultAccount = await getDefaultAccount();
+        if (!defaultAccount) {
+          toast({
+            title: "No Account Found",
+            description: "You must have at least one account to add a transaction.",
+            variant: "destructive"
+          });
+          setLoading(false);
+          return;
+        }
+        accountId = defaultAccount.account_id;
+      }
+      
+      // Calculate the appropriate transaction_type based on current transaction and account
+      let transactionType: TransactionFlowType = formData.transaction_type;
+      if (accountId && formData.type === 'expense') {
+        transactionType = 'ACCOUNT_TO_EXTERNAL';
+      } else if (accountId) {
+        transactionType = 'REGULAR';
+      }
       
       const transaction = {
         description: formData.description,
@@ -139,8 +182,8 @@ const AddTransactionDialog = () => {
         type: formData.type as TransactionType,
         category: formData.category || 'uncategorized',
         date: new Date(formData.date).toISOString(),
-        account_id: formData.account_id === 'none' ? null : formData.account_id,
-        transaction_type: formData.transaction_type,
+        account_id: accountId,
+        transaction_type: transactionType,
         user_id: null, // Will be set by the service
         currency: 'NGN' // Default currency
       };

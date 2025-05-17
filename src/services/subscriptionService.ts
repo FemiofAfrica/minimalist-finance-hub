@@ -1,6 +1,51 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { supabase } from "@/integrations/supabase/client";
-import { Subscription, SubscriptionProvider, SubscriptionFrequency } from "@/types/subscription";
+import { Subscription, SubscriptionProvider, SubscriptionFrequency, mapDBFrequencyToAppFrequency, mapAppFrequencyToDBFrequency } from "@/types/subscription";
 import { createTransaction } from "./transactionService"; // Import createTransaction
+
+// Type assertion for Supabase client to handle missing tables in type definitions
+const typedSupabase = supabase as any;
+
+// Helper to map database row to Subscription type
+function mapToSubscription(dbData: any): Subscription {
+  return {
+    subscription_id: dbData.subscription_id,
+    name: dbData.name,
+    description: dbData.description,
+    amount: dbData.amount,
+    frequency: mapDBFrequencyToAppFrequency(dbData.frequency),
+    next_billing_date: dbData.next_billing_date,
+    category_id: dbData.category_id,
+    category_name: dbData.category_name,
+    category_type: dbData.category_type,
+    is_active: dbData.is_active,
+    created_at: dbData.created_at,
+    updated_at: dbData.updated_at,
+    user_id: dbData.user_id,
+    auto_renew: dbData.auto_renew,
+    reminder_days: dbData.reminder_days,
+    provider_id: dbData.provider_id
+  };
+}
+
+// Helper to map database row to SubscriptionProvider type
+function mapToSubscriptionProvider(dbData: any): SubscriptionProvider {
+  return {
+    provider_id: dbData.provider_id,
+    name: dbData.name,
+    category_id: dbData.category_id,
+    category_name: dbData.category_name,
+    logo_url: dbData.logo_url,
+    website: dbData.website,
+    is_popular: dbData.is_popular ?? false,
+    created_at: dbData.created_at,
+    created_by_user_id: dbData.created_by_user_id
+  };
+}
 
 // Fetch all subscriptions for the current user
 export const fetchSubscriptions = async (): Promise<Subscription[]> => {
@@ -27,10 +72,10 @@ export const fetchSubscriptions = async (): Promise<Subscription[]> => {
 
     // Step 2: Extract all category IDs and fetch categories in a separate query
     const categoryIds = subscriptionsData
-      .map(subscription => subscription.category_id)
+      .map((subscription) => subscription.category_id)
       .filter((id): id is string => id !== null && id !== undefined);
     
-    let categoriesMap = new Map();
+    const categoriesMap = new Map();
     
     if (categoryIds.length > 0) {
       const { data: categoriesData, error: categoriesError } = await supabase
@@ -43,7 +88,7 @@ export const fetchSubscriptions = async (): Promise<Subscription[]> => {
       } else if (categoriesData) {
         console.log("Categories data for subscriptions:", categoriesData);
         // Create a map of category_id to category object for faster lookups
-        categoriesData.forEach(category => {
+        categoriesData.forEach((category) => {
           categoriesMap.set(category.category_id, category);
         });
       }
@@ -51,10 +96,10 @@ export const fetchSubscriptions = async (): Promise<Subscription[]> => {
 
     // Step 3: Extract all provider IDs and fetch providers in a separate query
     const providerIds = subscriptionsData
-      .map(subscription => subscription.provider_id)
+      .map((subscription) => subscription.provider_id)
       .filter((id): id is string => id !== null && id !== undefined);
     
-    let providersMap = new Map();
+    const providersMap = new Map();
     
     if (providerIds.length > 0) {
       const { data: providersData, error: providersError } = await supabase
@@ -67,24 +112,26 @@ export const fetchSubscriptions = async (): Promise<Subscription[]> => {
       } else if (providersData) {
         console.log("Providers data for subscriptions:", providersData);
         // Create a map of provider_id to provider object for faster lookups
-        providersData.forEach(provider => {
+        providersData.forEach((provider) => {
           providersMap.set(provider.provider_id, provider);
         });
       }
     }
 
     // Step 4: Combine subscription data with category and provider data
-    const enrichedSubscriptions = subscriptionsData.map(subscription => {
+    const enrichedSubscriptions = subscriptionsData.map((subscription) => {
       const category = subscription.category_id ? categoriesMap.get(subscription.category_id) : null;
       const provider = subscription.provider_id ? providersMap.get(subscription.provider_id) : null;
       
-      return {
+      const enriched = mapToSubscription({
         ...subscription,
-        category_name: category ? category.category_name : (subscription.category_name || 'Uncategorized'),
-        category_type: category ? category.category_type : (subscription.category_type || 'EXPENSE'),
+        category_name: category ? category.name : (subscription.category_name || 'Uncategorized'),
+        category_type: category ? category.type?.toUpperCase() : (subscription.category_type || 'EXPENSE'),
         provider_name: provider ? provider.name : null,
         logo_url: provider ? provider.logo_url : null
-      } as Subscription & { provider_name?: string | null }; // Extended type to include provider_name
+      });
+      
+      return enriched;
     });
     
     console.log("Processed subscriptions:", enrichedSubscriptions);
@@ -107,10 +154,11 @@ export const createSubscription = async (subscription: Omit<Subscription, 'subsc
       throw new Error('User not authenticated');
     }
     
-    // Add the user_id to the subscription object
+    // Add the user_id to the subscription object and map frequency to DB format
     const subscriptionWithUserId = {
       ...subscription,
-      user_id: user.id
+      user_id: user.id,
+      frequency: mapAppFrequencyToDBFrequency(subscription.frequency)
     };
     
     const { data, error } = await supabase
@@ -149,16 +197,16 @@ export const createSubscription = async (subscription: Omit<Subscription, 'subsc
           console.log(`Found default account ${defaultAccount.account_id} for auto-creating transaction.`);
           // 2. Prepare transaction data
           const transactionInput = {
+            user_id: userId,
             account_id: defaultAccount.account_id,
             amount: data.amount, // Amount from the subscription
             currency: defaultAccount.currency || 'NGN', // Use account currency or default
-            type: data.category_type?.toLowerCase() === 'income' ? 'income' : 'expense', // Match subscription type (default expense)
+            type: (data.category_type?.toLowerCase() === 'income' ? 'income' : 'expense') as 'income' | 'expense', // Explicitly type as TransactionType
             date: data.next_billing_date, // Use the first billing date as the transaction date
             description: data.name, // Use subscription name as description
             category_id: data.category_id,
             notes: "Automatically created for new subscription.",
             subscription_id: data.subscription_id // Link it immediately
-            // user_id is added by createTransaction
           };
 
           // 3. Create the transaction
@@ -235,14 +283,21 @@ export const createSubscription = async (subscription: Omit<Subscription, 'subsc
               console.log(`Found match: Transaction ID ${transaction.transaction_id} matches keywords.`);
               linkedCount++;
               // Add update promise to the list
+              const updateOperation = supabase
+                .from('transactions')
+                .update({ 
+                  subscription_id: newSubscriptionId,
+                  amount: data.amount // Update amount to match subscription
+                })
+                .eq('transaction_id', transaction.transaction_id);
+              
               updates.push(
-                supabase
-                  .from('transactions')
-                  .update({ 
-                    subscription_id: newSubscriptionId,
-                    amount: data.amount // Update amount to match subscription
-                   })
-                  .eq('transaction_id', transaction.transaction_id)
+                Promise.resolve(updateOperation.then(result => { // Ensure result is a full Promise
+                  if (result.error) {
+                    console.error(`Error updating transaction ${transaction.transaction_id}:`, result.error);
+                  }
+                  return result; // This will be the resolved value of the promise in allSettled
+                }))
               );
             }
           }
@@ -251,12 +306,7 @@ export const createSubscription = async (subscription: Omit<Subscription, 'subsc
         // 4. Execute all updates in parallel
         if (updates.length > 0) {
           console.log(`Attempting to link ${linkedCount} transactions...`);
-          const results = await Promise.allSettled(updates);
-          results.forEach((result, index) => {
-            if (result.status === 'rejected') {
-              console.error(`Failed to update transaction ${transactions[index].transaction_id}:`, result.reason);
-            }
-          });
+          await Promise.allSettled(updates);
           console.log(`Finished linking attempts for ${linkedCount} transactions.`);
         } else {
             console.log("No matching transactions found to link.");
@@ -269,10 +319,7 @@ export const createSubscription = async (subscription: Omit<Subscription, 'subsc
     })();
     // --- END: Link existing transactions ---
 
-    return {
-      ...data,
-      frequency: data.frequency as SubscriptionFrequency
-    };
+    return mapToSubscription(data);
   } catch (error) {
     console.error("Error in createSubscription:", error);
     throw error;
@@ -288,7 +335,7 @@ export const updateSubscription = async (subscription: Partial<Subscription> & {
     const updateData = {
       is_active: subscription.is_active,
       amount: subscription.amount,
-      frequency: subscription.frequency,
+      frequency: subscription.frequency ? mapAppFrequencyToDBFrequency(subscription.frequency) : undefined,
       next_billing_date: subscription.next_billing_date,
       description: subscription.description,
       name: subscription.name,
@@ -319,10 +366,7 @@ export const updateSubscription = async (subscription: Partial<Subscription> & {
     }
     
     console.log("Updated subscription:", data);
-    return {
-      ...data,
-      frequency: data.frequency as SubscriptionFrequency
-    };
+    return mapToSubscription(data);
   } catch (error) {
     console.error("Error in updateSubscription:", error);
     throw error;
@@ -367,7 +411,7 @@ export const fetchSubscriptionProviders = async (): Promise<SubscriptionProvider
     }
     
     console.log("Subscription providers:", data);
-    return data || [];
+    return (data || []).map(provider => mapToSubscriptionProvider(provider));
   } catch (error) {
     console.error("Error in fetchSubscriptionProviders:", error);
     throw error;
@@ -391,7 +435,7 @@ export const createSubscriptionProvider = async (provider: Omit<SubscriptionProv
     }
     
     console.log("Created subscription provider:", data);
-    return data;
+    return mapToSubscriptionProvider(data);
   } catch (error) {
     console.error("Error in createSubscriptionProvider:", error);
     throw error;
@@ -472,6 +516,7 @@ export const convertSubscriptionToTransaction = async (subscriptionId: string): 
     // Create a transaction from the subscription using the createTransaction function
     // to ensure all necessary fields and validation are applied
     const transactionInput = {
+      user_id: user.id,
       account_id: accountId,
       amount: subscription.amount,
       currency: accountCurrency,
@@ -557,10 +602,7 @@ export const getUpcomingSubscriptions = async (daysAhead: number): Promise<Subsc
     }
     
     console.log(`Found ${data?.length || 0} upcoming subscriptions`);
-    return (data || []).map(subscription => ({
-      ...subscription,
-      frequency: subscription.frequency as SubscriptionFrequency
-    }));
+    return (data || []).map(subscription => mapToSubscription(subscription));
   } catch (error) {
     console.error("Error in getUpcomingSubscriptions:", error);
     throw error;

@@ -21,6 +21,7 @@ interface LocalParsedTransaction {
   source_account?: string; // Optional field for source account in transfers
   destination_account?: string; // Optional field for destination account in transfers
   is_transfer?: boolean; // Flag to indicate if it's a transfer transaction
+  account_name?: string; // Optional field for account name in regular transactions
 }
 
 // --- Groq API Connection Verification (Optional) ---
@@ -219,13 +220,21 @@ function parseFallback(text: string): Response {
     // Extract source account
     const sourceMatch = lowerText.match(patterns.sourceAccount);
     if (sourceMatch && sourceMatch[1]) {
-      fallbackData.source_account = sourceMatch[1].trim();
+      const sourceAccountName = sourceMatch[1].trim();
+      if (sourceAccountName.length > 0) {
+        fallbackData.source_account = sourceAccountName;
+        console.log("Fallback Parser - Extracted source account:", sourceAccountName);
+      }
     }
     
     // Extract destination account
     const destMatch = lowerText.match(patterns.destAccount);
     if (destMatch && destMatch[1]) {
-      fallbackData.destination_account = destMatch[1].trim();
+      const destAccountName = destMatch[1].trim();
+      if (destAccountName.length > 0) {
+        fallbackData.destination_account = destAccountName;
+        console.log("Fallback Parser - Extracted destination account:", destAccountName);
+      }
     }
   }
 
@@ -248,6 +257,27 @@ function parseFallback(text: string): Response {
     } else if (patterns.expense.test(lowerText)) {
       fallbackData.category_type = "EXPENSE";
     } // Defaults to EXPENSE if neither is strongly indicated
+    
+    // For non-transfer transactions, try to extract account name if mentioned
+    const sourceMatch = lowerText.match(patterns.sourceAccount);
+    const destMatch = lowerText.match(patterns.destAccount);
+    
+    // For expense, we want the source account (where money is coming from)
+    if (fallbackData.category_type === "EXPENSE" && sourceMatch && sourceMatch[1]) {
+      const accountName = sourceMatch[1].trim();
+      if (accountName.length > 0) {
+        fallbackData.account_name = accountName;
+        console.log("Fallback Parser - Extracted expense account:", accountName);
+      }
+    }
+    // For income, we want the destination account (where money is going to)
+    else if (fallbackData.category_type === "INCOME" && destMatch && destMatch[1]) {
+      const accountName = destMatch[1].trim();
+      if (accountName.length > 0) {
+        fallbackData.account_name = accountName;
+        console.log("Fallback Parser - Extracted income account:", accountName);
+      }
+    }
   }
 
   // --- Refactored Description Extraction ---
@@ -339,7 +369,8 @@ async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
       "category_type": "INCOME, EXPENSE, or TRANSFER",
       "is_transfer": false,
       "source_account": null,
-      "destination_account": null
+      "destination_account": null,
+      "account_name": null
     }
 
     RULES:
@@ -354,22 +385,32 @@ async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
        - Set "category_name" to "Transfer"
        - Extract "source_account" and "destination_account" from the text if available
        - Example: "I transferred 500 from my savings account to my checking account" should extract "savings" as source_account and "checking" as destination_account
-    5. 'category_name' should be one of the suggested categories if possible. Use 'Transfer' for money movements between accounts.
-    6. 'description' should be concise. For transfers, indicate the source and destination when possible.
-    7. DO NOT include a 'date' field in the JSON output.
+    5. For regular transactions (not transfers):
+       - Extract "account_name" if a specific account is mentioned
+       - Example: "Spent 50 from my credit card on food" should extract "credit card" as account_name
+       - Example: "Received 100 in my checking account" should extract "checking" as account_name
+    6. 'category_name' should be one of the suggested categories if possible. Use 'Transfer' for money movements between accounts.
+    7. 'description' should be concise. For transfers, indicate the source and destination when possible.
+    8. DO NOT include a 'date' field in the JSON output.
 
     EXAMPLES:
     Text: "Payment for Netflix subscription yesterday"
-    JSON: { "description": "Netflix subscription", "amount": 15.00, "category_name": "Entertainment", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null }
+    JSON: { "description": "Netflix subscription", "amount": 15.00, "category_name": "Entertainment", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
 
     Text: "Received ₦500,000 salary for May from Work Inc"
-    JSON: { "description": "Salary for May from Work Inc", "amount": 500000.00, "category_name": "Salary", "category_type": "INCOME", "is_transfer": false, "source_account": null, "destination_account": null }
+    JSON: { "description": "Salary for May from Work Inc", "amount": 500000.00, "category_name": "Salary", "category_type": "INCOME", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
 
     Text: "I transferred 5000 from my savings account to my checking account"
-    JSON: { "description": "Transfer from savings to checking", "amount": 5000.00, "category_name": "Transfer", "category_type": "TRANSFER", "is_transfer": true, "source_account": "savings", "destination_account": "checking" }
+    JSON: { "description": "Transfer from savings to checking", "amount": 5000.00, "category_name": "Transfer", "category_type": "TRANSFER", "is_transfer": true, "source_account": "savings", "destination_account": "checking", "account_name": null }
 
     Text: "Moved 2500 from my Stanbic account to Providus account"
-    JSON: { "description": "Transfer from Stanbic to Providus", "amount": 2500.00, "category_name": "Transfer", "category_type": "TRANSFER", "is_transfer": true, "source_account": "Stanbic", "destination_account": "Providus" }
+    JSON: { "description": "Transfer from Stanbic to Providus", "amount": 2500.00, "category_name": "Transfer", "category_type": "TRANSFER", "is_transfer": true, "source_account": "Stanbic", "destination_account": "Providus", "account_name": null }
+    
+    Text: "Spent 100 from my credit card on groceries"
+    JSON: { "description": "Groceries", "amount": 100.00, "category_name": "Groceries", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": "credit card" }
+
+    Text: "Received 200 in my savings account for birthday gift"
+    JSON: { "description": "Birthday gift", "amount": 200.00, "category_name": "Gift", "category_type": "INCOME", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": "savings" }
 
     Transaction Text: "${text}"
   `;
@@ -502,9 +543,34 @@ async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
                 : "Uncategorized",
             category_type: parsedData.category_type === "INCOME" || (typeof parsedData.category_type === 'string' && parsedData.category_type.toUpperCase() === "INCOME")
                 ? "INCOME"
-                : "EXPENSE", // Default to EXPENSE
+                : parsedData.category_type === "TRANSFER" || (typeof parsedData.category_type === 'string' && parsedData.category_type.toUpperCase() === "TRANSFER")
+                    ? "TRANSFER"
+                    : "EXPENSE", // Default to EXPENSE
             // Date is added later in the main handler
         };
+        
+        // Set transfer flag if category type is TRANSFER
+        if (validatedData.category_type === "TRANSFER") {
+            validatedData.is_transfer = true;
+        }
+        
+        // Process source and destination accounts for transfers
+        if (validatedData.is_transfer) {
+            if (typeof parsedData.source_account === 'string' && parsedData.source_account.trim()) {
+                validatedData.source_account = parsedData.source_account.trim();
+                console.log("Groq Parser - Source account validated:", validatedData.source_account);
+            }
+            
+            if (typeof parsedData.destination_account === 'string' && parsedData.destination_account.trim()) {
+                validatedData.destination_account = parsedData.destination_account.trim();
+                console.log("Groq Parser - Destination account validated:", validatedData.destination_account);
+            }
+        } 
+        // Process account name for non-transfer transactions
+        else if (typeof parsedData.account_name === 'string' && parsedData.account_name.trim()) {
+            validatedData.account_name = parsedData.account_name.trim();
+            console.log("Groq Parser - Account name validated:", validatedData.account_name);
+        }
 
         console.log("Parsed & Validated Groq Data:", validatedData);
 
@@ -596,6 +662,7 @@ async function serve(req: Request): Promise<Response> {
             // Add the parsed date to the successful response data
             responseData.date = parseRelativeDate(text);
 
+            // Ensure account information is preserved in the final response
             console.log("Final Data (Groq):", responseData);
             return new Response(
                 JSON.stringify(responseData),
