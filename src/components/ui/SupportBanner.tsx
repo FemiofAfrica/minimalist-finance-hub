@@ -46,21 +46,23 @@ export function SupportBanner({ className = '' }: SupportBannerProps) {
             100% { transform: translateX(-160%); } /* Ensure it goes fully off-screen */
           }
           
-          /* Apply marquee only on smaller screens */
+          .marquee-text-container {
+            animation: marquee 60s linear infinite; /* Updated duration */
+            display: inline-block;
+            white-space: nowrap;
+            will-change: transform;
+          }
+          .marquee-viewport {
+            overflow-x: hidden;
+          }
+          .support-banner-content > p {
+            overflow: visible !important;
+            text-overflow: clip !important;
+          }
+          
+          /* Add any mobile-specific styles here if needed */
           @media (max-width: 767px) { /* Tailwind's 'md' breakpoint is 768px */
-            .marquee-text-container {
-              animation: marquee 60s linear infinite; /* Updated duration */
-              display: inline-block;
-              white-space: nowrap;
-              will-change: transform;
-            }
-            .marquee-viewport {
-              overflow-x: hidden;
-            }
-            .support-banner-content > p {
-              overflow: visible !important;
-              text-overflow: clip !important;
-            }
+            /* Mobile-specific styles if needed */
           }
         `}
       </style>
@@ -69,20 +71,10 @@ export function SupportBanner({ className = '' }: SupportBannerProps) {
         style={{ height: `${BANNER_HEIGHT}px` }}
       >
         {/* This div acts as the viewport for the marquee on mobile */}
-        <div className="marquee-viewport flex-grow flex items-center justify-center gap-2 max-w-4xl mx-auto px-8 relative"> {/* Added px-8 for padding from close button, flex-grow */}
-          {/* This div contains the content that will scroll */}
-          <div className="marquee-text-container flex items-center justify-center gap-2 support-banner-content">
-            <p className="text-sm"> {/* Removed whitespace-nowrap, overflow-hidden, text-ellipsis */}
-              If you like the SayFin experience, be a part of our 'Early Adopters' by supporting us with a token.{' '}
-              <a 
-                href="https://paystack.com/pay/sayfinsupport" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="underline font-medium hover:text-white"
-              >
-                Click HERE to join
-              </a>
-              {' '}{/* Space before the heart */}
+        <div className="marquee-viewport flex-grow flex items-center justify-center gap-2 max-w-4xl mx-auto px-8 relative overflow-hidden">
+          <div className="marquee-text-container whitespace-nowrap">
+            <p className="text-sm inline-block">
+              You may have noticed some of your data is missing. We apologize for the inconvenience. An engineering intern, AKA Femi, caused this and is making sure it doesn't happen again. Keep using SayFin. {' '}
               <Heart className="h-4 w-4 text-primary-foreground inline-block align-middle" />
             </p>
           </div>
