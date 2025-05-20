@@ -21,19 +21,32 @@ export function mapDBFrequencyToAppFrequency(dbFrequency: string): SubscriptionF
 
 // Map from our types to DB enum
 export function mapAppFrequencyToDBFrequency(appFrequency: SubscriptionFrequency): string {
-  switch (appFrequency) {
-    case 'MONTHLY':
-      return 'monthly';
-    case 'ANNUALLY':
-      return 'yearly';
-    case 'QUARTERLY':
-      return 'quarterly';
-    case 'WEEKLY':
-      return 'weekly';
-    case 'CUSTOM':
-    default:
-      return 'custom';
+  console.log("Original frequency to map:", appFrequency, typeof appFrequency);
+  
+  // Special case for ANNUALLY -> yearly since this is causing the most problems
+  if (appFrequency === "ANNUALLY" || String(appFrequency).toUpperCase() === "ANNUALLY") {
+    console.log("Mapping ANNUALLY to yearly");
+    return "yearly";
   }
+  
+  // Convert to string and lowercase for consistency
+  const frequency = String(appFrequency).toLowerCase();
+  console.log("Normalized frequency:", frequency);
+  
+  // Direct mapping to exact DB enum values
+  const mappings: Record<string, string> = {
+    'monthly': 'monthly',
+    'annually': 'yearly',  // This is critical - DB uses 'yearly' not 'annually'
+    'quarterly': 'quarterly',
+    'weekly': 'weekly',
+    'custom': 'monthly'    // Default custom to monthly
+  };
+  
+  // Get the mapped value or default to monthly
+  const result = mappings[frequency] || 'monthly';
+  console.log("Final mapped result:", result);
+  
+  return result;
 }
 
 export interface Subscription {

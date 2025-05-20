@@ -155,15 +155,36 @@ export const createSubscription = async (subscription: Omit<Subscription, 'subsc
     }
     
     // Add the user_id to the subscription object and map frequency to DB format
+    const mappedFrequency = mapAppFrequencyToDBFrequency(subscription.frequency);
+    console.log("Original frequency:", subscription.frequency);
+    console.log("Mapped frequency for DB:", mappedFrequency);
+
+    // Force lowercase the frequency just to be absolutely sure
+    const normalizedFrequency = String(mappedFrequency).toLowerCase();
+    console.log("Normalized frequency for DB:", normalizedFrequency);
+
+    // Check that it's one of the accepted enum values
+    const validFrequencies = ['monthly', 'yearly', 'quarterly', 'weekly'];
+    if (!validFrequencies.includes(normalizedFrequency)) {
+      console.error(`Invalid frequency: ${normalizedFrequency}. Must be one of: ${validFrequencies.join(', ')}`);
+      throw new Error(`Invalid frequency: ${normalizedFrequency}. Must be one of: ${validFrequencies.join(', ')}`);
+    }
+
     const subscriptionWithUserId = {
       ...subscription,
       user_id: user.id,
-      frequency: mapAppFrequencyToDBFrequency(subscription.frequency)
+      frequency: normalizedFrequency // Use the normalized frequency instead
     };
+
+    // Remove any fields that might be causing problems
+    const { category_name, category_type, ...dbSubscription } = subscriptionWithUserId;
+
+    // Debug the final data being sent to the database
+    console.log("Final subscription data for DB:", JSON.stringify(dbSubscription, null, 2));
     
     const { data, error } = await supabase
       .from('subscriptions')
-      .insert([subscriptionWithUserId])
+      .insert([dbSubscription])
       .select()
       .single();
     

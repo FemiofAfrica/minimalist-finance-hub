@@ -174,10 +174,41 @@ function parseFallback(text: string): Response {
     date: parseRelativeDate(text), // Determine date using the utility function
   };
 
+  // --- Robust Narration/Purpose Extraction (line-by-line) ---
+  let foundDescription = false;
+  let foundDate = false;
+  let explicitDate = null;
+  const lines = text.split(/\r?\n/);
+  for (const line of lines) {
+    // Description extraction
+    if (!foundDescription) {
+      const descMatch = line.match(/(?:narration|purpose)\s*[:\-]\s*(.+)/i);
+      if (descMatch && descMatch[1]) {
+        fallbackData.description = descMatch[1].trim();
+        foundDescription = true;
+      }
+    }
+    // Date extraction
+    if (!foundDate) {
+      const dateMatch = line.match(/(?:transaction date|date)\s*[:\-]\s*(.+)/i);
+      if (dateMatch && dateMatch[1]) {
+        const parsed = new Date(dateMatch[1].trim());
+        if (!isNaN(parsed.getTime())) {
+          explicitDate = parsed.toISOString().split('T')[0];
+          foundDate = true;
+        }
+      }
+    }
+    if (foundDescription && foundDate) break;
+  }
+  if (explicitDate) {
+    fallbackData.date = explicitDate;
+  } else {
+    fallbackData.date = parseRelativeDate(text);
+  }
+
   // --- Regex Patterns for Extraction ---
   const patterns = {
-    // Capture description (more robust pattern)
-    description: /(?:for|on|at|:|bought|paid|spent|received)\\s+(.+?)(?:\\s+(?:₦|\\$|\d+(?:\.\d{1,2})?)|yesterday|today|last week|last month|$)/i,
     // Capture amount, allowing for currency symbols (optional) and commas/dots
     amount: /(\d+(?:\.\d{1,2})?)/, // Simplified pattern - focusing on digits and optional dot+digits
     // Keywords indicating income
@@ -357,7 +388,7 @@ function parseFallback(text: string): Response {
 
 // --- Groq API Call Function ---
 // Calls the Groq API to parse the transaction text using an LLM.
-async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
+async function callGroqAPI(apiKey: string, text: string, context_amount?: number, context_date?: string): Promise<Response> {
   // Updated prompt with more specific category guidance and examples
   const prompt = `
     You are a transaction parser that outputs ONLY raw JSON.
@@ -391,7 +422,13 @@ async function callGroqAPI(apiKey: string, text: string): Promise<Response> {
        - Example: "Received 100 in my checking account" should extract "checking" as account_name
     6. 'category_name' should be one of the suggested categories if possible. Use 'Transfer' for money movements between accounts.
     7. 'description' should be concise. For transfers, indicate the source and destination when possible.
-    8. DO NOT include a 'date' field in the JSON output.
+    8. If the text contains a field like 'Narration:' or 'Purpose:', use its value as the description.
+    9. For the date, look for explicit fields like 'Transaction Date:' or 'Date:' and use their value if present, otherwise use your best guess.
+    10. DO NOT include a 'date' field in the JSON output.
+
+    If you cannot confidently extract an amount or date from the text, use the following as a fallback:
+    - amount: ${context_amount ?? 'N/A'}
+    - date: ${context_date ?? 'N/A'}
 
     EXAMPLES:
     Text: "Payment for Netflix subscription yesterday"
@@ -642,6 +679,8 @@ async function serve(req: Request): Promise<Response> {
     // Parse the request body
     const requestData = await req.json();
     text = requestData.text; // Assign text here
+    const context_amount = requestData.context_amount;
+    const context_date = requestData.context_date;
 
     // Validate required parameters
     if (!text || typeof text !== "string") {
@@ -654,14 +693,20 @@ async function serve(req: Request): Promise<Response> {
     // If API key is provided, attempt to use Groq API
     if (apiKey && typeof apiKey === "string") {
         try {
-            const groqResponse = await callGroqAPI(apiKey, text);
-
+            const groqResponse = await callGroqAPI(apiKey, text, context_amount, context_date);
             // If callGroqAPI returns a Response, it was successful
             const responseData: LocalParsedTransaction = await groqResponse.json();
-
-            // Add the parsed date to the successful response data
+            // Fallback: use context values if AI returns empty/invalid
+            if ((!responseData.amount || responseData.amount <= 0) && context_amount) {
+              responseData.amount = context_amount;
+            }
+            if ((!responseData.date || responseData.date === '') && context_date) {
+              responseData.date = context_date;
+            }
+            // Add the parsed date to the successful response data if still missing
+            if (!responseData.date) {
             responseData.date = parseRelativeDate(text);
-
+            }
             // Ensure account information is preserved in the final response
             console.log("Final Data (Groq):", responseData);
             return new Response(

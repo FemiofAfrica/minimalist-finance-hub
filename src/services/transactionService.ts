@@ -113,9 +113,9 @@ export const fetchTransactions = async (limit?: number): Promise<{ transactions:
 
     const transactions = (data || []).map(mapSupabaseDataToTransaction);
 
-    // Calculate totals
+    // Calculate totals with correct logic
     const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-    const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(t.amount), 0);
     const netBalance = totalIncome - totalExpenses;
 
     return { transactions, totalIncome, totalExpenses, netBalance };
@@ -206,17 +206,24 @@ export const createTransaction = async (transaction: TransactionInput): Promise<
     }
     
     // Prepare transaction data
-    const transactionData = {
+    const transactionData: any = {
       user_id: userId,
       description: transaction.description,
       amount: transaction.amount,
       type: transaction.type,
-      date: transaction.date,
+      date: transaction.date ? transaction.date.split('T')[0] : undefined, // Ensure YYYY-MM-DD
       account_id: transaction.account_id,
       category_id: transaction.category_id,
       currency: transaction.currency || 'NGN',
       notes: transaction.notes
     };
+    // Always include category_name and category_type if present
+    if (transaction.category_name) {
+      transactionData.category_name = transaction.category_name;
+    }
+    if (transaction.category_type) {
+      transactionData.category_type = transaction.category_type;
+    }
 
     // Create the transaction using Supabase RPC function
     // This ensures account balance is updated atomically with transaction creation

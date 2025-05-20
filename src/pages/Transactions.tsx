@@ -6,6 +6,7 @@ import { ArrowDownRight, ArrowUpRight, Calendar, DollarSign } from "lucide-react
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import OCRTransactionDialog from "@/components/transactions/OCRTransactionDialog";
 
 // Define the Transaction interface reflecting the actual DB schema
 interface Transaction {
@@ -79,7 +80,7 @@ const Transactions = () => {
           if (transaction.type === "income") {
             incomeTotal += Number(transaction.amount);
           } else if (transaction.type === "expense") {
-            expenseTotal += Number(transaction.amount);
+            expenseTotal += Math.abs(Number(transaction.amount));
           }
         });
 
@@ -116,6 +117,11 @@ const Transactions = () => {
       document.removeEventListener('refresh', handleRefresh);
     };
   }, [toast]);
+  
+  const handleTransactionCreated = () => {
+    // Trigger a refresh to update transactions
+    document.dispatchEvent(new Event('refresh'));
+  };
   
   return (
     <DashboardLayout>
@@ -163,7 +169,10 @@ const Transactions = () => {
       </div>
       
       <div className="mb-8">
-        <h2 className="text-xl font-bold mb-4">All Transactions</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">All Transactions</h2>
+          <OCRTransactionDialog onTransactionCreated={handleTransactionCreated} />
+        </div>
         <PaginatedTransactionsTable />
       </div>
     </DashboardLayout>

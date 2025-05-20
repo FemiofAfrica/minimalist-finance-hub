@@ -123,12 +123,20 @@ const SubscriptionsPage: React.FC = () => {
         formData.frequency
       );
       
+      // Log the frequency value for debugging
+      console.log("Form frequency before sending:", formData.frequency);
+      
+      // Make sure frequency is a proper enum value
+      const frequency = formData.frequency as SubscriptionFrequency;
+      console.log("Typed frequency to send:", frequency);
+      
       const newSubscription = await createSubscription({
         name: formData.name,
         description: formData.description,
         amount: formData.amount,
-        frequency: formData.frequency as SubscriptionFrequency,
+        frequency: frequency,
         next_billing_date: adjustedBillingDate,
+        category_id: null,
         category_name: formData.category_name,
         category_type: formData.category_type,
         is_active: formData.is_active,

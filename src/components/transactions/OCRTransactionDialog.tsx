@@ -1,0 +1,85 @@
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import DocumentUploader from './DocumentUploader';
+import OCRTransactionExtractor from './OCRTransactionExtractor';
+import { Button } from "@/components/ui/button";
+import { FileUp } from "lucide-react";
+
+interface OCRTransactionDialogProps {
+  onTransactionCreated: () => void;
+}
+
+const OCRTransactionDialog = ({ onTransactionCreated }: OCRTransactionDialogProps) => {
+  const [open, setOpen] = useState(false);
+  const [ocrText, setOcrText] = useState('');
+  const [currentTab, setCurrentTab] = useState('upload');
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  const handleExtractedData = (text: string) => {
+    setOcrText(text);
+    setCurrentTab('extract');
+  };
+  
+  const handleTransactionCreated = () => {
+    onTransactionCreated();
+    setOpen(false);
+    setOcrText('');
+    setCurrentTab('upload');
+  };
+  
+  return (
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      // If closing dialog, reset state
+      if (!newOpen) {
+        setOcrText('');
+        setCurrentTab('upload');
+        setIsProcessing(false);
+      }
+      setOpen(newOpen);
+    }}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="mb-4">
+          <FileUp className="mr-2 h-4 w-4" />
+          Upload Document (OCR)
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Upload and Process Documents with AI</DialogTitle>
+        </DialogHeader>
+        
+        <Tabs value={currentTab} onValueChange={setCurrentTab} className="mt-2">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="upload">
+              1. Upload Document
+            </TabsTrigger>
+            <TabsTrigger value="extract" disabled={!ocrText}>
+              2. Extract Transactions
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="upload" className="pt-4">
+            <DocumentUploader 
+              onExtractedData={(text) => {
+                setIsProcessing(true);
+                handleExtractedData(text);
+                // Allow processing animation to show briefly
+                setTimeout(() => setIsProcessing(false), 500);
+              }} 
+            />
+          </TabsContent>
+          
+          <TabsContent value="extract" className="pt-4">
+            {ocrText && <OCRTransactionExtractor 
+              ocrText={ocrText} 
+              onTransactionCreated={handleTransactionCreated} 
+            />}
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default OCRTransactionDialog; 
