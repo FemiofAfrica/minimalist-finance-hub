@@ -225,6 +225,11 @@ export const createTransaction = async (transaction: TransactionInput): Promise<
       transactionData.category_type = transaction.category_type;
     }
 
+    // Only prepend 'Transfer to...' if description is empty or missing
+    if (transaction.type === 'transfer' && (!transaction.description || transaction.description.trim() === '')) {
+      transactionData.description = `Transfer to ${transaction.description}`;
+    }
+
     // Create the transaction using Supabase RPC function
     // This ensures account balance is updated atomically with transaction creation
     const { data, error } = await supabaseAny.rpc('create_transaction', {

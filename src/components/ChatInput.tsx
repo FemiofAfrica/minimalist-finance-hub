@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Send } from "lucide-react";
+import { Send, FileUp } from "lucide-react";
 import { Input } from "@/components/ui/input"; // Assuming shadcn/ui Input
 import { Button } from "@/components/ui/button"; // Assuming shadcn/ui Button
 import { supabase } from "@/integrations/supabase/client"; // Supabase client instance
@@ -8,6 +8,7 @@ import VoiceInput from "@/components/VoiceInput"; // Your VoiceInput component
 import { Database } from "@/integrations/supabase/database.types";
 import { getDefaultAccount } from "@/services/accountService";
 import { createTransferTransaction, createTransaction } from "@/services/transactionService"; // Added import
+import OCRTransactionDialog from "@/components/transactions/OCRTransactionDialog";
 
 // Define types for parsed transaction data
 interface ParsedTransactionData {
@@ -38,6 +39,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
   const [isProcessing, setIsProcessing] = useState(false); // Tracks if a submission is in progress
   const [isPreviewMode, setIsPreviewMode] = useState(false); // True when voice input is captured and awaiting confirmation/submit
   const [previewTimeLeft, setPreviewTimeLeft] = useState(3); // Countdown timer for voice preview
+  const [ocrDialogOpen, setOcrDialogOpen] = useState(false);
 
   // --- Refs ---
   // Ref for the countdown timer (using browser's setInterval ID type)
@@ -545,10 +547,16 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       </div>
       {/* Voice input button */}
       <VoiceInput onTextCaptured={handleVoiceInput} disabled={isProcessing || isPreviewMode} />
+      {/* Upload (OCR) button */}
+      <Button type="button" size="icon" variant="ghost" aria-label="Upload for OCR" onClick={() => setOcrDialogOpen(true)}>
+        <FileUp className="h-4 w-4" />
+      </Button>
       {/* Submit button */}
       <Button type="submit" size="icon" disabled={isProcessing || !input.trim()} aria-label="Submit transaction">
         <Send className="h-4 w-4" />
       </Button>
+      {/* OCR Dialog */}
+      <OCRTransactionDialog onTransactionCreated={onTransactionAdded || (() => {})} open={ocrDialogOpen} setOpen={setOcrDialogOpen} />
     </form>
   );
 };

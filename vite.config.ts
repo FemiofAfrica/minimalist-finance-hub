@@ -39,6 +39,12 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: "dist",
     sourcemap: true,
-    minify: "esbuild"
+    minify: "esbuild",
+    target: 'esnext',
+    rollupOptions: {
+      output: {
+        format: 'es'
+      }
+    }
   }
 }));

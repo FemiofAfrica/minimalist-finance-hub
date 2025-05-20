@@ -622,6 +622,30 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
                 </Card>
               )}
               
+              {/* --- New: OCR Text Line-by-Line Selection --- */}
+              {ocrText && (
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle>Receipt Lines (Click to use as Description)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-1">
+                      {ocrText.split(/\r?\n/).filter(line => line.trim().length > 0).map((line, idx) => (
+                        <div
+                          key={`ocrline-${idx}`}
+                          className={`p-2 border rounded-md cursor-pointer transition-colors ${
+                            (currentTab === 'transfer' ? transferDescription : description) === line ? 'border-primary bg-primary/5' : 'hover:bg-muted'
+                          }`}
+                          onClick={() => selectDescription(line)}
+                        >
+                          {line}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
                   <CardHeader>

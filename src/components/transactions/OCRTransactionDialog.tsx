@@ -8,10 +8,11 @@ import { FileUp } from "lucide-react";
 
 interface OCRTransactionDialogProps {
   onTransactionCreated: () => void;
+  open: boolean;
+  setOpen: (open: boolean) => void;
 }
 
-const OCRTransactionDialog = ({ onTransactionCreated }: OCRTransactionDialogProps) => {
-  const [open, setOpen] = useState(false);
+const OCRTransactionDialog = ({ onTransactionCreated, open, setOpen }: OCRTransactionDialogProps) => {
   const [ocrText, setOcrText] = useState('');
   const [currentTab, setCurrentTab] = useState('upload');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -38,12 +39,6 @@ const OCRTransactionDialog = ({ onTransactionCreated }: OCRTransactionDialogProp
       }
       setOpen(newOpen);
     }}>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="mb-4">
-          <FileUp className="mr-2 h-4 w-4" />
-          Upload Document (OCR)
-        </Button>
-      </DialogTrigger>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Upload and Process Documents with AI</DialogTitle>
