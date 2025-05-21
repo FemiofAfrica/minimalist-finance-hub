@@ -178,7 +178,8 @@ const AddTransactionDialog = () => {
       
       const transaction = {
         description: formData.description,
-        amount: parseFloat(formData.amount),
+        // Always send a positive amount; backend will apply sign based on type
+        amount: Math.abs(parseFloat(formData.amount)),
         type: formData.type as TransactionType,
         category: formData.category || 'uncategorized',
         date: new Date(formData.date).toISOString(),

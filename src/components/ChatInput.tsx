@@ -295,7 +295,8 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
         
         const transactionToInsert = {
           description: parsedData.description,
-          amount: Math.abs(Number(parsedData.amount)), // Ensure amount is positive
+          // Always send a positive amount; backend will apply sign based on type
+          amount: Math.abs(Number(parsedData.amount)),
           type: categoryTypeLower,
           category_id: categoryId as string,
           date: parsedData.date,

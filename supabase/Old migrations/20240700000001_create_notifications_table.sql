@@ -37,17 +37,16 @@ CREATE POLICY "Users can update own notifications"
 
 -- Admin policies for notifications
 DROP POLICY IF EXISTS "Admins can create notifications for any user" ON public.notifications;
-CREATE POLICY "Admins can create notifications for any user"
+CREATE POLICY "Super Admins can create notifications for any user"
     ON public.notifications FOR INSERT
     WITH CHECK (
-        -- The user creating the notification must be an admin
         EXISTS (
             SELECT 1 FROM auth.users
-            WHERE auth.uid() = id AND (raw_user_meta_data->>'is_admin')::boolean = true
+            WHERE auth.uid() = id AND (raw_user_meta_data->>'is_super_admin')::boolean = true
         )
     );
 
--- Create a function for admins to send notifications to users
+-- Create a function for super admins to send notifications to users
 CREATE OR REPLACE FUNCTION send_notification_to_user(
     p_user_id UUID,
     p_title TEXT,
@@ -64,15 +63,15 @@ SECURITY DEFINER
 AS $$
 DECLARE
     v_notification_id UUID;
-    v_is_admin BOOLEAN;
+    v_is_super_admin BOOLEAN;
 BEGIN
-    -- Check if the current user is an admin
-    SELECT (raw_user_meta_data->>'is_admin')::boolean INTO v_is_admin 
+    -- Check if the current user is a super admin
+    SELECT (raw_user_meta_data->>'is_super_admin')::boolean INTO v_is_super_admin 
     FROM auth.users 
     WHERE id = auth.uid();
     
-    IF v_is_admin IS NOT TRUE THEN
-        RAISE EXCEPTION 'Only admins can send notifications to users';
+    IF v_is_super_admin IS NOT TRUE THEN
+        RAISE EXCEPTION 'Only super admins can send notifications to users';
     END IF;
     
     -- Insert the notification
@@ -101,7 +100,7 @@ BEGIN
 END;
 $$;
 
--- Create a function for admins to send notifications to all users
+-- Create a function for super admins to send notifications to all users
 CREATE OR REPLACE FUNCTION send_notification_to_all_users(
     p_title TEXT,
     p_message TEXT,
@@ -116,17 +115,17 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-    v_is_admin BOOLEAN;
+    v_is_super_admin BOOLEAN;
     v_count INTEGER := 0;
     v_user RECORD;
 BEGIN
-    -- Check if the current user is an admin
-    SELECT (raw_user_meta_data->>'is_admin')::boolean INTO v_is_admin 
+    -- Check if the current user is a super admin
+    SELECT (raw_user_meta_data->>'is_super_admin')::boolean INTO v_is_super_admin 
     FROM auth.users 
     WHERE id = auth.uid();
     
-    IF v_is_admin IS NOT TRUE THEN
-        RAISE EXCEPTION 'Only admins can send notifications to all users';
+    IF v_is_super_admin IS NOT TRUE THEN
+        RAISE EXCEPTION 'Only super admins can send notifications to all users';
     END IF;
     
     -- Send notification to each active user

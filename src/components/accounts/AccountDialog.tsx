@@ -136,26 +136,24 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
-    
     setSubmitting(true);
     try {
+      const normalizedFormData = { ...formData, type: formData.type?.toLowerCase() };
       if (account) {
-        await updateAccount(account.account_id, formData);
+        await updateAccount(account.account_id, normalizedFormData);
         toast({
           title: "Success",
           description: "Account updated successfully",
         });
       } else {
-        await createAccount(formData as Omit<Account, 'account_id'>);
-        
+        await createAccount(normalizedFormData as Omit<Account, 'account_id'>);
         // Track bank account creation
         FinanceEvents.trackCreateBankAccount({
-          accountType: formData.type?.toLowerCase() || 'unknown',
-          bank: formData.bank_name || 'unknown',
-          currency: formData.currency || 'NGN',
-          initialBalance: formData.balance || 0
+          accountType: normalizedFormData.type || 'unknown',
+          bank: normalizedFormData.bank_name || 'unknown',
+          currency: normalizedFormData.currency || 'NGN',
+          initialBalance: normalizedFormData.balance || 0
         });
-        
         toast({
           title: "Success",
           description: "Account created successfully",
@@ -236,6 +234,7 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
               <SelectContent>
                 <SelectItem value="savings">Savings</SelectItem>
                 <SelectItem value="checking">Checking</SelectItem>
+                <SelectItem value="current">Current</SelectItem>
                 <SelectItem value="credit">Credit</SelectItem>
                 <SelectItem value="investment">Investment</SelectItem>
               </SelectContent>

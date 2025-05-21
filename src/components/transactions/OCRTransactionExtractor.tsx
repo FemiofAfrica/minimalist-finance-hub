@@ -405,7 +405,8 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     try {
       const transactionData: TransactionInput = {
         description,
-        amount: transactionType === 'expense' ? -Math.abs(parseFloat(amount)) : Math.abs(parseFloat(amount)),
+        // Always send a positive amount; backend will apply sign based on type
+        amount: Math.abs(parseFloat(amount)),
         date: date,
         account_id: accountId,
         type: transactionType,

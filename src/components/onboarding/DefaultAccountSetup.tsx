@@ -84,7 +84,8 @@ export function DefaultAccountSetup() {
     
     setIsSubmitting(true);
     try {
-      await createAccount(formData as Omit<Account, 'account_id'>);
+      const normalizedFormData = { ...formData, type: formData.type?.toLowerCase() };
+      await createAccount(normalizedFormData as Omit<Account, 'account_id'>);
       toast({
         title: "Success",
         description: "Default account created successfully",
@@ -158,6 +159,7 @@ export function DefaultAccountSetup() {
               <SelectContent>
                 <SelectItem value="savings">Savings</SelectItem>
                 <SelectItem value="checking">Checking</SelectItem>
+                <SelectItem value="current">Current</SelectItem>
                 <SelectItem value="credit">Credit</SelectItem>
                 <SelectItem value="investment">Investment</SelectItem>
               </SelectContent>

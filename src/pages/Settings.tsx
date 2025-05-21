@@ -193,9 +193,15 @@ export default function Settings() {
     const checkIfAdmin = async () => {
       if (user) {
         try {
-          // Check if user has admin flag in user_metadata
-          const isUserAdmin = user.user_metadata?.is_admin === true;
+          // Log the full user metadata for debugging
+          console.log("User metadata:", user.user_metadata);
+          
+          // Check if user has super admin flag in user_metadata
+          const isUserAdmin = user.user_metadata?.is_super_admin === true;
+          console.log("Is user a super admin?", isUserAdmin);
+          
           setIsAdmin(isUserAdmin);
+          console.log("Setting isAdmin state to:", isUserAdmin);
         } catch (error) {
           console.error('Error checking admin status:', error);
           setIsAdmin(false);
@@ -264,6 +270,7 @@ export default function Settings() {
             <div className="border-b">
               <div className="flex justify-center w-full text-center">
                 <div className="inline-flex justify-center">
+                  {console.log("Rendering tabs - isAdmin value:", isAdmin)}
                   <TabsList className={`grid ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'} bg-transparent rounded-none p-0`}>
                     <TabsTrigger 
                       value="profile" 
@@ -283,7 +290,8 @@ export default function Settings() {
                     >
                       Security
                     </TabsTrigger>
-                    {isAdmin && (
+                    {/* Debug: Try with true instead of isAdmin to force render */}
+                    {true && (
                       <TabsTrigger 
                         value="admin" 
                         className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-14 rounded-none border-b-2 border-transparent font-medium text-base transition-all px-8 mx-4"

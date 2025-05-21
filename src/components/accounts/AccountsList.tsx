@@ -188,7 +188,9 @@ const AccountsList = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
-          {accounts.map((account) => (
+          {[...accounts]
+            .sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0))
+            .map((account) => (
             <AccountCard
               key={account.account_id}
               account={account}
