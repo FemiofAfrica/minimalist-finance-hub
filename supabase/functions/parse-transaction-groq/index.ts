@@ -106,11 +106,45 @@ async function _verifyGroqConnection(apiKey: string): Promise<boolean> {
 // Parses relative date terms or YYYY-MM-DD format from text.
 // Defaults to the baseDate (or current date if not provided).
 function parseRelativeDate(text: string, baseDate: Date = new Date()): string {
+  console.log(`Parsing date from text: "${text}"`);
+  
   // Create a date object representing the start of the baseDate (local time)
   const today = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
   const lowerText = text.toLowerCase(); // Case-insensitive matching
 
-  // Check for relative terms first
+  // First, try to extract DD Month YYYY format
+  const monthNamePattern = /(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i;
+  const monthMatch = text.match(monthNamePattern);
+  if (monthMatch) {
+    try {
+      const day = parseInt(monthMatch[1]);
+      const monthName = monthMatch[2].toLowerCase();
+      const year = parseInt(monthMatch[3]);
+      
+      // Map month names to their numeric values
+      const monthMap: {[key: string]: number} = {
+        'january': 0, 'february': 1, 'march': 2, 'april': 3,
+        'may': 4, 'june': 5, 'july': 6, 'august': 7,
+        'september': 8, 'october': 9, 'november': 10, 'december': 11,
+        'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3,
+        'jun': 5, 'jul': 6, 'aug': 7, 'sep': 8, 
+        'oct': 9, 'nov': 10, 'dec': 11
+      };
+      
+      if (monthMap[monthName] !== undefined && day >= 1 && day <= 31 && year > 2000) {
+        const parsedDate = new Date(year, monthMap[monthName], day);
+        if (!isNaN(parsedDate.getTime())) {
+          const result = parsedDate.toISOString().split('T')[0];
+          console.log(`Parsed "${text}" as "${result}" using month name format`);
+          return result;
+        }
+      }
+    } catch (e) {
+      console.error("Error parsing month name date format:", e);
+    }
+  }
+
+  // Check for relative terms
   if (lowerText.includes("yesterday")) {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -160,6 +194,127 @@ function parseRelativeDate(text: string, baseDate: Date = new Date()): string {
 
   // Default to the base date (usually today) if no specific date is found
   return today.toISOString().split("T")[0]; // Format as YYYY-MM-DD
+}
+
+// Dedicated function to parse date strings of the format "3 April 2025"
+function parseFormattedDate(dateStr: string): string | null {
+  // Don't process empty or very short strings
+  if (!dateStr || dateStr.length < 5) return null;
+  
+  console.log(`Attempting to parse formatted date: "${dateStr}"`);
+  
+  // Try the DD Month YYYY pattern
+  const monthNamePattern = /(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i;
+  const monthMatch = dateStr.match(monthNamePattern);
+  
+  if (monthMatch) {
+    try {
+      const day = parseInt(monthMatch[1]);
+      const monthName = monthMatch[2].toLowerCase();
+      const year = parseInt(monthMatch[3]);
+      
+      // Map month names to their numeric values (0-indexed for JS Date)
+      const monthMap: {[key: string]: number} = {
+        'january': 0, 'february': 1, 'march': 2, 'april': 3,
+        'may': 4, 'june': 5, 'july': 6, 'august': 7,
+        'september': 8, 'october': 9, 'november': 10, 'december': 11,
+        'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4,
+        'jun': 5, 'jul': 6, 'aug': 7, 'sep': 8, 
+        'oct': 9, 'nov': 10, 'dec': 11
+      };
+      
+      if (monthMap[monthName] !== undefined && day >= 1 && day <= 31 && year > 2000) {
+        const parsedDate = new Date(year, monthMap[monthName], day);
+        if (!isNaN(parsedDate.getTime())) {
+          // Format as YYYY-MM-DD
+          const month = (parsedDate.getMonth() + 1).toString().padStart(2, '0');
+          const paddedDay = day.toString().padStart(2, '0');
+          const formattedDate = `${year}-${month}-${paddedDay}`;
+          
+          console.log(`Successfully parsed "${dateStr}" as "${formattedDate}"`);
+          return formattedDate;
+        }
+      }
+    } catch (e) {
+      console.error(`Error parsing date "${dateStr}":`, e);
+    }
+  }
+  
+  return null;
+}
+
+// Helper function for categorizing transactions based on description/narration
+function categorizeTransaction(text: string): { category: string, type: "INCOME" | "EXPENSE" | "TRANSFER" } {
+  if (!text) return { category: "Uncategorized", type: "EXPENSE" };
+  
+  const lowerText = text.toLowerCase();
+  
+  // Transport category
+  if (lowerText.includes("bus") || 
+      lowerText.includes("taxi") || 
+      lowerText.includes("uber") || 
+      lowerText.includes("bolt") || 
+      lowerText.includes("ride") || 
+      lowerText.includes("train") || 
+      lowerText.includes("transport") || 
+      lowerText.includes("fare") || 
+      lowerText.includes("fuel") || 
+      lowerText.includes("petrol") || 
+      lowerText.includes("flight") || 
+      lowerText.includes("airfare")) {
+    return { category: "Transport", type: "EXPENSE" };
+  }
+  
+  // Utilities category
+  if (lowerText.includes("water") || 
+      lowerText.includes("electricity") || 
+      lowerText.includes("power") || 
+      lowerText.includes("gas") || 
+      lowerText.includes("internet") || 
+      lowerText.includes("wifi") || 
+      lowerText.includes("bill") || 
+      lowerText.includes("utility")) {
+    return { category: "Utilities", type: "EXPENSE" };
+  }
+  
+  // Food/Dining category
+  if (lowerText.includes("food") || 
+      lowerText.includes("restaurant") || 
+      lowerText.includes("cafe") || 
+      lowerText.includes("meal") || 
+      lowerText.includes("lunch") || 
+      lowerText.includes("dinner") || 
+      lowerText.includes("breakfast")) {
+    return { category: "Dining", type: "EXPENSE" };
+  }
+  
+  // Groceries category
+  if (lowerText.includes("grocery") || 
+      lowerText.includes("supermarket") || 
+      lowerText.includes("market") || 
+      lowerText.includes("store") || 
+      lowerText.includes("shopping")) {
+    return { category: "Groceries", type: "EXPENSE" };
+  }
+  
+  // Income category
+  if (lowerText.includes("salary") || 
+      lowerText.includes("wage") || 
+      lowerText.includes("income") || 
+      lowerText.includes("payment received") || 
+      lowerText.includes("deposit")) {
+    return { category: "Salary", type: "INCOME" };
+  }
+  
+  // Transfer category
+  if (lowerText.includes("transfer") || 
+      lowerText.includes("sent") || 
+      lowerText.includes("remittance")) {
+    return { category: "Transfer", type: "TRANSFER" };
+  }
+  
+  // Default
+  return { category: "Uncategorized", type: "EXPENSE" };
 }
 
 // --- Fallback Parser ---
@@ -388,7 +543,7 @@ function parseFallback(text: string): Response {
 
 // --- Groq API Call Function ---
 // Calls the Groq API to parse the transaction text using an LLM.
-async function callGroqAPI(apiKey: string, text: string, context_amount?: number, context_date?: string): Promise<Response> {
+async function callGroqAPI(apiKey: string, text: string, context_amount?: number, context_date?: string, context_narration?: string): Promise<Response> {
   // Updated prompt with more specific category guidance and examples
   const prompt = `
     You are a transaction parser that outputs ONLY raw JSON.
@@ -415,7 +570,7 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
        - Set "is_transfer" to true
        - Set "category_name" to "Transfer"
        - Extract "source_account" and "destination_account" from the text if available
-       - Example: "I transferred 500 from my savings account to my checking account" should extract "savings" as source_account and "checking" as destination_account
+       - Example: "I transferred 5000 from my savings account to my checking account" should extract "savings" as source_account and "checking" as destination_account
     5. For regular transactions (not transfers):
        - Extract "account_name" if a specific account is mentioned
        - Example: "Spent 50 from my credit card on food" should extract "credit card" as account_name
@@ -426,9 +581,22 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
     9. For the date, look for explicit fields like 'Transaction Date:' or 'Date:' and use their value if present, otherwise use your best guess.
     10. DO NOT include a 'date' field in the JSON output.
 
-    If you cannot confidently extract an amount or date from the text, use the following as a fallback:
+    CRITICAL INSTRUCTIONS FOR NARRATION:
+    - I am providing a separate narration value that should ALWAYS be used as the description: "${context_narration || 'N/A'}"
+    - IGNORE any other description you might extract and use this narration value INSTEAD
+
+    CATEGORY DETECTION RULES:
+    - If the narration/description is "Bus", "Taxi", "Uber", "Bolt", "Ride", or any other transportation-related term, categorize as "Transport" with type "EXPENSE"
+    - If it mentions "water", "electricity", "gas", "power", "internet", "wifi", or "bill", categorize as "Utilities" with type "EXPENSE"
+    - If it mentions "food", "restaurant", "cafe", "dinner", "lunch", or "meal", categorize as "Dining" with type "EXPENSE"
+    - If it mentions "grocery", "supermarket", "market", or "store", categorize as "Groceries" with type "EXPENSE"
+    - If it mentions "salary", "paycheck", "income", or "deposit", categorize as "Salary" with type "INCOME"
+    - If it mentions "transfer", "sent", or "remittance", categorize as "Transfer" with type "TRANSFER"
+
+    If you cannot confidently extract information from the text, use the following as a fallback:
     - amount: ${context_amount ?? 'N/A'}
     - date: ${context_date ?? 'N/A'}
+    ${context_narration ? `- narration: "${context_narration}" (Use this as the description, and use it to help determine the category)` : ''}
 
     EXAMPLES:
     Text: "Payment for Netflix subscription yesterday"
@@ -448,6 +616,12 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
 
     Text: "Received 200 in my savings account for birthday gift"
     JSON: { "description": "Birthday gift", "amount": 200.00, "category_name": "Gift", "category_type": "INCOME", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": "savings" }
+
+    Text: "NARRATION Annual Water Bill Notice"
+    JSON: { "description": "Annual Water Bill", "amount": 150.00, "category_name": "Utilities", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
+
+    Text: "NARRATION Bus"
+    JSON: { "description": "Bus", "amount": 50.00, "category_name": "Transport", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
 
     Transaction Text: "${text}"
   `;
@@ -681,6 +855,15 @@ async function serve(req: Request): Promise<Response> {
     text = requestData.text; // Assign text here
     const context_amount = requestData.context_amount;
     const context_date = requestData.context_date;
+    const context_narration = requestData.context_narration;
+
+    // Log the input data for debugging
+    console.log("Edge Function Input:", {
+      text_preview: text?.substring(0, 100),
+      context_amount,
+      context_date,
+      context_narration,
+    });
 
     // Validate required parameters
     if (!text || typeof text !== "string") {
@@ -693,22 +876,64 @@ async function serve(req: Request): Promise<Response> {
     // If API key is provided, attempt to use Groq API
     if (apiKey && typeof apiKey === "string") {
         try {
-            const groqResponse = await callGroqAPI(apiKey, text, context_amount, context_date);
+            // Special handling for context_date if it's in "3 April 2025" format
+            if (context_date) {
+              const parsedFormattedDate = parseFormattedDate(context_date);
+              if (parsedFormattedDate) {
+                console.log(`Converted context_date from "${context_date}" to "${parsedFormattedDate}"`);
+                context_date = parsedFormattedDate;
+              }
+            }
+            
+            const groqResponse = await callGroqAPI(apiKey, text, context_amount, context_date, context_narration);
             // If callGroqAPI returns a Response, it was successful
             const responseData: LocalParsedTransaction = await groqResponse.json();
+            
             // Fallback: use context values if AI returns empty/invalid
             if ((!responseData.amount || responseData.amount <= 0) && context_amount) {
               responseData.amount = context_amount;
             }
-            if ((!responseData.date || responseData.date === '') && context_date) {
+            
+            // ALWAYS prefer the context_date if provided - this is a critical fix
+            if (context_date) {
+              console.log("Using provided context date:", context_date);
+              // Don't reparse the date - use it exactly as provided from the client
               responseData.date = context_date;
+            } else if (!responseData.date || responseData.date === '') {
+              // If no date at all, attempt to find one in the text
+              const extractedDate = parseRelativeDate(text);
+              console.log("No date provided, extracted from text:", extractedDate);
+              responseData.date = extractedDate;
             }
-            // Add the parsed date to the successful response data if still missing
-            if (!responseData.date) {
-            responseData.date = parseRelativeDate(text);
+            
+            // FORCED narration handling - ALWAYS use narration if provided
+            if (context_narration) {
+              console.log("CRITICAL: Using narration text for description:", context_narration);
+              
+              // ALWAYS override description with narration
+              responseData.description = context_narration;
+              
+              // Use the categorization helper function for more comprehensive detection
+              const categorization = categorizeTransaction(context_narration);
+              console.log(`Auto-categorizing as ${categorization.category} based on narration "${context_narration}"`);
+              responseData.category_name = categorization.category;
+              responseData.category_type = categorization.type;
+              
+              // If it's a transfer, set the flag
+              if (categorization.type === "TRANSFER") {
+                responseData.is_transfer = true;
+              }
             }
-            // Ensure account information is preserved in the final response
-            console.log("Final Data (Groq):", responseData);
+
+            // Final validation - add timestamp to log
+            const timestamp = new Date().toISOString();
+            console.log(`[${timestamp}] Final Data (Groq):`, {
+              description: responseData.description,
+              date: responseData.date,
+              amount: responseData.amount,
+              category: responseData.category_name
+            });
+            
             return new Response(
                 JSON.stringify(responseData),
                 { headers: corsHeaders }

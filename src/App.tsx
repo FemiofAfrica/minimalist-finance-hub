@@ -2,6 +2,7 @@ import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/react"
 
 import { MixpanelService } from '@/integrations/mixpanel';
+import initializeClientEnvironment from '@/utils/env';
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
@@ -22,6 +23,14 @@ import NotFound from '@/pages/NotFound';
 import './App.css';
 import { OnboardingProvider } from '@/contexts/OnboardingContext';
 import { useEffect } from 'react';
+
+// Initialize client environment variables with error handling
+try {
+  initializeClientEnvironment();
+  console.log('Client environment initialized successfully');
+} catch (error) {
+  console.error('Failed to initialize client environment:', error);
+}
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();

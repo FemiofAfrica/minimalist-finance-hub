@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DocumentUploader from './DocumentUploader';
 import OCRTransactionExtractor from './OCRTransactionExtractor';
-import { Button } from "@/components/ui/button";
-import { FileUp } from "lucide-react";
 
 interface OCRTransactionDialogProps {
   onTransactionCreated: () => void;
@@ -41,16 +39,16 @@ const OCRTransactionDialog = ({ onTransactionCreated, open, setOpen }: OCRTransa
     }}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Upload and Process Documents with AI</DialogTitle>
+          <DialogTitle>Scan and Process Receipts</DialogTitle>
         </DialogHeader>
         
         <Tabs value={currentTab} onValueChange={setCurrentTab} className="mt-2">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="upload">
-              1. Upload Document
+              1. Upload Receipt
             </TabsTrigger>
             <TabsTrigger value="extract" disabled={!ocrText}>
-              2. Extract Transactions
+              2. Create Transaction
             </TabsTrigger>
           </TabsList>
           
