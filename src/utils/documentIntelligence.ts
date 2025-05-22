@@ -1,8 +1,4 @@
 import { AnalyzeOperationOutput } from "@azure-rest/ai-document-intelligence";
-import { supabase } from "@/integrations/supabase/client";
-
-// Don't use environment variables directly in client code
-// We'll use a Supabase Edge Function instead
 
 /**
  * Analyze a document using Azure Document Intelligence
@@ -22,18 +18,31 @@ export async function analyzeDocument(
     
     progressCallback?.(20);
     
-    // Use our Supabase Edge Function
-    const { data, error } = await supabase.functions.invoke('analyze-document', {
-      body: { base64Source }
+    // Use our Vercel API proxy instead of direct Supabase calls
+    // This avoids CORS issues
+    const response = await fetch('/api/analyze-document', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ base64Source }),
     });
     
-    if (error) {
-      console.error('Supabase Edge Function error:', error);
-      throw new Error(error.message || 'Error analyzing document');
+    progressCallback?.(50);
+    
+    if (!response.ok) {
+      let errorMessage = 'Error analyzing document';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch (e) {
+        // Ignore JSON parsing errors
+      }
+      throw new Error(errorMessage);
     }
     
-    // Simulate progress while we wait for result
-    progressCallback?.(70);
+    const data = await response.json();
+    progressCallback?.(90);
     
     if (!data || !data.text) {
       throw new Error('No text could be extracted from the document');
