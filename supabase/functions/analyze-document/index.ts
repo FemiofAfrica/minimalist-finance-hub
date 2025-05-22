@@ -1,3 +1,6 @@
+// deno-lint-ignore-file no-explicit-any
+// This is a Deno module that runs in Supabase Edge Functions environment
+
 // Follow Deno's import syntax for Supabase Edge Functions
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 
@@ -158,13 +161,23 @@ serve(async (req) => {
       { status: 200, headers: corsHeaders }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error processing document:', error);
+    
+    // Fix the type error with the error message
+    let errorMessage = 'Error processing document';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    } else if (error && typeof error === 'object' && 'toString' in error) {
+      errorMessage = error.toString();
+    }
     
     return new Response(
       JSON.stringify({
         error: 'Error processing document',
-        details: error.message || String(error)
+        details: errorMessage
       }),
       { status: 500, headers: corsHeaders }
     );

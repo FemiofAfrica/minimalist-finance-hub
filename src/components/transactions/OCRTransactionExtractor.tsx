@@ -117,6 +117,11 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     // Skip if no text or already processing
     if (!ocrText.trim() || isProcessingAI) return;
     
+    console.log("============== TRANSACTION EXTRACTION PROCESS ==============");
+    console.log("Starting transaction extraction with OCR text obtained from OCR.space");
+    console.log("OCR Text length:", ocrText.length);
+    console.log("First 200 characters of OCR text:", ocrText.substring(0, 200));
+    
     setIsProcessingAI(true);
     setParsedTransactions([]);
     setSelectedTransaction(null);

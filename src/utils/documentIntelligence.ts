@@ -1,8 +1,15 @@
 import { AnalyzeOperationOutput } from "@azure-rest/ai-document-intelligence";
 import { supabase } from "@/integrations/supabase/client";
 
+// Publicly available CORS proxies (use as fallback)
+const CORS_PROXIES = [
+  'https://corsproxy.io/?',
+  'https://api.allorigins.win/raw?url=',
+  'https://cors.eu.org/'
+];
+
 /**
- * Analyze a document using Azure Document Intelligence
+ * Analyze a document using OCR.space and Groq AI
  * @param file The file to analyze (image or PDF)
  * @param progressCallback Optional callback for progress updates
  * @returns The extracted text
@@ -14,76 +21,77 @@ export async function analyzeDocument(
   try {
     progressCallback?.(10);
     
-    // Create base64 representation of the file
-    const base64Source = await fileToBase64(file);
-    
+    // Step 1: Use OCR.space to extract text from image (handles CORS)
     progressCallback?.(20);
+    const extractedText = await useOcrSpace(file, progressCallback);
     
-    // Try multiple methods to process the document, in order of preference
-    let result = null;
-    let lastError = null;
-    
-    // Method 1: Try the Vercel API route
-    try {
-      console.log("Attempting to use Vercel API route");
-      const response = await fetch('/api/analyze-document', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ base64Source }),
-      });
-      
-      if (response.ok) {
-        result = await response.json();
-        console.log("Successfully used Vercel API route");
-      } else {
-        const errorText = await response.text();
-        console.warn(`Vercel API route failed (${response.status}):`, errorText);
-        lastError = new Error(errorText || 'Error using Vercel API route');
-      }
-    } catch (error) {
-      console.warn("Error using Vercel API route:", error);
-      lastError = error;
-    }
-    
-    // Method 2: Try direct Supabase call if Vercel API failed
-    if (!result) {
-      progressCallback?.(30);
-      try {
-        console.log("Falling back to direct Supabase call");
-        const { data, error } = await supabase.functions.invoke('analyze-document', {
-          body: { base64Source }
-        });
-        
-        if (error) {
-          console.warn("Supabase function error:", error);
-          lastError = error;
-        } else {
-          result = data;
-          console.log("Successfully used Supabase function");
-        }
-      } catch (error) {
-        console.warn("Error using Supabase function:", error);
-        lastError = error;
-      }
-    }
-    
-    // If both methods failed, throw the last error
-    if (!result) {
-      throw lastError || new Error('All document processing methods failed');
-    }
-    
-    progressCallback?.(90);
-    
-    if (!result.text) {
-      throw new Error('No text could be extracted from the document');
-    }
+    // Step 2: Process the extracted text with Groq AI via parse-transaction-groq
+    // This step is handled by the OCRTransactionExtractor component which receives the text
     
     progressCallback?.(100);
-    return result.text;
+    return extractedText;
+    
   } catch (error) {
     console.error("Document processing error:", error);
+    throw error;
+  }
+}
+
+/**
+ * Use OCR.space API (allows CORS requests from any origin)
+ */
+async function useOcrSpace(file: File, progressCallback?: (progress: number) => void): Promise<string> {
+  progressCallback?.(30);
+  
+  console.log("Using OCR.space service");
+  
+  // Common free API key for OCR.space
+  const API_KEY = 'K85772124988957';
+  
+  const formData = new FormData();
+  formData.append('apikey', API_KEY);
+  formData.append('file', file);
+  formData.append('language', 'eng');
+  formData.append('isOverlayRequired', 'false');
+  formData.append('scale', 'true');
+  formData.append('OCREngine', '2'); // More accurate OCR engine
+  
+  progressCallback?.(40);
+  
+  try {
+    const response = await fetch('https://api.ocr.space/parse/image', {
+      method: 'POST',
+      body: formData,
+    });
+    
+    progressCallback?.(80);
+    
+    if (!response.ok) {
+      console.error(`OCR.space error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('OCR.space error details:', errorText);
+      throw new Error(`OCR.space returned status ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log("OCR.space result:", result);
+    
+    if (!result.IsErroredOnProcessing && result.ParsedResults && result.ParsedResults.length > 0) {
+      const parsedText = result.ParsedResults
+        .map(result => result.ParsedText)
+        .join('\n')
+        .trim();
+      
+      if (parsedText) {
+        console.log("Successfully extracted text using OCR.space");
+        return parsedText;
+      }
+    }
+    
+    throw new Error(result.ErrorMessage || 'Failed to extract text');
+    
+  } catch (error) {
+    console.error("OCR.space processing error:", error);
     throw error;
   }
 }
