@@ -37,7 +37,7 @@ interface ParsedTransactionData {
 
 // Regex patterns for extracting financial information
 const AMOUNT_REGEX = /(?:NGN|₦|N)?\s*([0-9,]+\.[0-9]{2})/g;
-const DATE_REGEX = /(\d{1,2}[-/\.]\d{1,2}[-/\.]\d{2,4})|(\d{1,2}\s(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s\d{2,4})|(\d{1,2}\s*(?:January|February|March|April|May|June|July|August|September|October|November|December)\s*\d{2,4})/gi;
+const DATE_REGEX = /(\d{1,2}[-/\.]\d{1,2}[-/\.]\d{2,4})|(\d{1,2}\s(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s\d{2,4})|(\d{1,2}\s*(?:January|February|March|April|May|June|July|August|September|October|November|December)\s*\d{2,4})|(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4})/gi;
 const DESCRIPTION_KEYWORDS = [
   'payment', 'transfer', 'deposit', 'withdrawal', 'purchase', 'subscription',
   'salary', 'income', 'expense', 'bill', 'invoice', 'receipt', 'statement',
@@ -425,6 +425,47 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
   const formatAndValidateDate = (dateStr: string): string => {
     try {
       console.log(`Formatting date string: "${dateStr}"`);
+      
+      // Handle complex date formats with day of week, month name, day with suffix, and time
+      // Example: "Tuesday, May 20th, 2025 | 3:55 PM"
+      const complexDatePattern = /(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+)?(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})(?:\s*\|?\s*\d{1,2}:\d{2}\s*(?:AM|PM)?)?/i;
+      
+      const complexMatch = dateStr.match(complexDatePattern);
+      if (complexMatch) {
+        const fullText = complexMatch[0];
+        const day = parseInt(complexMatch[1]);
+        const year = parseInt(complexMatch[2]);
+        
+        // Extract month name from the full matched text
+        const monthPattern = /(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i;
+        const monthMatch = fullText.match(monthPattern);
+        
+        if (monthMatch && day && year) {
+          const monthName = monthMatch[1].toLowerCase();
+          
+          // Map month names to numbers
+          const monthMap: {[key: string]: string} = {
+            'january': '01', 'february': '02', 'march': '03', 'april': '04',
+            'may': '05', 'june': '06', 'july': '07', 'august': '08',
+            'september': '09', 'october': '10', 'november': '11', 'december': '12',
+            'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+            'jun': '06', 'jul': '07', 'aug': '08', 'sep': '09', 
+            'oct': '10', 'nov': '11', 'dec': '12'
+          };
+          
+          const month = monthMap[monthName];
+          if (month) {
+            const paddedDay = day.toString().padStart(2, '0');
+            const formattedDate = `${year}-${month}-${paddedDay}`;
+            console.log(`Complex date format detected. Parsed "${dateStr}" to "${formattedDate}"`);
+            
+            const testDate = new Date(formattedDate);
+            if (!isNaN(testDate.getTime())) {
+              return formattedDate;
+            }
+          }
+        }
+      }
       
       // FIRST try to parse "DD Month YYYY" format (e.g., "3 April 2025")
       // This needs to come first to ensure it has priority

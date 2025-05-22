@@ -196,12 +196,60 @@ function parseRelativeDate(text: string, baseDate: Date = new Date()): string {
   return today.toISOString().split("T")[0]; // Format as YYYY-MM-DD
 }
 
-// Dedicated function to parse date strings of the format "3 April 2025"
+// Dedicated function to parse date strings with complex formats
 function parseFormattedDate(dateStr: string): string | null {
   // Don't process empty or very short strings
   if (!dateStr || dateStr.length < 5) return null;
   
   console.log(`Attempting to parse formatted date: "${dateStr}"`);
+  
+  // Handle complex date formats with day of week, month name, day with suffix, and time
+  // Example: "Tuesday, May 20th, 2025 | 3:55 PM"
+  const complexDatePattern = /(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+)?(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})(?:\s*\|?\s*\d{1,2}:\d{2}\s*(?:AM|PM)?)?/i;
+  
+  const complexMatch = dateStr.match(complexDatePattern);
+  if (complexMatch) {
+    try {
+      const fullText = complexMatch[0];
+      const day = parseInt(complexMatch[1]);
+      const year = parseInt(complexMatch[2]);
+      
+      // Extract month name from the full matched text
+      const monthPattern = /(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i;
+      const monthMatch = fullText.match(monthPattern);
+      
+      if (monthMatch && day && year) {
+        const monthName = monthMatch[1].toLowerCase();
+        
+        // Map month names to their numeric values (0-indexed for JS Date)
+        const monthMap: {[key: string]: number} = {
+          'january': 0, 'february': 1, 'march': 2, 'april': 3,
+          'may': 4, 'june': 5, 'july': 6, 'august': 7,
+          'september': 8, 'october': 9, 'november': 10, 'december': 11,
+          'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4,
+          'jun': 5, 'jul': 6, 'aug': 7, 'sep': 8, 
+          'oct': 9, 'nov': 10, 'dec': 11
+        };
+        
+        if (monthMap[monthName] !== undefined) {
+          const month = monthMap[monthName];
+          const parsedDate = new Date(year, month, day);
+          
+          if (!isNaN(parsedDate.getTime())) {
+            // Format as YYYY-MM-DD
+            const formattedMonth = (month + 1).toString().padStart(2, '0');
+            const formattedDay = day.toString().padStart(2, '0');
+            const formattedDate = `${year}-${formattedMonth}-${formattedDay}`;
+            
+            console.log(`Successfully parsed complex date "${dateStr}" as "${formattedDate}"`);
+            return formattedDate;
+          }
+        }
+      }
+    } catch (e) {
+      console.error(`Error parsing complex date "${dateStr}":`, e);
+    }
+  }
   
   // Try the DD Month YYYY pattern
   const monthNamePattern = /(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i;
@@ -871,6 +919,22 @@ async function serve(req: Request): Promise<Response> {
         JSON.stringify({ error: "Missing or invalid transaction text" }),
         { status: 400, headers: corsHeaders },
       );
+    }
+
+    // Try to extract transaction date from the text directly
+    const transactionDateMatch = text?.match(/(?:Transaction\s+Date|Date)[:\s]+([^\n]+)/i);
+    if (transactionDateMatch && transactionDateMatch[1]) {
+      const extractedDateText = transactionDateMatch[1].trim();
+      console.log(`Found Transaction Date field: "${extractedDateText}"`);
+      
+      const parsedDate = parseFormattedDate(extractedDateText);
+      if (parsedDate) {
+        console.log(`Successfully parsed Transaction Date field to: "${parsedDate}"`);
+        // Only set context_date if not already provided
+        if (!context_date) {
+          context_date = parsedDate;
+        }
+      }
     }
 
     // If API key is provided, attempt to use Groq API

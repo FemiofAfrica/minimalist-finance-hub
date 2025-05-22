@@ -1,27 +1,8 @@
-import DocumentIntelligence, {
-  isUnexpected,
-  getLongRunningPoller,
-  AnalyzeOperationOutput
-} from "@azure-rest/ai-document-intelligence";
-import { AzureKeyCredential } from "@azure/core-auth";
+import { AnalyzeOperationOutput } from "@azure-rest/ai-document-intelligence";
+import { supabase } from "@/integrations/supabase/client";
 
-// Environment variables should be set server-side only
-const DOCUMENT_INTELLIGENCE_ENDPOINT = process.env.NEXT_PUBLIC_AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT;
-const DOCUMENT_INTELLIGENCE_API_KEY = process.env.NEXT_PUBLIC_AZURE_DOCUMENT_INTELLIGENCE_KEY;
-
-/**
- * Creates and returns a Document Intelligence client
- */
-export function getDocumentIntelligenceClient() {
-  if (!DOCUMENT_INTELLIGENCE_ENDPOINT || !DOCUMENT_INTELLIGENCE_API_KEY) {
-    throw new Error("Azure Document Intelligence credentials not configured. Contact your administrator.");
-  }
-
-  return DocumentIntelligence(
-    DOCUMENT_INTELLIGENCE_ENDPOINT,
-    { key: DOCUMENT_INTELLIGENCE_API_KEY }
-  );
-}
+// Don't use environment variables directly in client code
+// We'll use a Supabase Edge Function instead
 
 /**
  * Analyze a document using Azure Document Intelligence
@@ -41,61 +22,27 @@ export async function analyzeDocument(
     
     progressCallback?.(20);
     
-    const client = getDocumentIntelligenceClient();
+    // Use our Supabase Edge Function
+    const { data, error } = await supabase.functions.invoke('analyze-document', {
+      body: { base64Source }
+    });
     
-    // Use the prebuilt-layout model for OCR
-    const initialResponse = await client
-      .path("/documentModels/{modelId}:analyze", "prebuilt-layout")
-      .post({
-        contentType: "application/json",
-        body: {
-          base64Source
-        }
-      });
-    
-    progressCallback?.(30);
-    
-    if (isUnexpected(initialResponse)) {
-      throw new Error(initialResponse.body.error?.message || "Unexpected error analyzing document");
+    if (error) {
+      console.error('Supabase Edge Function error:', error);
+      throw new Error(error.message || 'Error analyzing document');
     }
     
-    const poller = getLongRunningPoller(client, initialResponse);
+    // Simulate progress while we wait for result
+    progressCallback?.(70);
     
-    // Poll for results, updating progress as we go
-    let prevProgress = 30;
-    const result = await poller.pollUntilDone({
-      updatePollingProgress: (progress) => {
-        // Scale progress from 30% to 90%
-        const scaledProgress = 30 + Math.floor(progress * 60);
-        if (scaledProgress > prevProgress) {
-          prevProgress = scaledProgress;
-          progressCallback?.(scaledProgress);
-        }
-      }
-    }) as { body: AnalyzeOperationOutput };
-    
-    progressCallback?.(90);
-    
-    // Extract the text content from all pages
-    let extractedText = "";
-    
-    if (result.body.analyzeResult?.pages) {
-      for (const page of result.body.analyzeResult.pages) {
-        // Get all lines from this page
-        if (page.lines) {
-          for (const line of page.lines) {
-            extractedText += line.content + "\n";
-          }
-        }
-        
-        extractedText += "\n"; // Add an extra line between pages
-      }
+    if (!data || !data.text) {
+      throw new Error('No text could be extracted from the document');
     }
     
     progressCallback?.(100);
-    return extractedText.trim();
+    return data.text;
   } catch (error) {
-    console.error("Azure Document Intelligence error:", error);
+    console.error("Document processing error:", error);
     throw error;
   }
 }
