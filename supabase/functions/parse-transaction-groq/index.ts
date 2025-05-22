@@ -632,14 +632,20 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
     CRITICAL INSTRUCTIONS FOR NARRATION:
     - I am providing a separate narration value that should ALWAYS be used as the description: "${context_narration || 'N/A'}"
     - IGNORE any other description you might extract and use this narration value INSTEAD
+    - If the narration is N/A, extract the description from the text
+
+    IMPROVED TRANSFER DETECTION:
+    - Look for keywords like "transfer", "sent to", "beneficiary", "to account", "otherbank-transfer"
+    - If the text mentions both a sender and recipient/beneficiary, it's likely a transfer
+    - Look for bank names (like Providus, Moniepoint, Stanbic, Access Bank) to help identify transfers between accounts
 
     CATEGORY DETECTION RULES:
     - If the narration/description is "Bus", "Taxi", "Uber", "Bolt", "Ride", or any other transportation-related term, categorize as "Transport" with type "EXPENSE"
     - If it mentions "water", "electricity", "gas", "power", "internet", "wifi", or "bill", categorize as "Utilities" with type "EXPENSE"
     - If it mentions "food", "restaurant", "cafe", "dinner", "lunch", or "meal", categorize as "Dining" with type "EXPENSE"
     - If it mentions "grocery", "supermarket", "market", or "store", categorize as "Groceries" with type "EXPENSE"
-    - If it mentions "salary", "paycheck", "income", or "deposit", categorize as "Salary" with type "INCOME"
-    - If it mentions "transfer", "sent", or "remittance", categorize as "Transfer" with type "TRANSFER"
+    - If it mentions "salary", "paycheck", "income", "deposit", or "allowance", categorize as "Salary" with type "INCOME"
+    - If it mentions "transfer", "sent", "remittance", or clearly shows money moving between accounts, categorize as "Transfer" with type "TRANSFER" and set is_transfer to true
 
     If you cannot confidently extract information from the text, use the following as a fallback:
     - amount: ${context_amount ?? 'N/A'}
@@ -670,6 +676,15 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
 
     Text: "NARRATION Bus"
     JSON: { "description": "Bus", "amount": 50.00, "category_name": "Transport", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
+
+    Text: "TRANSACTION NGN 24000.00 BENEFICIARY Access Bank Plc (Diamond) SENDER FEMI EMMANUEL FAKAYEJO Stanbic IBTC Bank"
+    JSON: { "description": "Transfer to Access Bank", "amount": 24000.00, "category_name": "Transfer", "category_type": "TRANSFER", "is_transfer": true, "source_account": "Stanbic IBTC Bank", "destination_account": "Access Bank Plc", "account_name": null }
+
+    Text: "Moniepoint DEBIT N10,000.00 Transaction Type TRANSFER Beneficiary FAKAYEJO FRANCIS DAYO"
+    JSON: { "description": "Transfer to FAKAYEJO FRANCIS DAYO", "amount": 10000.00, "category_name": "Transfer", "category_type": "TRANSFER", "is_transfer": true, "source_account": "Moniepoint", "destination_account": "FAKAYEJO FRANCIS DAYO", "account_name": null }
+
+    Text: "Amount: NGN 30,000.00 Session ID: 000023250501103632004152108368 Narration: Allowance"
+    JSON: { "description": "Allowance", "amount": 30000.00, "category_name": "Salary", "category_type": "INCOME", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
 
     Transaction Text: "${text}"
   `;

@@ -75,6 +75,30 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
   
   const { toast } = useToast();
   
+  // Helper function to clean and validate narration text
+  const cleanNarrationText = (text: string): string => {
+    if (!text) return '';
+    
+    // Remove "Narration:" prefix if it exists
+    let cleaned = text.replace(/^narration:\s*/i, '');
+    
+    // Check if the narration is just an amount
+    const amountPattern = /^(?:NGN|N|\$|€|£)?\s*[\d,]+(?:\.\d{2})?$/i;
+    if (amountPattern.test(cleaned)) {
+      console.log('Narration appears to be just an amount, ignoring:', cleaned);
+      return '';
+    }
+    
+    // Check for common non-descriptive values
+    const nonDescriptiveValues = ['payment', 'transaction', 'transfer', 'withdrawal', 'deposit'];
+    if (nonDescriptiveValues.includes(cleaned.toLowerCase())) {
+      console.log('Narration is non-descriptive, ignoring:', cleaned);
+      return '';
+    }
+    
+    return cleaned;
+  };
+  
   // Process OCR text when it changes
   useEffect(() => {
     if (!ocrText) return;
@@ -89,12 +113,100 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     loadAccounts();
   }, [ocrText]);
   
+  // Add the categorizeByDescription helper function
+  const categorizeByDescription = (description: string): { category: string, type: string } => {
+    const lowerDesc = description.toLowerCase();
+    
+    // Transfer indicators
+    if (lowerDesc.includes('transfer') || lowerDesc.includes('sent') || 
+        lowerDesc.includes('remittance') || lowerDesc.includes('beneficiary')) {
+      return { category: 'Transfer', type: 'TRANSFER' };
+    }
+    
+    // Utilities
+    if (lowerDesc.includes('water') || lowerDesc.includes('electricity') || 
+        lowerDesc.includes('power') || lowerDesc.includes('bill') ||
+        lowerDesc.includes('utility') || lowerDesc.includes('internet') ||
+        lowerDesc.includes('wifi') || lowerDesc.includes('broadband')) {
+      return { category: 'Utilities', type: 'EXPENSE' };
+    }
+    
+    // Transport
+    if (lowerDesc.includes('bus') || lowerDesc.includes('taxi') || 
+        lowerDesc.includes('uber') || lowerDesc.includes('bolt') || 
+        lowerDesc.includes('ride') || lowerDesc.includes('train') || 
+        lowerDesc.includes('transport') || lowerDesc.includes('fare') ||
+        lowerDesc.includes('fuel') || lowerDesc.includes('petrol')) {
+      return { category: 'Transport', type: 'EXPENSE' };
+    }
+    
+    // Food/Dining
+    if (lowerDesc.includes('food') || lowerDesc.includes('restaurant') || 
+        lowerDesc.includes('meal') || lowerDesc.includes('cafe') || 
+        lowerDesc.includes('lunch') || lowerDesc.includes('dinner') ||
+        lowerDesc.includes('breakfast') || lowerDesc.includes('snack')) {
+      return { category: 'Dining', type: 'EXPENSE' };
+    }
+    
+    // Groceries
+    if (lowerDesc.includes('grocery') || lowerDesc.includes('supermarket') || 
+        lowerDesc.includes('market') || lowerDesc.includes('store') ||
+        lowerDesc.includes('shopping')) {
+      return { category: 'Groceries', type: 'EXPENSE' };
+    }
+    
+    // Income/Salary
+    if (lowerDesc.includes('salary') || lowerDesc.includes('wage') || 
+        lowerDesc.includes('income') || lowerDesc.includes('payment received') ||
+        lowerDesc.includes('allowance') || lowerDesc.includes('bonus')) {
+      return { category: 'Salary', type: 'INCOME' };
+    }
+    
+    // Default
+    return { category: 'Uncategorized', type: 'EXPENSE' };
+  };
+  
+  // Update the extractFinancialData method
   const extractFinancialData = (text: string) => {
-    // Extract amounts
-    const amountMatches = Array.from(text.matchAll(AMOUNT_REGEX))
-      .map(match => match[1])
-      .filter(Boolean)
-      .map(amount => amount.replace(/,/g, ''));
+    // Define extractAmounts function within the scope where it's used
+    const extractAmounts = (text: string): string[] => {
+      // Look for currency amounts in various formats
+      const patterns = [
+        // Format with currency symbol: NGN 1,234.56 or ₦1,234.56
+        /(?:NGN|₦|N)\s*([\d,]+(?:\.\d{2})?)/gi,
+        
+        // Amount followed by currency: 1,234.56 NGN
+        /([\d,]+(?:\.\d{2})?)\s*(?:NGN|naira)/gi,
+        
+        // Amount near transaction words
+        /(?:amount|total|sum|fee|charge|payment)(?:\s*[:\-]?\s*)([\d,]+(?:\.\d{2})?)/gi,
+        
+        // Fallback for any number with decimal point and exactly 2 decimal places
+        /\b([\d,]+\.\d{2})\b/g
+      ];
+      
+      let foundAmounts: string[] = [];
+      
+      // Try each pattern in order of priority
+      for (const pattern of patterns) {
+        const matches = Array.from(text.matchAll(pattern))
+          .map(match => match[1])
+          .filter(Boolean)
+          .map(amount => amount.replace(/,/g, ''));
+          
+        if (matches.length > 0) {
+          console.log(`Found amounts using pattern ${pattern}:`, matches);
+          foundAmounts = [...foundAmounts, ...matches];
+        }
+      }
+      
+      // Deduplicate and sort by value (descending)
+      return [...new Set(foundAmounts)]
+        .sort((a, b) => parseFloat(b) - parseFloat(a));
+    };
+
+    // Extract amounts using the improved method
+    const amountMatches = extractAmounts(text);
     setExtractedAmounts([...new Set(amountMatches)]);
     
     // Extract dates
@@ -143,33 +255,23 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     // Extract amount from text
     const regexAmount = extractedAmounts[0] ? parseFloat(extractedAmounts[0]) : undefined;
     
+    // Improve the narration detection regex with stronger patterns
+    const narrationRegex = /(?:narration|purpose|description|reference|note|memo|remarks)[\s:]*[:\-]?\s*([^\n\r.]+)|(?<=\bnarration\b\s+)([^\n\r.]+)/i;
+
+    // Update the section where narration is extracted to use the new function
     // Look for narration keywords with enhanced pattern
-    const narrationRegex = /(?:narration|purpose|description|reference|note|memo)\s*[:\-]?\s*([^\n\r.]+)|(?<=\bnarration\b\s+)([^\n\r.]+)/i;
     const narrationMatch = ocrText.match(narrationRegex);
-    let narrationText = narrationMatch ? (narrationMatch[1] || narrationMatch[2]).trim() : '';
+    let narrationText = narrationMatch ? cleanNarrationText(narrationMatch[1] || narrationMatch[2]).trim() : '';
 
     // Also look for NARRATION without colon that might be followed directly by the text
     if (!narrationText) {
       const additionalNarrationRegex = /\b(?:NARRATION|DESCRIPTION)\b\s+([A-Za-z][\w\s]+)/i;
       const additionalMatch = ocrText.match(additionalNarrationRegex);
       if (additionalMatch && additionalMatch[1]) {
-        narrationText = additionalMatch[1].trim();
+        narrationText = cleanNarrationText(additionalMatch[1].trim());
       }
     }
 
-    // If still no narration, try looking for key words/phrases in the text
-    if (!narrationText) {
-      // Look for phrases that might indicate the purpose of the transaction
-      const keyPhrases = ['Annual Water Bill', 'Electricity Bill', 'Internet Payment', 'Rent Payment', 'Salary'];
-      for (const phrase of keyPhrases) {
-        if (ocrText.includes(phrase)) {
-          narrationText = phrase;
-          console.log(`Found key phrase in text: "${phrase}"`);
-          break;
-        }
-      }
-    }
-    
     console.log('Final extracted narration:', narrationText);
     console.log('Final extracted date:', regexDate);
     
@@ -592,27 +694,66 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     // Create a copy of the transaction to avoid mutating the original
     const enhancedTransaction = { ...transaction };
     
+    // Look for transfer indicators in the OCR text
+    const transferIndicators = [
+      'transfer',
+      'sent to',
+      'beneficiary',
+      'recipient',
+      'otherbank-transfer',
+      'from account to account'
+    ];
+    
+    const isLikelyTransfer = transferIndicators.some(indicator => 
+      ocrText.toLowerCase().includes(indicator)
+    );
+    
+    // If transaction looks like a transfer but isn't marked as one
+    if (isLikelyTransfer && !enhancedTransaction.is_transfer) {
+      console.log('Transaction appears to be a transfer based on OCR text');
+      
+      // Look for sender and recipient information
+      const senderMatch = ocrText.match(/(?:sender|from)[:\s]+([^\n\r]+)/i);
+      const recipientMatch = ocrText.match(/(?:beneficiary|recipient|to)[:\s]+([^\n\r]+)/i);
+      
+      if (senderMatch || recipientMatch) {
+        console.log('Found sender/recipient information, converting to transfer');
+        enhancedTransaction.is_transfer = true;
+        enhancedTransaction.category_type = 'TRANSFER';
+        enhancedTransaction.category_name = 'Transfer';
+        
+        if (senderMatch && senderMatch[1]) {
+          enhancedTransaction.source_account = senderMatch[1].trim();
+        }
+        
+        if (recipientMatch && recipientMatch[1]) {
+          enhancedTransaction.destination_account = recipientMatch[1].trim();
+        }
+      }
+    }
+    
     // If there's a strong narration text, use it for the description
     if (possibleDescriptions.length > 0) {
       // Find the most relevant description from extracted possibilities
       const bestDescription = possibleDescriptions.find(desc => 
-        desc.toLowerCase().includes('water') || 
-        desc.toLowerCase().includes('bill') ||
-        desc.toLowerCase().includes('annual') ||
-        desc.toLowerCase().includes('narration')
+        desc.toLowerCase().includes('narration:') || 
+        desc.toLowerCase().includes('purpose:') ||
+        desc.toLowerCase().includes('reference:') ||
+        desc.toLowerCase().includes('description:')
       );
       
-      if (bestDescription && (!enhancedTransaction.description || enhancedTransaction.description === 'Transaction' || 
-          enhancedTransaction.description === 'Unknown Transaction' || 
-          enhancedTransaction.description.length < bestDescription.length * 0.7)) {
-        console.log(`Overriding description with better narration: "${bestDescription}"`);
-        enhancedTransaction.description = bestDescription;
-        
-        // Auto-categorize based on better description
-        const lowerDesc = bestDescription.toLowerCase();
-        if (lowerDesc.includes('water') || lowerDesc.includes('electricity') || lowerDesc.includes('bill')) {
-          enhancedTransaction.category_name = 'Utilities';
-          enhancedTransaction.category_type = 'EXPENSE';
+      if (bestDescription) {
+        const cleanedDesc = cleanNarrationText(bestDescription);
+        if (cleanedDesc && (!enhancedTransaction.description || 
+            enhancedTransaction.description === 'Transaction' || 
+            enhancedTransaction.description === 'Unknown Transaction' || 
+            enhancedTransaction.description.length < cleanedDesc.length * 0.7)) {
+          console.log(`Overriding description with better narration: "${cleanedDesc}"`);
+          enhancedTransaction.description = cleanedDesc;
+          
+          // Auto-categorize based on better description
+          enhancedTransaction.category_name = categorizeByDescription(cleanedDesc).category;
+          enhancedTransaction.category_type = categorizeByDescription(cleanedDesc).type;
         }
       }
     }
@@ -626,6 +767,13 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     console.log('Enhanced transaction:', JSON.stringify(enhancedTransaction));
     
     setSelectedTransaction(enhancedTransaction);
+    
+    // Set form values for editing
+    setDescription(enhancedTransaction.description);
+    setAmount(enhancedTransaction.amount.toString());
+    setTransactionType(enhancedTransaction.category_type.toLowerCase() === 'income' ? 'income' : 'expense');
+    setCategoryName(enhancedTransaction.category_name || 'Uncategorized');
+    setCategoryType(enhancedTransaction.category_type?.toLowerCase() || 'expense');
     
     // If it's a transfer, set transfer form values and switch to transfer tab
     if (enhancedTransaction.is_transfer) {
@@ -650,11 +798,7 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
       }
     } else {
       // For regular transactions, stay on AI tab but update form values
-      setDescription(enhancedTransaction.description);
-      setAmount(enhancedTransaction.amount.toString());
-      setTransactionType(enhancedTransaction.category_type.toLowerCase() === 'income' ? 'income' : 'expense');
-      setCategoryName(enhancedTransaction.category_name || 'Uncategorized');
-      setCategoryType(enhancedTransaction.category_type?.toLowerCase() || 'expense');
+      setCurrentTab("ai");
       
       // Set account if mentioned
       if (enhancedTransaction.account_name) {
@@ -704,8 +848,8 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     }
     
     try {
-      if (selectedTransaction.is_transfer) {
-        // For transfers
+      if (selectedTransaction.is_transfer || selectedTransaction.category_type === "TRANSFER") {
+        // For transfers - use edited values
         if (!sourceAccountId || !destinationAccountId) {
           toast({
             title: "Missing Accounts",
@@ -715,19 +859,31 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
           return;
         }
         
-        // Ensure we use the selected date or the parsed date from the transaction
-        const finalDate = selectedTransaction.date || date;
-        console.log(`Creating transfer with date: ${finalDate}`);
+        // Use the edited values from the transfer form
+        const finalDate = date;
+        const finalDescription = transferDescription;
+        const finalAmount = parseFloat(transferAmount);
+        
+        if (isNaN(finalAmount) || finalAmount <= 0) {
+          toast({
+            title: "Invalid Amount",
+            description: "Please enter a valid amount",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        console.log(`Creating transfer with description: ${finalDescription}, amount: ${finalAmount}, date: ${finalDate}`);
         
         await createTransferTransaction(
           sourceAccountId,
           destinationAccountId,
-          selectedTransaction.amount,
+          finalAmount,
           finalDate,
-          selectedTransaction.description
+          finalDescription
         );
       } else {
-        // For regular transactions
+        // For regular transactions - use edited values
         if (!accountId) {
           toast({
             title: "Missing Account",
@@ -737,18 +893,30 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
           return;
         }
         
-        // Ensure we use the selected date or the parsed date from the transaction
-        const finalDate = selectedTransaction.date || date;
-        console.log(`Creating transaction with date: ${finalDate}`);
+        // Use the edited values
+        const finalDate = date;
+        const finalDescription = description;
+        const finalAmount = parseFloat(amount);
+        
+        if (isNaN(finalAmount) || finalAmount <= 0) {
+          toast({
+            title: "Invalid Amount",
+            description: "Please enter a valid amount",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        console.log(`Creating transaction with description: ${finalDescription}, amount: ${finalAmount}, date: ${finalDate}, category: ${categoryName}`);
         
         const transactionData: TransactionInput = {
-          description: selectedTransaction.description,
-          amount: Math.abs(selectedTransaction.amount),
+          description: finalDescription,
+          amount: Math.abs(finalAmount),
           date: finalDate,
           account_id: accountId,
-          type: selectedTransaction.category_type.toLowerCase() === 'income' ? 'income' : 'expense',
-          category_name: selectedTransaction.category_name || 'Uncategorized',
-          category_type: selectedTransaction.category_type || 'EXPENSE',
+          type: transactionType,
+          category_name: categoryName,
+          category_type: categoryType.toUpperCase(),
         };
         
         await createTransaction(transactionData);
@@ -786,6 +954,44 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     : parsedTransactions;
   
   console.log('Rendering transactions:', parsedTransactions);
+  
+  // First, add a function to toggle transaction type
+  const toggleTransactionType = () => {
+    if (selectedTransaction) {
+      // Create a copy to modify
+      const updatedTransaction = { ...selectedTransaction };
+      
+      if (updatedTransaction.is_transfer) {
+        // Convert from transfer to regular transaction
+        console.log('Converting from transfer to regular transaction');
+        updatedTransaction.is_transfer = false;
+        updatedTransaction.category_type = transactionType.toUpperCase();
+        updatedTransaction.category_name = categoryName || 'Uncategorized';
+        
+        // Clear transfer-specific fields
+        delete updatedTransaction.source_account;
+        delete updatedTransaction.destination_account;
+        
+        // Update UI state
+        setSelectedTransaction(updatedTransaction);
+        setCurrentTab("ai");
+      } else {
+        // Convert from regular to transfer
+        console.log('Converting from regular transaction to transfer');
+        updatedTransaction.is_transfer = true;
+        updatedTransaction.category_type = "TRANSFER";
+        updatedTransaction.category_name = "Transfer";
+        
+        // Update UI state
+        setSelectedTransaction(updatedTransaction);
+        setCurrentTab("transfer");
+        
+        // Set transfer description to match regular transaction description
+        setTransferDescription(description);
+        setTransferAmount(amount);
+      }
+    }
+  };
   
   return (
     <div className="space-y-6">
@@ -895,19 +1101,67 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
                         <div className="space-y-2">
                           <Label>Description</Label>
                           <Input
-                            value={selectedTransaction.description}
-                            readOnly
-                            className="bg-muted"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Transaction description"
                           />
                         </div>
                         
                         <div className="space-y-2">
-                          <Label>Category</Label>
+                          <Label>Amount</Label>
                           <Input
-                            value={selectedTransaction.category_name}
-                            readOnly
-                            className="bg-muted"
+                            type="number"
+                            step="0.01"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            placeholder="0.00"
                           />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Transaction Type</Label>
+                          <Select
+                            value={transactionType}
+                            onValueChange={(value: 'income' | 'expense') => {
+                              setTransactionType(value);
+                              setCategoryType(value);
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="expense">Expense</SelectItem>
+                              <SelectItem value="income">Income</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Category</Label>
+                          <Select
+                            value={categoryName}
+                            onValueChange={setCategoryName}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Uncategorized">Uncategorized</SelectItem>
+                              <SelectItem value="Transport">Transport</SelectItem>
+                              <SelectItem value="Dining">Dining</SelectItem>
+                              <SelectItem value="Groceries">Groceries</SelectItem>
+                              <SelectItem value="Utilities">Utilities</SelectItem>
+                              <SelectItem value="Entertainment">Entertainment</SelectItem>
+                              <SelectItem value="Shopping">Shopping</SelectItem>
+                              <SelectItem value="Healthcare">Healthcare</SelectItem>
+                              <SelectItem value="Education">Education</SelectItem>
+                              <SelectItem value="Housing">Housing</SelectItem>
+                              <SelectItem value="Salary">Salary</SelectItem>
+                              <SelectItem value="Gift">Gift</SelectItem>
+                              <SelectItem value="Transfer">Transfer</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                         
                         <div className="space-y-2">
@@ -957,6 +1211,17 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
                               />
                             </PopoverContent>
                           </Popover>
+                        </div>
+                        
+                        <div className="space-y-2 mt-4">
+                          <Button 
+                            variant="outline"
+                            className="w-full"
+                            onClick={toggleTransactionType}
+                          >
+                            <ArrowLeftRight className="mr-2 h-4 w-4" />
+                            This is a transfer between accounts
+                          </Button>
                         </div>
                         
                         <Button onClick={createTransactionFromSelected}>
@@ -1129,6 +1394,17 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
                 >
                   <ArrowLeftRight className="mr-2 h-4 w-4" />
                   Create Transfer
+                </Button>
+                
+                {/* Add a button to convert transfer to regular transaction */}
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  className="w-full mt-2"
+                  onClick={toggleTransactionType}
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Not a transfer? Convert to regular transaction
                 </Button>
               </form>
             </CardContent>
