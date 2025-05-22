@@ -13,8 +13,15 @@ import { useIsMobile } from '@/hooks/use-mobile';
 // Initialize PDF.js worker in a safer way
 const initPDFWorker = () => {
   if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    // Use the ES module worker file from the public directory
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+    try {
+      // Primary approach: Use the worker directly from the installed package
+      const workerUrl = new URL('pdfjs-dist/build/pdf.worker.mjs', import.meta.url);
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl.toString();
+    } catch (error) {
+      console.warn('Failed to load PDF.js worker via import.meta.url, using fallback', error);
+      // Fallback: Try using the worker from public directory
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/assets/pdf/pdf.worker.mjs';
+    }
   }
 };
 
