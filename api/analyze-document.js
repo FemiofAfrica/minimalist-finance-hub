@@ -14,6 +14,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing document data' });
     }
     
+    console.log("Proxying document analysis request to Supabase");
+    
     // Call Supabase Edge Function directly from the server
     // This avoids CORS issues since it's server-to-server communication
     const response = await fetch(
@@ -29,15 +31,30 @@ export default async function handler(req, res) {
       }
     );
     
+    // Log results for debugging
+    const status = response.status;
+    console.log(`Supabase response status: ${status}`);
+    
+    // Try to get the response body
+    let data;
+    try {
+      data = await response.json();
+    } catch (e) {
+      console.error("Error parsing Supabase response:", e);
+      return res.status(500).json({
+        error: 'Invalid response from document analysis service',
+        details: await response.text()
+      });
+    }
+    
     // Forward the response status and body
-    const data = await response.json();
-    return res.status(response.status).json(data);
+    return res.status(status).json(data);
     
   } catch (error) {
     console.error('Error proxying to document analysis service:', error);
     return res.status(500).json({
       error: 'Failed to process document',
-      details: error.message
+      details: error.message || 'Unknown error'
     });
   }
 } 
