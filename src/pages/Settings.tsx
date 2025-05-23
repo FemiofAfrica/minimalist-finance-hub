@@ -20,6 +20,7 @@ import {
 import { NotificationType } from '@/types/notification';
 import { Loader2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { SupportBanner } from '@/components/ui/SupportBanner';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -40,6 +41,11 @@ export default function Settings() {
   const [notificationLink, setNotificationLink] = useState<string>("");
   const [expiryDays, setExpiryDays] = useState<number>(7);
   const [isSending, setIsSending] = useState<boolean>(false);
+  
+  // State for support banner text
+  const [supportBannerText, setSupportBannerText] = useState<string>('');
+  const [isLoadingBannerText, setIsLoadingBannerText] = useState<boolean>(false);
+  const [isSavingBannerText, setIsSavingBannerText] = useState<boolean>(false);
   
   // Load user data
   useEffect(() => {
@@ -194,24 +200,94 @@ export default function Settings() {
       if (user) {
         try {
           // Log the full user metadata for debugging
-          console.log("User metadata:", user.user_metadata);
+          // console.log("User metadata:", user.user_metadata);
           
           // Check if user has super admin flag in user_metadata
           const isUserAdmin = user.user_metadata?.is_super_admin === true;
-          console.log("Is user a super admin?", isUserAdmin);
-          
           setIsAdmin(isUserAdmin);
-          console.log("Setting isAdmin state to:", isUserAdmin);
-        } catch (error) {
-          console.error('Error checking admin status:', error);
+
+          // If admin, fetch current banner text
+          if (isUserAdmin) {
+            fetchSupportBannerText();
+          }
+        } catch (e) {
+          console.error("Error checking admin status:", e);
           setIsAdmin(false);
         }
+      } else {
+        setIsAdmin(false);
       }
     };
-    
     checkIfAdmin();
   }, [user]);
 
+  // Fetch support banner text
+  const fetchSupportBannerText = async () => {
+    setIsLoadingBannerText(true);
+    try {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'support_banner_text')
+        .maybeSingle(); // Use maybeSingle to handle if the key doesn't exist yet
+
+      if (error) {
+        throw error; // Let the catch block handle it
+      }
+
+      if (data && data.value) {
+        setSupportBannerText(data.value as string);
+      } else {
+        // Key might not exist, or value is null. Set to empty string for the textarea.
+        setSupportBannerText(''); 
+        console.log('Support banner text not found or is null, initializing as empty for admin input.');
+      }
+
+    } catch (error: any) {
+      console.error('Error fetching support banner text:', error.message);
+      toast({
+        title: 'Failed to load banner text',
+        description: error.message || 'Could not retrieve the current support banner text.',
+        variant: 'destructive',
+      });
+      setSupportBannerText('Error loading text.'); // Show error in textarea
+    } finally {
+      setIsLoadingBannerText(false);
+    }
+  };
+
+  // Handle support banner text update
+  const handleSaveBannerText = async () => {
+    if (!isAdmin) return;
+    setIsSavingBannerText(true);
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert(
+          { key: 'support_banner_text', value: supportBannerText, updated_at: new Date().toISOString() },
+          { onConflict: 'key' }
+        );
+
+      if (error) {
+        throw error; // Let the catch block handle it
+      }
+
+      toast({
+        title: 'Support banner updated',
+        description: 'The support banner text has been saved successfully.',
+      });
+    } catch (error: any) {
+      console.error('Error saving support banner text:', error.message);
+      toast({
+        title: 'Save failed',
+        description: error.message || 'There was an error saving the support banner text.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingBannerText(false);
+    }
+  };
+  
   // Function to send notification to all users
   const handleSendToAll = async () => {
     if (!notificationTitle || !notificationMessage) {
@@ -468,124 +544,151 @@ export default function Settings() {
             </TabsContent>
             
             {/* Admin Tab */}
-            <TabsContent value="admin" className="p-8">
-              <div className="max-w-3xl mx-auto">
-                <h2 className="text-2xl font-semibold mb-8 text-center">Admin Controls</h2>
-                
-                <Card className="shadow-sm border mb-10">
-                  <CardHeader>
-                    <CardTitle>Send Notifications</CardTitle>
-                    <CardDescription>
-                      Use this form to send notifications to all users on the platform.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="grid gap-y-6">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
-                        <Label htmlFor="notification-title" className="font-medium text-base sm:w-1/3">Notification Title</Label>
-                        <Input
-                          id="notification-title"
-                          placeholder="Enter notification title"
+            {isAdmin && (
+              <TabsContent value="admin" className="p-8">
+                <div className="max-w-3xl mx-auto">
+                  <h2 className="text-2xl font-semibold mb-8 text-center">Admin Controls</h2>
+                  
+                  <Card className="shadow-sm border mb-10">
+                    <CardHeader>
+                      <CardDescription>
+                        Manage application-wide settings and send notifications.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Global Notifications Section (existing) */}
+                      <div>
+                        <h3 className="text-lg font-medium mb-2">Global Notifications</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Send a notification to all users. Use with caution.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="notificationTitle">Title</Label>
+                        <Input 
+                          id="notificationTitle" 
                           value={notificationTitle}
-                          onChange={e => setNotificationTitle(e.target.value)}
-                          className="sm:w-2/3 text-base"
+                          onChange={(e) => setNotificationTitle(e.target.value)}
+                          placeholder="E.g., New Feature Alert!"
                         />
                       </div>
-                      
-                      <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-8">
-                        <Label htmlFor="notification-message" className="font-medium text-base sm:w-1/3 pt-2">Notification Message</Label>
+                      <div className="space-y-2">
+                        <Label htmlFor="notificationMessage">Message</Label>
                         <Textarea
-                          id="notification-message"
-                          placeholder="Enter notification message"
+                          id="notificationMessage"
                           value={notificationMessage}
-                          onChange={e => setNotificationMessage(e.target.value)}
+                          onChange={(e) => setNotificationMessage(e.target.value)}
+                          placeholder="Describe the notification in detail..."
                           rows={3}
-                          className="sm:w-2/3 text-base"
                         />
                       </div>
-                      
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
-                        <Label htmlFor="notification-type" className="font-medium text-base sm:w-1/3">Notification Type</Label>
-                        <div className="sm:w-2/3">
-                          <Select
-                            value={notificationType}
-                            onValueChange={(value: string) => {
-                              setNotificationType(value as NotificationType);
-                            }}
-                          >
-                            <SelectTrigger id="notification-type" className="text-base">
-                              <SelectValue placeholder="Select notification type" />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="notificationType">Type</Label>
+                          <Select value={notificationType} onValueChange={(value) => setNotificationType(value as NotificationType)}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select type" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="info">Information</SelectItem>
-                              <SelectItem value="success">Success</SelectItem>
+                              <SelectItem value="info">Info</SelectItem>
                               <SelectItem value="warning">Warning</SelectItem>
                               <SelectItem value="error">Error</SelectItem>
+                              <SelectItem value="success">Success</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
-                      </div>
-                      
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
-                        <Label htmlFor="expiry-days" className="font-medium text-base sm:w-1/3">
-                          Expiry (days)
-                        </Label>
-                        <div className="sm:w-2/3">
-                          <Input
-                            id="expiry-days"
-                            type="number"
-                            min={1}
-                            max={30}
-                            value={expiryDays}
-                            onChange={e => setExpiryDays(parseInt(e.target.value))}
-                            className="text-base"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Days until this notification expires
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
-                        <Label htmlFor="notification-link" className="font-medium text-base sm:w-1/3">
-                          Link (Optional)
-                        </Label>
-                        <div className="sm:w-2/3">
-                          <Input
-                            id="notification-link"
-                            placeholder="e.g., /settings or /transactions"
+                        <div className="space-y-2">
+                          <Label htmlFor="notificationLink">Optional Link (URL)</Label>
+                          <Input 
+                            id="notificationLink" 
+                            type="url"
                             value={notificationLink}
-                            onChange={e => setNotificationLink(e.target.value)}
-                            className="text-base"
+                            onChange={(e) => setNotificationLink(e.target.value)}
+                            placeholder="https://yourapp.com/features/new"
                           />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Enter a relative path to navigate to when the notification is clicked
-                          </p>
                         </div>
                       </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="expiryDays">Expires In (days)</Label>
+                        <Input 
+                          id="expiryDays" 
+                          type="number"
+                          value={expiryDays}
+                          onChange={(e) => setExpiryDays(Number(e.target.value))}
+                          min="1"
+                          placeholder="Default: 7 days"
+                        />
+                      </div>
+                      <Button onClick={handleSendToAll} disabled={isSending || !notificationTitle || !notificationMessage}>
+                        {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Send to All Users
+                      </Button>
+                      {/* End of Global Notifications Section */}
+
+                      <Separator className="my-6" /> {/* Separator between sections */}
+
+                      {/* Support Banner Configuration Section (New) */}
+                      <div>
+                        <h3 className="text-lg font-medium mb-2">Support Banner Configuration</h3>
+                        <p className="text-sm text-muted-foreground mb-1">
+                          Update the text displayed in the global support banner.
+                        </p>
+                        <p className="text-xs text-muted-foreground mb-4">
+                          Leave empty to potentially hide the banner (behavior depends on SupportBanner component logic for empty text).
+                        </p>
+                      </div>
+                      
+                      {isLoadingBannerText ? (
+                        <div className="flex items-center space-x-2">
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                          <p className="text-muted-foreground">Loading banner text...</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="supportBannerText">Banner Text</Label>
+                            <Textarea
+                              id="supportBannerText"
+                              value={supportBannerText}
+                              onChange={(e) => setSupportBannerText(e.target.value)}
+                              placeholder="Enter the support banner text here..."
+                              rows={3}
+                              className="mt-1"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              This text will be displayed in the scrolling banner at the top of the application.
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <Label>Banner Preview</Label>
+                            <div className="mt-1 border rounded-md p-2 relative">
+                              <SupportBanner 
+                                initialText={supportBannerText || "Preview: Enter text above to see it here."}
+                                className="static top-auto left-auto right-auto"
+                                isPreviewMode={true}
+                              />
+                            </div>
+                            {(!supportBannerText && !isLoadingBannerText) && (
+                              <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+                                Preview shows default message as current input is empty. Actual banner might show last saved text or default.
+                              </p>
+                            )}
+                          </div>
+
+                          <Button onClick={handleSaveBannerText} disabled={isSavingBannerText || isLoadingBannerText}>
+                            {isSavingBannerText ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Save Banner Text
+                          </Button>
+                        </div>
+                      )}
+                      {/* End of Support Banner Configuration Section */}
+                    </CardContent>
+                  </Card>
                 </div>
-                
-                    <div className="flex justify-center mt-6 pt-4 border-t">
-                      <Button
-                        onClick={handleSendToAll}
-                        disabled={isSending || !notificationTitle || !notificationMessage}
-                        className="px-8 py-2 h-11 text-base"
-                      >
-                        {isSending ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Sending...
-                          </>
-                        ) : (
-                          "Send to All Users"
-                        )}
-                </Button>
-                    </div>
-              </CardContent>
-            </Card>
-              </div>
-          </TabsContent>
-        </Tabs>
+              </TabsContent>
+            )}
+          </Tabs>
         </div>
       </div>
     </DashboardLayout>
