@@ -21,32 +21,45 @@ export function mapDBFrequencyToAppFrequency(dbFrequency: string): SubscriptionF
 
 // Map from our types to DB enum
 export function mapAppFrequencyToDBFrequency(appFrequency: SubscriptionFrequency): string {
-  console.log("Original frequency to map:", appFrequency, typeof appFrequency);
+  console.log("mapAppFrequencyToDBFrequency - Original app frequency:", appFrequency);
   
-  // Special case for ANNUALLY -> yearly since this is causing the most problems
-  if (appFrequency === "ANNUALLY" || String(appFrequency).toUpperCase() === "ANNUALLY") {
-    console.log("Mapping ANNUALLY to yearly");
-    return "yearly";
+  // Normalize input to uppercase to match SubscriptionFrequency type values consistently
+  const upperAppFrequency = String(appFrequency).toUpperCase();
+
+  let dbFrequency: string;
+
+  switch (upperAppFrequency) {
+    case 'MONTHLY':
+      dbFrequency = 'MONTHLY'; // DB expects uppercase
+      break;
+    case 'ANNUALLY':
+      dbFrequency = 'yearly';  // DB uses 'yearly' (lowercase) for this specific case
+      break;
+    case 'QUARTERLY':
+      dbFrequency = 'QUARTERLY'; // DB expects uppercase
+      break;
+    case 'WEEKLY':
+      dbFrequency = 'WEEKLY';    // DB expects uppercase
+      break;
+    case 'CUSTOM':
+      // Assuming CUSTOM app frequency should map to a default like MONTHLY for the DB
+      console.log("Mapping 'CUSTOM' app frequency to 'MONTHLY' for DB.");
+      dbFrequency = 'MONTHLY'; 
+      break;
+    default:
+      // This case handles if appFrequency is not one of the known SubscriptionFrequency types.
+      // It could also be a defensive measure if a raw DB value was somehow passed in.
+      const potentialDirectDBValue = String(appFrequency);
+      if (['MONTHLY', 'yearly', 'QUARTERLY', 'WEEKLY'].includes(potentialDirectDBValue)) {
+          console.warn(`mapAppFrequencyToDBFrequency - App frequency '${appFrequency}' appears to be a direct DB value. Passing it through.`);
+          dbFrequency = potentialDirectDBValue;
+      } else {
+          console.warn(`mapAppFrequencyToDBFrequency - Unexpected app frequency: '${appFrequency}'. Defaulting to 'MONTHLY' for DB as a fallback.`);
+          dbFrequency = 'MONTHLY'; // Fallback to a common default
+      }
   }
-  
-  // Convert to string and lowercase for consistency
-  const frequency = String(appFrequency).toLowerCase();
-  console.log("Normalized frequency:", frequency);
-  
-  // Direct mapping to exact DB enum values
-  const mappings: Record<string, string> = {
-    'monthly': 'monthly',
-    'annually': 'yearly',  // This is critical - DB uses 'yearly' not 'annually'
-    'quarterly': 'quarterly',
-    'weekly': 'weekly',
-    'custom': 'monthly'    // Default custom to monthly
-  };
-  
-  // Get the mapped value or default to monthly
-  const result = mappings[frequency] || 'monthly';
-  console.log("Final mapped result:", result);
-  
-  return result;
+  console.log(`mapAppFrequencyToDBFrequency - Mapped DB frequency: ${dbFrequency}`);
+  return dbFrequency;
 }
 
 export interface Subscription {

@@ -156,24 +156,24 @@ export const createSubscription = async (subscription: Omit<Subscription, 'subsc
     
     // Add the user_id to the subscription object and map frequency to DB format
     const mappedFrequency = mapAppFrequencyToDBFrequency(subscription.frequency);
-    console.log("Original frequency:", subscription.frequency);
-    console.log("Mapped frequency for DB:", mappedFrequency);
+    console.log("Original frequency (app type):", subscription.frequency);
+    console.log("Mapped frequency for DB (DB type):", mappedFrequency);
 
-    // Force lowercase the frequency just to be absolutely sure
-    const normalizedFrequency = String(mappedFrequency).toLowerCase();
-    console.log("Normalized frequency for DB:", normalizedFrequency);
+    // Check that the mapped frequency is one of the accepted DB enum values
+    const validDBFrequencies = ['MONTHLY', 'yearly', 'QUARTERLY', 'WEEKLY']; // These are the direct values expected by DB
+    // Note: 'CUSTOM' from app maps to 'MONTHLY' for DB via mapAppFrequencyToDBFrequency
 
-    // Check that it's one of the accepted enum values
-    const validFrequencies = ['monthly', 'yearly', 'quarterly', 'weekly'];
-    if (!validFrequencies.includes(normalizedFrequency)) {
-      console.error(`Invalid frequency: ${normalizedFrequency}. Must be one of: ${validFrequencies.join(', ')}`);
-      throw new Error(`Invalid frequency: ${normalizedFrequency}. Must be one of: ${validFrequencies.join(', ')}`);
+    if (!validDBFrequencies.includes(mappedFrequency)) {
+      // This error should ideally not be hit if mapAppFrequencyToDBFrequency is comprehensive
+      // and SubscriptionFrequency type is strictly enforced on input.
+      console.error(`Invalid mapped frequency for DB: ${mappedFrequency}. Must be one of: ${validDBFrequencies.join(', ')}`);
+      throw new Error(`Invalid mapped frequency for DB: ${mappedFrequency}. Must be one of: ${validDBFrequencies.join(', ')}`);
     }
 
     const subscriptionWithUserId = {
       ...subscription,
       user_id: user.id,
-      frequency: normalizedFrequency // Use the normalized frequency instead
+      frequency: mappedFrequency // Use the correctly cased frequency from mapAppFrequencyToDBFrequency
     };
 
     // Remove any fields that might be causing problems
@@ -353,26 +353,37 @@ export const updateSubscription = async (subscription: Partial<Subscription> & {
     console.log("Updating subscription:", subscription);
     
     // Only send necessary fields to update
-    const updateData = {
+    const updateData: any = {  // Added 'any' type here to allow dynamic property deletion
       is_active: subscription.is_active,
       amount: subscription.amount,
       frequency: subscription.frequency ? mapAppFrequencyToDBFrequency(subscription.frequency) : undefined,
       next_billing_date: subscription.next_billing_date,
       description: subscription.description,
       name: subscription.name,
-      category_name: subscription.category_name,
-      category_type: subscription.category_type,
       auto_renew: subscription.auto_renew,
       reminder_days: subscription.reminder_days,
       provider_id: subscription.provider_id
+      // category_name and category_type should not be sent directly
+      // as they are typically derived or handled via category_id
     };
     
     // Filter out undefined values to avoid overwriting with null
+    // Also remove category_name and category_type as they are not direct columns
     Object.keys(updateData).forEach(key => {
       if (updateData[key] === undefined) {
         delete updateData[key];
       }
     });
+
+    // Explicitly delete category_name and category_type if they somehow exist on subscription
+    // though they are not defined in the initial updateData object above anymore.
+    // This is a defensive measure.
+    if ('category_name' in updateData) {
+      delete updateData.category_name;
+    }
+    if ('category_type' in updateData) {
+      delete updateData.category_type;
+    }
     
     const { data, error } = await supabase
       .from('subscriptions')
