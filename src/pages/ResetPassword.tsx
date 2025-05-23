@@ -82,8 +82,8 @@ const ResetPassword = () => {
       <div className="min-h-screen flex items-center justify-center bg-[#004D40] w-screen h-screen m-0 p-0 overflow-hidden auth-page">
         <div className="w-full max-w-md space-y-6 px-8">
           <div className="text-center space-y-2">
-            <div className="flex justify-center mb-6">
-              <h1 className="text-4xl font-bold text-white">SayFin</h1>
+            <div className="flex justify-center items-center mb-8">
+              <h1 className="text-4xl font-bold text-white">EvryFin</h1>
             </div>
             <h2 className="text-2xl font-bold text-white">Reset Password</h2>
             <p className="text-gray-200">

@@ -263,12 +263,11 @@ const Login = () => {
       <div className="min-h-screen flex items-center justify-center bg-[#004D40] w-screen h-screen m-0 p-0 overflow-hidden auth-page">
         <div className="w-full max-w-xl space-y-6 px-8">
           <div className="text-center space-y-2">
-            <div className="flex justify-center mb-6">
-              <h1 className="text-4xl font-bold text-white">SayFin</h1>
+            <div className="flex justify-center items-center mb-8">
+              {/* <img src="/assets/logo.svg" alt="SayFin Logo" className="h-10 w-10 mr-3" /> */}
+              <h1 className="text-4xl font-bold text-white">EvryFin</h1>
             </div>
-            <h2 className="text-2xl font-bold text-white">
-              {isSignUp ? 'Create an account' : 'Welcome Back!'}
-            </h2>
+            <h2 className="text-2xl font-semibold text-center text-white mb-3">Sign In</h2>
             <p className="text-gray-200">
               Please enter your details to sign in to your account
             </p>

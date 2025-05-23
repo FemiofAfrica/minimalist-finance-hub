@@ -23,7 +23,7 @@ const ChartsSection = () => {
     <div className="grid grid-cols-1 gap-6 lg:h-[600px]">
       <Card className="p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold">Income by Category</h3>
+          <h3 className="text-lg font-semibold text-center w-full">Income by Category</h3>
         </div>
         <div className="h-[300px] w-full flex items-center justify-center">
           <IncomePieChart />
@@ -32,7 +32,7 @@ const ChartsSection = () => {
 
       <Card className="p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold">Expenses by Category</h3>
+          <h3 className="text-lg font-semibold text-center w-full">Expenses by Category</h3>
         </div>
         <div className="h-[300px] w-full flex items-center justify-center">
           <ExpensesPieChart />

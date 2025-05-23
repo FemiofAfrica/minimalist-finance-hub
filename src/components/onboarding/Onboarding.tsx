@@ -147,7 +147,7 @@ export const Onboarding = () => {
                 className="space-y-6 text-center py-4"
               >
                 <motion.div variants={textVariants} className="text-4xl font-bold mb-6">
-                  Welcome to SayFin! 🎉
+                  Welcome to EvryFin! 🎉
                 </motion.div>
                 
                 <motion.div variants={textVariants} className="text-xl mb-4">

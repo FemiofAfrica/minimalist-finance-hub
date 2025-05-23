@@ -67,14 +67,14 @@
 </head>
 <body>
   <div class="container">
-    <h1>Reset Onboarding State</h1>
-    <p>Click the button below to reset the onboarding state for your SayFin account. After resetting, you will see the onboarding process again when you next log in.</p>
-    <button id="resetButton">Reset Onboarding State</button>
+    <h1>Reset Onboarding Status</h1>
+    <p>Click the button below to reset the onboarding state for your EvryFin account. After resetting, you will see the onboarding process again when you next log in.</p>
+    <button id="resetOnboardingBtn">Reset Onboarding</button>
     <div id="status" class="status"></div>
   </div>
 
   <script>
-    document.getElementById('resetButton').addEventListener('click', function() {
+    document.getElementById('resetOnboardingBtn').addEventListener('click', function() {
       const statusEl = document.getElementById('status');
       
       try {
