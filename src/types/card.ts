@@ -75,6 +75,6 @@ export function prepareDatabaseCard(card: Partial<Card>): any {
     type: card.type || card.card_type,
     last_four: card.last_four || (card.card_number ? card.card_number.slice(-4) : undefined),
     created_at,
-    updated_at: updated_at || new Date().toISOString()
+    updated_at: updated_at || new Date().toLocaleDateString('en-CA')
   };
 }

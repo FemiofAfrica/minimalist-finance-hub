@@ -1,4 +1,3 @@
-
 import { TransactionType } from "@/types/transaction";
 
 export interface ParsedTransaction {
@@ -209,6 +208,6 @@ export const parseTransaction = (text: string): ParsedTransaction => {
     amount,
     category_type: isExpense ? "expense" : "income",
     category_name: inferredCategory,
-    date: date.toISOString()
+    date: date.toLocaleDateString('en-CA')
   };
 };

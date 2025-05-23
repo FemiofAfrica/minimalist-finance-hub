@@ -542,7 +542,7 @@ export const convertSubscriptionToTransaction = async (subscriptionId: string): 
       amount: subscription.amount,
       currency: accountCurrency,
       type: (subscription.category_type?.toLowerCase() === 'income' ? 'income' : 'expense') as 'income' | 'expense',
-      date: new Date().toISOString().split('T')[0], // Today's date
+      date: new Date().toLocaleDateString('en-CA'), // Today's date
       description: `${subscription.name} Subscription Payment`,
       category_id: subscription.category_id,
       category_name: subscription.category_name || 'Subscriptions',
@@ -595,7 +595,7 @@ const calculateNextBillingDate = (currentDate: string, frequency: SubscriptionFr
       date.setMonth(date.getMonth() + 1);
   }
   
-  return date.toISOString().split('T')[0];
+  return date.toLocaleDateString('en-CA');
 };
 
 // Get upcoming subscriptions for reminders
@@ -607,8 +607,8 @@ export const getUpcomingSubscriptions = async (daysAhead: number): Promise<Subsc
     const futureDate = new Date(today);
     futureDate.setDate(today.getDate() + daysAhead);
     
-    const todayStr = today.toISOString().split('T')[0];
-    const futureDateStr = futureDate.toISOString().split('T')[0];
+    const todayStr = today.toLocaleDateString('en-CA');
+    const futureDateStr = futureDate.toLocaleDateString('en-CA');
     
     const { data, error } = await supabase
       .from('subscriptions')

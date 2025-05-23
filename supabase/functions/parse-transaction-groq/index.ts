@@ -134,7 +134,7 @@ function parseRelativeDate(text: string, baseDate: Date = new Date()): string {
       if (monthMap[monthName] !== undefined && day >= 1 && day <= 31 && year > 2000) {
         const parsedDate = new Date(year, monthMap[monthName], day);
         if (!isNaN(parsedDate.getTime())) {
-          const result = parsedDate.toISOString().split('T')[0];
+          const result = parsedDate.toLocaleDateString('en-CA');
           console.log(`Parsed "${text}" as "${result}" using month name format`);
           return result;
         }
@@ -148,13 +148,13 @@ function parseRelativeDate(text: string, baseDate: Date = new Date()): string {
   if (lowerText.includes("yesterday")) {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    return yesterday.toISOString().split("T")[0]; // Format as YYYY-MM-DD
+    return yesterday.toLocaleDateString('en-CA'); // Format as YYYY-MM-DD
   }
 
   if (lowerText.includes("last week")) {
     const lastWeek = new Date(today);
     lastWeek.setDate(lastWeek.getDate() - 7);
-    return lastWeek.toISOString().split("T")[0]; // Format as YYYY-MM-DD
+    return lastWeek.toLocaleDateString('en-CA'); // Format as YYYY-MM-DD
   }
 
   if (lowerText.includes("last month")) {
@@ -164,7 +164,7 @@ function parseRelativeDate(text: string, baseDate: Date = new Date()): string {
     if (lastMonth.getDate() < today.getDate()) {
       lastMonth.setDate(0); // Go to the last day of the previous month
     }
-    return lastMonth.toISOString().split("T")[0]; // Format as YYYY-MM-DD
+    return lastMonth.toLocaleDateString('en-CA'); // Format as YYYY-MM-DD
   }
 
   // Check for explicit date format YYYY-MM-DD using regex
@@ -183,17 +183,17 @@ function parseRelativeDate(text: string, baseDate: Date = new Date()): string {
       parsedDate.getMonth() === month - 1 &&
       parsedDate.getDate() === day
     ) {
-      return dateMatch[0]; // Return the valid YYYY-MM-DD string
+      return parsedDate.toLocaleDateString('en-CA'); // Return the valid YYYY-MM-DD string
     }
   }
 
   // Default to today's date if "today" is mentioned or no other date is found
   if (lowerText.includes('today')) {
-      return today.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      return today.toLocaleDateString('en-CA'); // Format as YYYY-MM-DD
   }
 
   // Default to the base date (usually today) if no specific date is found
-  return today.toISOString().split("T")[0]; // Format as YYYY-MM-DD
+  return today.toLocaleDateString('en-CA'); // Format as YYYY-MM-DD
 }
 
 // Dedicated function to parse date strings with complex formats
@@ -397,7 +397,7 @@ function parseFallback(text: string): Response {
       if (dateMatch && dateMatch[1]) {
         const parsed = new Date(dateMatch[1].trim());
         if (!isNaN(parsed.getTime())) {
-          explicitDate = parsed.toISOString().split('T')[0];
+          explicitDate = parsed.toLocaleDateString('en-CA');
           foundDate = true;
         }
       }
@@ -1005,7 +1005,7 @@ async function serve(req: Request): Promise<Response> {
             }
 
             // Final validation - add timestamp to log
-            const timestamp = new Date().toISOString();
+            const timestamp = new Date().toLocaleDateString('en-CA');
             console.log(`[${timestamp}] Final Data (Groq):`, {
               description: responseData.description,
               date: responseData.date,

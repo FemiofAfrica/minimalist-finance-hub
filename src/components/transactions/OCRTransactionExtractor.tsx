@@ -60,7 +60,7 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState<string>(() => {
     const now = new Date();
-    return now.toISOString().split('T')[0];
+    return now.toLocaleDateString('en-CA');
   });
   const [accountId, setAccountId] = useState('');
   const [transactionType, setTransactionType] = useState<'income' | 'expense'>('expense');
@@ -248,7 +248,7 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     // Get the most likely date (first detected date or today)
     const regexDate = extractedDateMatches.length > 0 
       ? formatAndValidateDate(extractedDateMatches[0]) 
-      : new Date().toISOString().split('T')[0];
+      : new Date().toLocaleDateString('en-CA');
     
     console.log('Formatted date for AI processing:', regexDate);
     
@@ -632,13 +632,13 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
       }
       
       // Last resort: use today's date
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toLocaleDateString('en-CA');
       console.log(`Could not parse "${dateStr}", using today's date: ${today}`);
       return today;
     } catch (error) {
       console.error('Error formatting date:', error);
       // Fallback to today's date if parsing fails
-      return new Date().toISOString().split('T')[0];
+      return new Date().toLocaleDateString('en-CA');
     }
   };
   
@@ -1204,7 +1204,7 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
                                 selected={date ? new Date(date) : undefined}
                                 onSelect={(selectedDate) => {
                                   if (selectedDate) {
-                                    setDate(selectedDate.toISOString().split('T')[0]);
+                                    setDate(selectedDate.toLocaleDateString('en-CA'));
                                   }
                                 }}
                                 initialFocus
@@ -1340,7 +1340,7 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
                         selected={date ? new Date(date) : undefined}
                         onSelect={(selectedDate) => {
                           if (selectedDate) {
-                            setDate(selectedDate.toISOString().split('T')[0]);
+                            setDate(selectedDate.toLocaleDateString('en-CA'));
                           }
                         }}
                         initialFocus
