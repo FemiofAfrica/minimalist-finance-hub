@@ -1,5 +1,6 @@
 import { AnalyzeOperationOutput } from "@azure-rest/ai-document-intelligence";
 import { supabase } from "@/integrations/supabase/client";
+import { compressImageIfNeeded, MAX_FILE_SIZE } from "./imageCompression";
 
 // Publicly available CORS proxies (use as fallback)
 const CORS_PROXIES = [
@@ -19,10 +20,24 @@ export async function analyzeDocument(
   progressCallback?: (progress: number) => void
 ): Promise<string> {
   try {
-    progressCallback?.(10);
+    progressCallback?.(5);
+    
+    // Check file size and compress if needed
+    if (file.size > MAX_FILE_SIZE) {
+      progressCallback?.(10);
+      console.log(`File size (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds limit of ${(MAX_FILE_SIZE / (1024 * 1024)).toFixed(2)} MB. Compressing...`);
+      const compressedFile = await compressImageIfNeeded(file);
+      
+      if (compressedFile.size > MAX_FILE_SIZE) {
+        throw new Error(`File is too large (${(compressedFile.size / (1024 * 1024)).toFixed(2)} MB). Maximum allowed size is ${(MAX_FILE_SIZE / (1024 * 1024)).toFixed(2)} MB. Please try a smaller file or a clearer image.`);
+      }
+      
+      file = compressedFile;
+    }
+    
+    progressCallback?.(20);
     
     // Step 1: Use OCR.space to extract text from image (handles CORS)
-    progressCallback?.(20);
     const extractedText = await useOcrSpace(file, progressCallback);
     
     // Step 2: Process the extracted text with Groq AI via parse-transaction-groq
@@ -43,7 +58,7 @@ export async function analyzeDocument(
 async function useOcrSpace(file: File, progressCallback?: (progress: number) => void): Promise<string> {
   progressCallback?.(30);
   
-  console.log("Using OCR.space service");
+  console.log(`Using OCR.space service with file size: ${(file.size / 1024).toFixed(2)} KB`);
   
   // Common free API key for OCR.space
   const API_KEY = 'K85772124988957';

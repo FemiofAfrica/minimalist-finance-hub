@@ -190,9 +190,9 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
       // Try each pattern in order of priority
       for (const pattern of patterns) {
         const matches = Array.from(text.matchAll(pattern))
-          .map(match => match[1])
-          .filter(Boolean)
-          .map(amount => amount.replace(/,/g, ''));
+      .map(match => match[1])
+      .filter(Boolean)
+      .map(amount => amount.replace(/,/g, ''));
           
         if (matches.length > 0) {
           console.log(`Found amounts using pattern ${pattern}:`, matches);
@@ -382,7 +382,7 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
           if (!isDuplicate) {
             // Print the transaction to console for debugging
             console.log('Adding parsed transaction:', JSON.stringify(parsedData));
-            parsedResults.push(parsedData);
+          parsedResults.push(parsedData);
           }
         }
       }
@@ -522,8 +522,8 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
       
       const dateStr = dateMatches[0];
       return formatAndValidateDate(dateStr);
-    } catch (error) {
-      console.error('Error parsing date:', error);
+      } catch (error) {
+        console.error('Error parsing date:', error);
       return null;
     }
   };
@@ -851,7 +851,7 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
       if (selectedTransaction.is_transfer || selectedTransaction.category_type === "TRANSFER") {
         // For transfers - use edited values
         if (!sourceAccountId || !destinationAccountId) {
-          toast({
+      toast({
             title: "Missing Accounts",
             description: "Please select source and destination accounts",
             variant: "destructive",
@@ -865,11 +865,11 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
         const finalAmount = parseFloat(transferAmount);
         
         if (isNaN(finalAmount) || finalAmount <= 0) {
-          toast({
+      toast({
             title: "Invalid Amount",
             description: "Please enter a valid amount",
-            variant: "destructive",
-          });
+        variant: "destructive",
+      });
           return;
         }
         
@@ -885,28 +885,28 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
       } else {
         // For regular transactions - use edited values
         if (!accountId) {
-          toast({
+      toast({
             title: "Missing Account",
             description: "Please select an account",
-            variant: "destructive",
-          });
-          return;
-        }
-        
+        variant: "destructive",
+      });
+      return;
+    }
+    
         // Use the edited values
         const finalDate = date;
         const finalDescription = description;
         const finalAmount = parseFloat(amount);
         
         if (isNaN(finalAmount) || finalAmount <= 0) {
-          toast({
+      toast({
             title: "Invalid Amount",
             description: "Please enter a valid amount",
-            variant: "destructive",
-          });
-          return;
-        }
-        
+        variant: "destructive",
+      });
+      return;
+    }
+    
         console.log(`Creating transaction with description: ${finalDescription}, amount: ${finalAmount}, date: ${finalDate}, category: ${categoryName}`);
         
         const transactionData: TransactionInput = {
@@ -1018,79 +1018,79 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
           ) : (
             <>
               {/* Detected Transactions Card */}
-              <Card>
+                <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex justify-between items-center">
-                    <span>Detected Transactions</span>
-                    <div className="relative w-[200px]">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search transactions..."
-                        className="pl-8"
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
-                      />
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {filteredTransactions.length > 0 ? (
-                    filteredTransactions.map((transaction, idx) => (
-                      <div
-                        key={`transaction-${idx}`}
-                        className={`p-3 border rounded-md cursor-pointer hover:border-primary transition-colors ${
-                          selectedTransaction === transaction ? 'border-primary bg-primary/5' : ''
-                        }`}
-                        onClick={() => selectParsedTransaction(transaction)}
-                      >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-medium">{transaction.description}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {transaction.category_name} • {transaction.date || 'Today'}
-                            </p>
-                          </div>
-                          <div className="flex items-center">
-                            {transaction.is_transfer && (
-                              <ArrowLeftRight className="h-4 w-4 mr-1 text-blue-500" />
-                            )}
-                            <span className={`font-medium ${
-                              transaction.category_type === 'INCOME'
-                                ? 'text-green-600'
-                                : transaction.is_transfer
-                                ? 'text-blue-600'
-                                : 'text-red-600'
-                            }`}>
-                              {transaction.category_type === 'INCOME' ? '+' : ''}
-                              ₦{transaction.amount.toLocaleString('en-NG', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
-                              })}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {transaction.is_transfer && (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {transaction.source_account && transaction.destination_account ? (
-                              <>From {transaction.source_account} to {transaction.destination_account}</>
-                            ) : (
-                              <>Transfer transaction</>
-                            )}
-                          </div>
-                        )}
-                        
-                        {transaction.account_name && !transaction.is_transfer && (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Account: {transaction.account_name}
-                          </div>
-                        )}
+                    <CardTitle className="flex justify-between items-center">
+                      <span>Detected Transactions</span>
+                      <div className="relative w-[200px]">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search transactions..."
+                          className="pl-8"
+                          value={searchText}
+                          onChange={(e) => setSearchText(e.target.value)}
+                        />
                       </div>
-                    ))
-                  ) : (
-                    <p className="text-center text-muted-foreground py-4">
-                      No transactions match your search
-                    </p>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {filteredTransactions.length > 0 ? (
+                      filteredTransactions.map((transaction, idx) => (
+                        <div
+                          key={`transaction-${idx}`}
+                          className={`p-3 border rounded-md cursor-pointer hover:border-primary transition-colors ${
+                            selectedTransaction === transaction ? 'border-primary bg-primary/5' : ''
+                          }`}
+                          onClick={() => selectParsedTransaction(transaction)}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="font-medium">{transaction.description}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {transaction.category_name} • {transaction.date || 'Today'}
+                              </p>
+                            </div>
+                            <div className="flex items-center">
+                              {transaction.is_transfer && (
+                                <ArrowLeftRight className="h-4 w-4 mr-1 text-blue-500" />
+                              )}
+                              <span className={`font-medium ${
+                                transaction.category_type === 'INCOME'
+                                  ? 'text-green-600'
+                                  : transaction.is_transfer
+                                  ? 'text-blue-600'
+                                  : 'text-red-600'
+                              }`}>
+                                {transaction.category_type === 'INCOME' ? '+' : ''}
+                                ₦{transaction.amount.toLocaleString('en-NG', {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {transaction.is_transfer && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {transaction.source_account && transaction.destination_account ? (
+                                <>From {transaction.source_account} to {transaction.destination_account}</>
+                              ) : (
+                                <>Transfer transaction</>
+                              )}
+                            </div>
+                          )}
+                          
+                          {transaction.account_name && !transaction.is_transfer && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Account: {transaction.account_name}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-center text-muted-foreground py-4">
+                        No transactions match your search
+                      </p>
                   )}
                   
                   {selectedTransaction && (
@@ -1105,7 +1105,7 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="Transaction description"
                           />
-                        </div>
+                      </div>
                         
                         <div className="space-y-2">
                           <Label>Amount</Label>
@@ -1116,28 +1116,28 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
                             onChange={(e) => setAmount(e.target.value)}
                             placeholder="0.00"
                           />
-                        </div>
+                      </div>
                         
-                        <div className="space-y-2">
+                <div className="space-y-2">
                           <Label>Transaction Type</Label>
-                          <Select
-                            value={transactionType}
+                  <Select
+                    value={transactionType}
                             onValueChange={(value: 'income' | 'expense') => {
                               setTransactionType(value);
                               setCategoryType(value);
                             }}
-                          >
-                            <SelectTrigger>
+                  >
+                    <SelectTrigger>
                               <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="expense">Expense</SelectItem>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="expense">Expense</SelectItem>
                               <SelectItem value="income">Income</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
                           <Label>Category</Label>
                           <Select
                             value={categoryName}
@@ -1162,9 +1162,9 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
                               <SelectItem value="Transfer">Transfer</SelectItem>
                             </SelectContent>
                           </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
+                </div>
+                
+                <div className="space-y-2">
                           <Label>Account</Label>
                           <Select
                             value={accountId}
@@ -1181,38 +1181,38 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
                               ))}
                             </SelectContent>
                           </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
+                </div>
+                
+                <div className="space-y-2">
                           <Label>Date</Label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full justify-start text-left font-normal",
-                                  !date && "text-muted-foreground"
-                                )}
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {date ? format(new Date(date), "PPP") : <span>Pick a date</span>}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                              <Calendar
-                                mode="single"
-                                selected={date ? new Date(date) : undefined}
-                                onSelect={(selectedDate) => {
-                                  if (selectedDate) {
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !date && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date ? format(new Date(date), "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={date ? new Date(date) : undefined}
+                        onSelect={(selectedDate) => {
+                          if (selectedDate) {
                                     setDate(selectedDate.toLocaleDateString('en-CA'));
-                                  }
-                                }}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                        
+                          }
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
                         <div className="space-y-2 mt-4">
                           <Button 
                             variant="outline"
@@ -1222,25 +1222,25 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
                             <ArrowLeftRight className="mr-2 h-4 w-4" />
                             This is a transfer between accounts
                           </Button>
-                        </div>
-                        
+                </div>
+                
                         <Button onClick={createTransactionFromSelected}>
                           <Check className="mr-2 h-4 w-4" />
-                          Create Transaction
-                        </Button>
+                  Create Transaction
+                </Button>
                       </div>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-              
+            </CardContent>
+          </Card>
+          
               {/* Helper Cards with AI Detection */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
-                  <CardHeader>
+              <CardHeader>
                     <CardTitle>Detected Amounts</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              </CardHeader>
+              <CardContent>
                     {extractedAmounts.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {extractedAmounts.map((amount, idx) => (
@@ -1253,7 +1253,7 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
                             {amount}
                           </Button>
                         ))}
-                      </div>
+                    </div>
                     ) : (
                       <p className="text-muted-foreground">No amounts detected</p>
                     )}
@@ -1276,13 +1276,13 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
                           >
                             {date}
                           </Button>
-                        ))}
-                      </div>
+                  ))}
+                </div>
                     ) : (
                       <p className="text-muted-foreground">No dates detected</p>
                     )}
-                  </CardContent>
-                </Card>
+              </CardContent>
+            </Card>
               </div>
             </>
           )}
@@ -1439,4 +1439,4 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
   );
 };
 
-export default OCRTransactionExtractor;
+export default OCRTransactionExtractor; 

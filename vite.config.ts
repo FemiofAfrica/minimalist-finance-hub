@@ -9,30 +9,30 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   
   return {
-    server: {
+  server: {
+    host: '127.0.0.1',
+    port: 8080,
+    open: false,
+    watch: {
+      ignored: [
+        '**/node_modules/**',
+        '**/.git/**',
+      ],
+    },
+    hmr: {
+      protocol: 'ws',
       host: '127.0.0.1',
       port: 8080,
-      open: false,
-      watch: {
-        ignored: [
-          '**/node_modules/**',
-          '**/.git/**',
-        ],
-      },
-      hmr: {
-        protocol: 'ws',
-        host: '127.0.0.1',
-        port: 8080,
-        clientPort: 8080,
-        timeout: 60000,
-        overlay: true,
-        webSocketServer: {
-          options: {
-            perMessageDeflate: false
-          }
-        },
+      clientPort: 8080,
+      timeout: 60000,
+      overlay: true,
+      webSocketServer: {
+        options: {
+          perMessageDeflate: false
+        }
       },
     },
+  },
     plugins: [
       react(),
       // Add a plugin to simulate process.env in the browser
@@ -45,23 +45,23 @@ export default defineConfig(({ mode }) => {
         })
       }
     ],
-    resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "./src")
-      },
-      dedupe: ['react', 'react-dom']
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src")
     },
+    dedupe: ['react', 'react-dom']
+  },
 
-    build: {
-      outDir: "dist",
-      sourcemap: true,
-      minify: "esbuild",
-      target: 'esnext',
-      rollupOptions: {
-        output: {
-          format: 'es'
-        }
+  build: {
+    outDir: "dist",
+    sourcemap: true,
+    minify: "esbuild",
+    target: 'esnext',
+    rollupOptions: {
+      output: {
+        format: 'es'
       }
     }
+  }
   }
 });

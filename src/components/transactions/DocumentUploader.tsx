@@ -9,6 +9,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { TextItem } from 'pdfjs-dist/types/src/display/api';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { analyzeDocument } from '@/utils/documentIntelligence';
+import { MAX_FILE_SIZE } from '@/utils/imageCompression';
 
 // Initialize PDF.js worker in a safer way
 const initPDFWorker = () => {
@@ -35,15 +36,24 @@ const DocumentUploader = ({ onExtractedData }: DocumentUploaderProps) => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Initialize PDF.js worker
   useEffect(() => {
     initPDFWorker();
   }, []);
-  
+
   const handleFileSelected = (file: File | null) => {
     if (file) {
       setCurrentFile(file);
+      
+      // Display file size warning if the file is large but we'll try to handle it
+      if (file.size > MAX_FILE_SIZE) {
+        toast({
+          title: "Large file detected",
+          description: `File size (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds recommended limit. Attempting to compress automatically.`,
+          variant: "warning",
+        });
+      }
       
       // Create preview for image files
       if (file.type.startsWith('image/')) {
@@ -59,7 +69,7 @@ const DocumentUploader = ({ onExtractedData }: DocumentUploaderProps) => {
       }, 500);
     }
   };
-  
+
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       handleFileSelected(acceptedFiles[0]);
@@ -145,21 +155,24 @@ const DocumentUploader = ({ onExtractedData }: DocumentUploaderProps) => {
     <div className="space-y-4">
       {!currentFile ? (
         <div className="space-y-4">
-          <div 
-            {...getRootProps()} 
-            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-              isDragActive ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'
-            }`}
-          >
-            <input {...getInputProps()} />
-            <div className="flex flex-col items-center justify-center space-y-2">
-              <Upload className="h-10 w-10 text-muted-foreground" />
+        <div 
+          {...getRootProps()} 
+          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+            isDragActive ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'
+          }`}
+        >
+          <input {...getInputProps()} />
+          <div className="flex flex-col items-center justify-center space-y-2">
+            <Upload className="h-10 w-10 text-muted-foreground" />
               <p className="text-lg font-medium">Drag & drop a receipt or click to select</p>
-              <p className="text-sm text-muted-foreground">
-                Supports JPEG, PNG, TIFF, and PDF files
-              </p>
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Supports JPEG, PNG, TIFF, and PDF files
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Maximum recommended size: {(MAX_FILE_SIZE / (1024 * 1024)).toFixed(1)} MB (larger files will be compressed)
+            </p>
           </div>
+        </div>
           
           {isMobile && (
             <>
@@ -193,6 +206,7 @@ const DocumentUploader = ({ onExtractedData }: DocumentUploaderProps) => {
                   <p className="font-medium truncate max-w-[200px]">{currentFile.name}</p>
                   <p className="text-sm text-muted-foreground">
                     {(currentFile.size / 1024).toFixed(1)} KB {currentFile.type === 'application/pdf' && "(PDF)"}
+                    {currentFile.size > MAX_FILE_SIZE && " (will be compressed)"}
                   </p>
                 </div>
               </div>
@@ -227,7 +241,7 @@ const DocumentUploader = ({ onExtractedData }: DocumentUploaderProps) => {
             {isProcessing && (
               <div className="mt-3 space-y-2">
                 <p className="text-sm font-medium">
-                  Processing with Azure AI...
+                  Processing with AI...
                 </p>
                 <Progress value={progress} className="h-2" />
                 <p className="text-xs text-muted-foreground">
