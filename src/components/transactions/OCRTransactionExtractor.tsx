@@ -44,6 +44,34 @@ const DESCRIPTION_KEYWORDS = [
   'water', 'electricity', 'narration', 'beneficiary', 'annual'
 ];
 
+/**
+ * Preprocess OCR text to fix common recognition errors, especially for currency amounts
+ */
+const preprocessOcrText = (text: string): string => {
+  if (!text) return '';
+  
+  let processed = text;
+  
+  // Replace letter 'O' with digit '0' in numeric contexts
+  processed = processed.replace(/([0-9,\.]*)(O)([0-9,\.]*)/g, '$10$3');
+  processed = processed.replace(/([0-9,\.]*)(O,O)(O[0-9,\.]*)/g, '$10,0$3');
+  processed = processed.replace(/([0-9,\.]*)([O]{2,})([0-9,\.]*)/g, (match, p1, p2, p3) => {
+    return p1 + '0'.repeat(p2.length) + p3;
+  });
+  
+  // Fix specific Nigerian currency OCR errors
+  processed = processed.replace(/NI\s*(O*,*O*O*O*\.O*O*)/gi, 'N10$1');
+  processed = processed.replace(/NI\s*([0-9,\.]+)/gi, 'N1$1');
+  processed = processed.replace(/N\s*I\s*([0-9,\.O]+)/gi, 'N1$1');
+  processed = processed.replace(/N\s+([0-9,\.]+)/g, 'N$1'); // Remove space after N
+  
+  // Fix comma/period issues in amounts
+  processed = processed.replace(/(\d+)[,\.](\d{3})(?!\d)/g, '$1,$2');
+  processed = processed.replace(/(\d+)[,\.](\d{2})(?!\d)/g, '$1.$2');
+  
+  return processed;
+};
+
 const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransactionExtractorProps) => {
   const [extractedAmounts, setExtractedAmounts] = useState<string[]>([]);
   const [extractedDates, setExtractedDates] = useState<string[]>([]);
@@ -103,15 +131,74 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
   useEffect(() => {
     if (!ocrText) return;
     
+    // Debug currency detection with test cases
+    if (process.env.NODE_ENV === 'development') {
+      testCurrencyDetection();
+    }
+    
+    // Preprocess the OCR text to fix common recognition errors
+    const processedOcrText = preprocessOcrText(ocrText);
+    console.log("Original OCR text:", ocrText.substring(0, 200));
+    console.log("Preprocessed OCR text:", processedOcrText.substring(0, 200));
+    
     // Extract financial data using regex patterns
-    extractFinancialData(ocrText);
+    extractFinancialData(processedOcrText);
     
     // Process with Groq AI
-    processWithGroqAI();
+    processWithGroqAI(processedOcrText);
     
     // Load user accounts
     loadAccounts();
   }, [ocrText]);
+  
+  // Debug function to test currency detection with problematic OCR readings
+  const testCurrencyDetection = () => {
+    const testCases = [
+      "NI O,OOO.OO", // Should detect as 10,000.00
+      "N1O,OOO.OO",  // Should detect as 10,000.00
+      "N IO,OOO.OO", // Should detect as 10,000.00
+      "₦ I0,000.00", // Should detect as 10,000.00
+      "N 1,OOO.OO",  // Should detect as 1,000.00
+      "NGN 1,000.00", // Standard format
+      "Amount: NGN 5,000.00", // With label
+      "N5,000", // Without decimals
+      "N 5,000,00" // European format with comma as decimal
+    ];
+    
+    console.log("===== TESTING CURRENCY DETECTION =====");
+    testCases.forEach(testCase => {
+      const processed = preprocessOcrText(testCase);
+      console.log(`Original: "${testCase}" -> Processed: "${processed}"`);
+      
+      // Extract amounts using our extraction function
+      const amounts = Array.from(processed.matchAll(/(?:N|₦|NGN)(?:\s*)(I|1)(?:\s*)(?:O|0),(?:O|0)(?:O|0)(?:O|0)\.(?:O|0)(?:O|0)/i))
+        .map(match => match[0])
+        .filter(Boolean);
+      
+      if (amounts.length > 0) {
+        console.log(`   Detected with Nigerian pattern: ${amounts[0]}`);
+      }
+      
+      // Try normal patterns too
+      const normalAmounts = Array.from(processed.matchAll(/(?:NGN|₦|N)\s*([\d,]+(?:\.\d{2})?)/gi))
+        .map(match => match[0])
+        .filter(Boolean);
+        
+      if (normalAmounts.length > 0) {
+        console.log(`   Detected with standard pattern: ${normalAmounts[0]}`);
+      }
+      
+      // Get the final value we would use
+      const extractedAmounts = extractAmounts(processed);
+      if (extractedAmounts.length > 0) {
+        console.log(`   Final parsed amount: ${extractedAmounts[0]}`);
+      } else {
+        console.log(`   FAILED TO PARSE`);
+      }
+      console.log("-----------------------------------");
+    });
+    console.log("===== END CURRENCY DETECTION TEST =====");
+  };
   
   // Add the categorizeByDescription helper function
   const categorizeByDescription = (description: string): { category: string, type: string } => {
@@ -166,45 +253,67 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     return { category: 'Uncategorized', type: 'EXPENSE' };
   };
   
+  // Extract amounts as a standalone function for testing
+  const extractAmounts = (text: string): string[] => {
+    // Look for currency amounts in various formats
+    const patterns = [
+      // Nigerian currency with potential OCR errors for 10,000 appearing as NI O,OOO
+      /(?:N|₦|NGN)(?:\s*)(I|1)(?:\s*)(?:O|0),(?:O|0)(?:O|0)(?:O|0)\.(?:O|0)(?:O|0)/i,
+      
+      // Format with currency symbol: NGN 1,234.56 or ₦1,234.56
+      /(?:NGN|₦|N)\s*([\d,]+(?:\.\d{2})?)/gi,
+      
+      // Amount followed by currency: 1,234.56 NGN
+      /([\d,]+(?:\.\d{2})?)\s*(?:NGN|naira)/gi,
+      
+      // Amount near transaction words
+      /(?:amount|total|sum|fee|charge|payment)(?:\s*[:\-]?\s*)([\d,]+(?:\.\d{2})?)/gi,
+      
+      // Amounts with comma instead of decimal point (10,000,00 format)
+      /\b([\d,]+,\d{2})\b/g,
+      
+      // Fallback for any number with decimal point and exactly 2 decimal places
+      /\b([\d,]+\.\d{2})\b/g,
+      
+      // Last resort - amounts without decimal places (risky)
+      /(?:NGN|₦|N)\s*([\d,]+)(?!\.\d)/gi
+    ];
+    
+    let foundAmounts: string[] = [];
+    
+    // Try each pattern in order of priority
+    for (const pattern of patterns) {
+      const matches = Array.from(text.matchAll(pattern))
+        .map(match => match[1])
+        .filter(Boolean)
+        .map(amount => {
+          // Clean and normalize the amount string
+          let cleaned = amount.replace(/,/g, ''); // Remove commas
+          
+          // Convert comma used as decimal separator to period
+          if (/^\d+,\d{2}$/.test(cleaned)) {
+            cleaned = cleaned.replace(',', '.');
+          }
+          
+          // Replace any remaining O with 0
+          cleaned = cleaned.replace(/O/gi, '0');
+          
+          return cleaned;
+        });
+        
+      if (matches.length > 0) {
+        console.log(`Found amounts using pattern ${pattern}:`, matches);
+        foundAmounts = [...foundAmounts, ...matches];
+      }
+    }
+    
+    // Deduplicate and sort by value (descending)
+    return [...new Set(foundAmounts)]
+      .sort((a, b) => parseFloat(b) - parseFloat(a));
+  };
+  
   // Update the extractFinancialData method
   const extractFinancialData = (text: string) => {
-    // Define extractAmounts function within the scope where it's used
-    const extractAmounts = (text: string): string[] => {
-      // Look for currency amounts in various formats
-      const patterns = [
-        // Format with currency symbol: NGN 1,234.56 or ₦1,234.56
-        /(?:NGN|₦|N)\s*([\d,]+(?:\.\d{2})?)/gi,
-        
-        // Amount followed by currency: 1,234.56 NGN
-        /([\d,]+(?:\.\d{2})?)\s*(?:NGN|naira)/gi,
-        
-        // Amount near transaction words
-        /(?:amount|total|sum|fee|charge|payment)(?:\s*[:\-]?\s*)([\d,]+(?:\.\d{2})?)/gi,
-        
-        // Fallback for any number with decimal point and exactly 2 decimal places
-        /\b([\d,]+\.\d{2})\b/g
-      ];
-      
-      let foundAmounts: string[] = [];
-      
-      // Try each pattern in order of priority
-      for (const pattern of patterns) {
-        const matches = Array.from(text.matchAll(pattern))
-      .map(match => match[1])
-      .filter(Boolean)
-      .map(amount => amount.replace(/,/g, ''));
-          
-        if (matches.length > 0) {
-          console.log(`Found amounts using pattern ${pattern}:`, matches);
-          foundAmounts = [...foundAmounts, ...matches];
-        }
-      }
-      
-      // Deduplicate and sort by value (descending)
-      return [...new Set(foundAmounts)]
-        .sort((a, b) => parseFloat(b) - parseFloat(a));
-    };
-
     // Extract amounts using the improved method
     const amountMatches = extractAmounts(text);
     setExtractedAmounts([...new Set(amountMatches)]);
@@ -225,21 +334,21 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     setPossibleDescriptions([...new Set(descriptionsFound)]);
   };
   
-  const processWithGroqAI = async () => {
+  const processWithGroqAI = async (processedText = ocrText) => {
     // Skip if no text or already processing
-    if (!ocrText.trim() || isProcessingAI) return;
+    if (!processedText.trim() || isProcessingAI) return;
     
     console.log("============== TRANSACTION EXTRACTION PROCESS ==============");
     console.log("Starting transaction extraction with OCR text obtained from OCR.space");
-    console.log("OCR Text length:", ocrText.length);
-    console.log("First 200 characters of OCR text:", ocrText.substring(0, 200));
+    console.log("OCR Text length:", processedText.length);
+    console.log("First 200 characters of OCR text:", processedText.substring(0, 200));
     
     setIsProcessingAI(true);
     setParsedTransactions([]);
     setSelectedTransaction(null);
     
     // Extract dates more thoroughly
-    const extractedDateMatches = Array.from(ocrText.matchAll(DATE_REGEX))
+    const extractedDateMatches = Array.from(processedText.matchAll(DATE_REGEX))
       .map(match => match[0])
       .filter(Boolean);
     
@@ -260,13 +369,13 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
 
     // Update the section where narration is extracted to use the new function
     // Look for narration keywords with enhanced pattern
-    const narrationMatch = ocrText.match(narrationRegex);
+    const narrationMatch = processedText.match(narrationRegex);
     let narrationText = narrationMatch ? cleanNarrationText(narrationMatch[1] || narrationMatch[2]).trim() : '';
 
     // Also look for NARRATION without colon that might be followed directly by the text
     if (!narrationText) {
       const additionalNarrationRegex = /\b(?:NARRATION|DESCRIPTION)\b\s+([A-Za-z][\w\s]+)/i;
-      const additionalMatch = ocrText.match(additionalNarrationRegex);
+      const additionalMatch = processedText.match(additionalNarrationRegex);
       if (additionalMatch && additionalMatch[1]) {
         narrationText = cleanNarrationText(additionalMatch[1].trim());
       }
@@ -277,7 +386,7 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     
     try {
       // Break the OCR text into paragraphs or sentences for processing
-      const segments = splitTextIntoSegments(ocrText);
+      const segments = splitTextIntoSegments(processedText);
       const parsedResults: ParsedTransactionData[] = [];
       
       // Process each segment with Groq AI

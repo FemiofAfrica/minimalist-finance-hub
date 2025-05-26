@@ -53,6 +53,7 @@
     "dotenv": "^16.5.0",
     "embla-carousel-react": "^8.3.0",
     "framer-motion": "^12.10.5",
+    "groq": "^3.89.0",
     "groq-sdk": "^0.15.0",
     "input-otp": "^1.2.4",
     "lucide-react": "^0.292.0",
@@ -75,7 +76,8 @@
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.3",
     "ws": "^8.16.0",
-    "zod": "^3.23.8",
+    "zod": "^3.25.28",
+    "zod-to-json-schema": "^3.24.5",
     "zustand": "^5.0.4"
   },
   "devDependencies": {
@@ -83,7 +85,7 @@
     "@tailwindcss/typography": "^0.5.15",
     "@types/deno": "^2.2.0",
     "@types/mixpanel-browser": "^2.60.0",
-    "@types/node": "^22.5.5",
+    "@types/node": "^22.15.21",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@types/webrtc": "^0.0.45",
@@ -100,7 +102,8 @@
     "postcss-import": "^16.1.0",
     "postcss-nesting": "^13.0.1",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.5.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
     "typescript-eslint": "^8.0.1",
     "vite": "^5.0.0"
   }

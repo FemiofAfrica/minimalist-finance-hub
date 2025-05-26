@@ -1,7 +1,7 @@
 import imageCompression from 'browser-image-compression';
 
-// Maximum size for OCR.space API - set to 4.9MB to stay safely under their 5MB limit
-export const MAX_FILE_SIZE = 4.9 * 1024 * 1024; // 4.9MB in bytes
+// Maximum size for OCR.space API - set to 3MB to stay safely under their 5MB limit
+export const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB in bytes
 
 /**
  * Compresses an image file if it exceeds the maximum file size

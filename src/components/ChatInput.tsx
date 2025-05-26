@@ -196,15 +196,27 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       // Check if the category exists in the database
       const categoryTypeLower = parsedData.category_type.toLowerCase() as 'income' | 'expense' | 'transfer';
       
+      // Improved category lookup with type filter
       const { data: existingCategory, error: categoryError } = await supabase
         .from('categories')
-        .select('category_id')
-        .eq('name', parsedData.category_name)
+        .select('category_id, name, type')
+        .eq('type', categoryTypeLower)
+        .ilike('name', parsedData.category_name)
         .maybeSingle();
       
       if (categoryError) {
         console.error('Error checking category:', categoryError);
+        // Continue even if there's an error - the backend will handle category creation
       }
+
+      // Log category check results to help debugging
+      console.log('Category check results:', { 
+        existingCategory, 
+        searchedFor: { 
+          name: parsedData.category_name, 
+          type: categoryTypeLower 
+        } 
+      });
 
       // --- Account Handling ---
       let accountId: string | null = null;
@@ -254,11 +266,12 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       const transaction = {
         description: parsedData.description,
         amount: parsedData.amount,
-        type: categoryTypeLower as 'income' | 'expense',
-        category: parsedData.category_name,
+        type: categoryTypeLower,
+        category_id: existingCategory?.category_id, // Add category_id if found
+        category_name: parsedData.category_name, // Always include category_name
+        category_type: categoryTypeLower, // Use lowercase version
         date: parsedData.date,
         account_id: accountId,
-        transaction_type: categoryTypeLower === 'expense' ? 'ACCOUNT_TO_EXTERNAL' : 'REGULAR',
         user_id: null, // Will be set by service
         currency: transactionCurrency
       };
