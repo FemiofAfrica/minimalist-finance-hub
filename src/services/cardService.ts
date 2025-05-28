@@ -1,4 +1,4 @@
-import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, normalizeDatabaseCard, prepareDatabaseCard } from "@/types/card";
 import { getAccountById, fetchAccounts } from "@/services/accountService";
 import { Account } from "@/types/account";
@@ -15,6 +15,17 @@ interface CardsTable {
   created_at?: string;
   updated_at?: string;
 }
+
+// Get current user ID from auth
+const getCurrentUserId = async (): Promise<string | null> => {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.id || null;
+  } catch (error) {
+    console.error('Failed to get user session:', error);
+    return null;
+  }
+};
 
 // Utility function to ensure cards have their account balances
 async function syncCardWithAccountBalance(card: Card): Promise<Card> {

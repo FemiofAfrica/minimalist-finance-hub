@@ -149,9 +149,14 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       console.log('Sending text to parse-transaction-groq function:', input);
 
       // --- Call Supabase Edge Function ---
-      // Invoke the Deno function deployed on Supabase
+      // Get the current session and access token
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+
+      // Invoke the Deno function deployed on Supabase with Authorization header
       const { data: parsedData, error: parseError } = await supabase.functions.invoke('parse-transaction-groq', {
-        body: { text: input } // Pass the input text in the request body
+        body: { text: input }, // Pass the input text in the request body
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
       });
 
       // Handle errors returned directly from the function invocation (network, permissions, etc.)

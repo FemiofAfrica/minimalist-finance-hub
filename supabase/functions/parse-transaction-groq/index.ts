@@ -1,6 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck - This file uses Deno modules which TypeScript doesn't recognize in Node.js context
 import { serve as serveHttp } from "https://deno.land/std@0.201.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Define standard CORS headers for responses
 const corsHeaders = {
@@ -9,6 +10,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type", // Allowed headers
   "Content-Type": "application/json", // Default content type for responses
 };
+
+// Initialize Supabase client with service role key (for user lookup)
+const supabaseClient = createClient(
+  Deno.env.get("SUPABASE_URL"),
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+);
 
 // --- Interfaces ---
 // Define the interface for parsed transaction data expected from the LLM/fallback
@@ -898,6 +905,24 @@ async function serve(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // --- AUTHENTICATION CHECK ---
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Unauthorized: Missing or invalid Authorization header" }), {
+      status: 401,
+      headers: corsHeaders,
+    });
+  }
+  const jwt = authHeader.replace("Bearer ", "");
+  const { data: { user }, error } = await supabaseClient.auth.getUser(jwt);
+  if (error || !user) {
+    return new Response(JSON.stringify({ error: "Unauthorized: Invalid JWT" }), {
+      status: 401,
+      headers: corsHeaders,
+    });
+  }
+  // --- END AUTHENTICATION CHECK ---
 
   // Read API Key from environment variables (secure method)
   const apiKey = Deno.env.get("GROQ_API_KEY");

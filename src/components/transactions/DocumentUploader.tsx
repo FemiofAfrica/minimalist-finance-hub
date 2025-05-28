@@ -5,28 +5,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { FileText, Upload, X, CheckCircle, AlertCircle, Camera, Zap, Settings2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import * as pdfjsLib from 'pdfjs-dist';
 import { TextItem } from 'pdfjs-dist/types/src/display/api';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { analyzeDocument } from '@/utils/documentIntelligence';
 import { MAX_FILE_SIZE } from '@/utils/imageCompression';
+import { initPDFWorker } from '@/utils/pdfUtils';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-
-// Initialize PDF.js worker in a safer way
-const initPDFWorker = () => {
-  if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    try {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.js`;
-    } catch (error) {
-      console.error('Failed to initialize PDF.js worker:', error);
-    }
-  }
-};
 
 interface DocumentUploaderProps {
   onExtractedData: (data: string) => void;

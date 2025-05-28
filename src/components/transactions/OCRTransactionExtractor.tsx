@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Account } from "@/types/account";
 import { TransactionInput } from "@/types/transaction";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, callEdgeFunction } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface OCRTransactionExtractorProps {
@@ -258,7 +258,7 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     // Look for currency amounts in various formats
     const patterns = [
       // Nigerian currency with potential OCR errors for 10,000 appearing as NI O,OOO
-      /(?:N|₦|NGN)(?:\s*)(I|1)(?:\s*)(?:O|0),(?:O|0)(?:O|0)(?:O|0)\.(?:O|0)(?:O|0)/i,
+      /(?:N|₦|NGN)(?:\s*)(I|1)(?:\s*)(?:O|0),(?:O|0)(?:O|0)(?:O|0)\.(?:O|0)(?:O|0)/gi,
       
       // Format with currency symbol: NGN 1,234.56 or ₦1,234.56
       /(?:NGN|₦|N)\s*([\d,]+(?:\.\d{2})?)/gi,
@@ -283,6 +283,12 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     
     // Try each pattern in order of priority
     for (const pattern of patterns) {
+      // Ensure pattern has global flag before using matchAll
+      if (!pattern.flags.includes('g')) {
+        console.warn('RegExp without global flag used with matchAll:', pattern);
+        continue;
+      }
+      
       const matches = Array.from(text.matchAll(pattern))
         .map(match => match[1])
         .filter(Boolean)
@@ -395,14 +401,12 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
         
         console.log('Sending OCR segment to parse-transaction-groq function:', segment);
         
-        // Call Supabase Edge Function to process the text, passing enhanced context
-        const { data: parsedData, error: parseError } = await supabase.functions.invoke('parse-transaction-groq', {
-          body: {
-            text: segment,
-            context_amount: regexAmount,
-            context_date: regexDate,
-            context_narration: narrationText
-          }
+        // Use the new callEdgeFunction instead of direct supabase.functions.invoke
+        const { data: parsedData, error: parseError } = await callEdgeFunction('parse-transaction-groq', {
+          text: segment,
+          context_amount: regexAmount,
+          context_date: regexDate,
+          context_narration: narrationText
         });
         
         if (parseError) {

@@ -1,5 +1,16 @@
-import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { Transaction } from "@/types/transaction";
+
+// Get current user ID from auth
+const getCurrentUserId = async (): Promise<string | null> => {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.id || null;
+  } catch (error) {
+    console.error('Failed to get user session:', error);
+    return null;
+  }
+};
 
 // Type for category expenses used in the pie chart
 export type CategoryExpense = {

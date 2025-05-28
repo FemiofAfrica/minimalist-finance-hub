@@ -1,19 +1,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { Account } from "@/types/account"; // Your application's Account type
 
 // Work around TypeScript's deep instantiation error by casting supabase to any for specific operations
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const supabaseAny = supabase as any;
 
-// Helper function to get user ID safely
-async function getUserId(): Promise<string> {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    throw new Error("User not authenticated.");
+// Get current user ID from auth
+const getCurrentUserId = async (): Promise<string | null> => {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.id || null;
+  } catch (error) {
+    console.error('Failed to get user session:', error);
+    return null;
   }
-  return userId;
-}
+};
 
 // Other functions (fetchAccounts, createAccount, etc.) would go here...
 // Assume they are defined as in previous versions ('supabase_accounts_api_fix')
@@ -24,7 +26,7 @@ async function getUserId(): Promise<string> {
  */
 export const fetchAccounts = async (): Promise<Account[]> => {
   try {
-    const userId = await getUserId();
+    const userId = await getCurrentUserId();
     
     // Add timestamp and random value to ensure we don't get cached results
     const timestamp = new Date().getTime();
@@ -80,9 +82,9 @@ export const fetchAccounts = async (): Promise<Account[]> => {
 /**
  * Creates a new account for the current user.
  */
-export const createAccount = async (accountData: Omit<Account, 'account_id'>): Promise<Account> => {
+export const createAccount = async (account: Omit<Account, 'account_id' | 'user_id'>): Promise<Account | null> => {
   try {
-    const userId = await getUserId();
+    const userId = await getCurrentUserId();
     
     // Check if this is the first account (to set as default if so)
     // Add proper type annotation for PostgrestFilterBuilder
@@ -102,7 +104,7 @@ export const createAccount = async (accountData: Omit<Account, 'account_id'>): P
     const isFirstAccount = count === 0;
     
     // Create a copy and exclude fields that don't exist in DB
-    const { custom_tags, ...dbAccountData } = accountData;
+    const { custom_tags, ...dbAccountData } = account;
     
     // Prepare data for insertion with proper type
     const insertData = {
@@ -165,7 +167,7 @@ export const createAccount = async (accountData: Omit<Account, 'account_id'>): P
  */
 export const updateAccount = async (accountId: string, accountData: Partial<Account>): Promise<void> => {
   try {
-    const userId = await getUserId();
+    const userId = await getCurrentUserId();
     
     // Create a copy of accountData to avoid modifying the original
     // Exclude custom_tags as it might not be supported in the update
@@ -212,7 +214,7 @@ export const updateAccount = async (accountId: string, accountData: Partial<Acco
  */
 export const deleteAccount = async (accountId: string): Promise<void> => {
   try {
-    const userId = await getUserId();
+    const userId = await getCurrentUserId();
     
     // Check if the account is marked as default
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -269,7 +271,7 @@ export const deleteAccount = async (accountId: string): Promise<void> => {
  */
 export const setDefaultAccount = async (accountId: string): Promise<void> => {
   try {
-    const userId = await getUserId();
+    const userId = await getCurrentUserId();
     
     // Begin transaction
     await supabaseAny.rpc('begin_transaction');
@@ -313,7 +315,7 @@ export const setDefaultAccount = async (accountId: string): Promise<void> => {
  */
 export const getDefaultAccount = async (): Promise<Account | null> => {
   try {
-    const userId = await getUserId();
+    const userId = await getCurrentUserId();
     
     // Try to fetch the existing default account
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -398,7 +400,7 @@ export const getDefaultAccount = async (): Promise<Account | null> => {
  */
 export const getAccountById = async (accountId: string): Promise<Account | null> => {
   try {
-    const userId = await getUserId();
+    const userId = await getCurrentUserId();
     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)

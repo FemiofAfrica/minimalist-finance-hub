@@ -1,7 +1,18 @@
-import { supabase, getCurrentUserId } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/database.types"; // Assuming types are generated
 import { Category } from "@/types/category";
 import { Transaction, TransactionInput } from "@/types/transaction";
+
+// Get current user ID from auth
+const getCurrentUserId = async (): Promise<string | null> => {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.id || null;
+  } catch (error) {
+    console.error('Failed to get user session:', error);
+    return null;
+  }
+};
 
 // Define the specific type for inserting into the transactions table using generated types
 // Adjust 'public' if your schema is different
