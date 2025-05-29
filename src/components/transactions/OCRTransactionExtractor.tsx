@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Account } from "@/types/account";
 import { TransactionInput } from "@/types/transaction";
-import { supabase, callEdgeFunction } from "@/integrations/supabase/client";
+import { supabase, callEdgeFunction, callLocalEdgeFunction } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface OCRTransactionExtractorProps {
@@ -401,8 +401,8 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
         
         console.log('Sending OCR segment to parse-transaction-groq function:', segment);
         
-        // Use the new callEdgeFunction instead of direct supabase.functions.invoke
-        const { data: parsedData, error: parseError } = await callEdgeFunction('parse-transaction-groq', {
+        // Use callLocalEdgeFunction for local development
+        const { data: parsedData, error: parseError } = await callLocalEdgeFunction('parse-transaction-groq', {
           text: segment,
           context_amount: regexAmount,
           context_date: regexDate,

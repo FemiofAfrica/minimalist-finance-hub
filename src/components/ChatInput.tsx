@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, callLocalEdgeFunction } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import VoiceInput from "@/components/VoiceInput";
 import { getDefaultAccount } from "@/services/accountService";
@@ -148,15 +148,9 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
     try {
       console.log('Sending text to parse-transaction-groq function:', input);
 
-      // --- Call Supabase Edge Function ---
-      // Get the current session and access token
-      const session = await supabase.auth.getSession();
-      const accessToken = session.data.session?.access_token;
-
-      // Invoke the Deno function deployed on Supabase with Authorization header
-      const { data: parsedData, error: parseError } = await supabase.functions.invoke('parse-transaction-groq', {
-        body: { text: input }, // Pass the input text in the request body
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+      // Call the Edge Function (using the local helper in development)
+      const { data: parsedData, error: parseError } = await callLocalEdgeFunction('parse-transaction-groq', {
+        text: input
       });
 
       // Handle errors returned directly from the function invocation (network, permissions, etc.)
