@@ -21,6 +21,12 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,11 +85,21 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
             description?: string | null;
           }>;
           
-          const typedCategories = safeData.map(category => ({
+          // Deduplicate categories by name and type
+          const categoryMap = new Map();
+          safeData.forEach(category => {
+            const key = `${category.name.toLowerCase()}-${category.type.toLowerCase()}`;
+            if (!categoryMap.has(key)) {
+              categoryMap.set(key, category);
+            }
+          });
+          
+          const typedCategories = Array.from(categoryMap.values()).map(category => ({
             category_id: category.category_id,
             name: category.name,
             type: category.type.toLowerCase()
           }));
+          
           setCategories(typedCategories);
         } else {
           setCategories([]);
@@ -118,12 +134,14 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
       
       const existingCategory = categories.find(
         c => c.name.toLowerCase() === editedTransaction.name.toLowerCase() && 
-             c.type.toLowerCase() === editedTransaction.type.toLowerCase()
+             c.type.toLowerCase() === editedTransaction.type.toLowerCase() &&
+             !c.category_id.startsWith('temp-') // Ignore temporary categories
       );
       
       if (existingCategory) {
         categoryId = existingCategory.category_id;
       } else {
+        // Always create a new category if we're here
         const { data: newCategory, error: categoryError } = await supabase
           .from('categories')
           .insert({
@@ -141,6 +159,18 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
         
         if (newCategory) {
           categoryId = newCategory.category_id;
+          // Update our local categories with the new ID
+          setCategories(prev => {
+            const filtered = prev.filter(c => 
+              !(c.name.toLowerCase() === editedTransaction.name.toLowerCase() && 
+                c.type.toLowerCase() === editedTransaction.type.toLowerCase())
+            );
+            return [...filtered, {
+              category_id: newCategory.category_id,
+              name: editedTransaction.name,
+              type: editedTransaction.type
+            }];
+          });
         } else {
           throw new Error('Failed to create category');
         }
@@ -235,6 +265,35 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
   );
   // Determine whether to show the "Create" option
   const showCreateOption = currentCategorySearch !== "" && !exactMatchExists;
+  
+  // Process for adding a new category
+  const handleCreateCategory = (categoryName: string) => {
+    const newCategoryName = categoryName.trim();
+    const currentCategoryType = editedTransaction.type;
+    
+    if (newCategoryName) {
+      // Create a temporary category object with a unique ID
+      const newCategoryObj = {
+        category_id: `temp-${Date.now()}`,
+        name: newCategoryName,
+        type: currentCategoryType
+      };
+      
+      // Add to the local categories state
+      setCategories(prev => [...prev, newCategoryObj]);
+      
+      // Update the transaction with the new category
+      setEditedTransaction(prevState => ({
+        ...prevState,
+        name: newCategoryName
+      }));
+      
+      console.log(`Adding new category: ${newCategoryName} (${currentCategoryType})`);
+    }
+    
+    // Close the popover
+    setCategoryPopoverOpen(false);
+  };
 
   return (
     <>
@@ -403,9 +462,43 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                        }));
                      }}
                    >
-                    <CommandInput placeholder="Search or type new category..." />
+                    <CommandInput 
+                      placeholder="Search or type new category..." 
+                      onValueChange={(value) => {
+                        setEditedTransaction(prevState => ({
+                          ...prevState,
+                          name: value
+                        }));
+                      }}
+                    />
                     <CommandList>
-                      <CommandEmpty>No category found.</CommandEmpty>
+                      <CommandEmpty>
+                        {currentCategorySearch && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <CommandItem
+                                  value={currentCategorySearch}
+                                  onSelect={() => handleCreateCategory(currentCategorySearch)}
+                                  className="cursor-pointer hover:bg-secondary"
+                                >
+                                  <span className="flex items-center mr-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                                      <path d="M12 5v14"></path>
+                                      <path d="M5 12h14"></path>
+                                    </svg>
+                                  </span>
+                                  Create "<span className="font-medium">{currentCategorySearch}</span>"
+                                </CommandItem>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Create a new {editedTransaction.type} category</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        {!currentCategorySearch && "No category found."}
+                      </CommandEmpty>
                       <CommandGroup>
                         {filteredCategoriesByType.map((category) => (
                             <CommandItem
@@ -431,33 +524,29 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
                             </CommandItem>
                           ))}
                         {showCreateOption && (
-                           <CommandItem
-                             key={currentCategorySearch}
-                             value={currentCategorySearch}
-                             onSelect={(selectedValue) => {
-                               const newCategoryName = selectedValue.trim();
-                               const currentCategoryType = editedTransaction.type;
-                               
-                               if (newCategoryName) {
-                                 const newCategoryObj = {
-                                   category_id: `temp-${Date.now()}`,
-                                   name: newCategoryName,
-                                   type: currentCategoryType
-                                 };
-                                 setCategories(prev => [...prev, newCategoryObj]);
-                                 
-                                 setEditedTransaction(prevState => ({
-                                   ...prevState,
-                                   name: newCategoryName
-                                 }));
-                               }
-                               console.log(`Optimistically adding: ${newCategoryName} (${currentCategoryType})`);
-                               setCategoryPopoverOpen(false);
-                             }}
-                           >
-                             <span className="mr-2 h-4 w-4"></span>
-                             Create "{currentCategorySearch}"
-                           </CommandItem>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <CommandItem
+                                  key={currentCategorySearch}
+                                  value={currentCategorySearch}
+                                  onSelect={() => handleCreateCategory(currentCategorySearch)}
+                                  className="cursor-pointer hover:bg-secondary"
+                                >
+                                  <span className="flex items-center mr-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                                      <path d="M12 5v14"></path>
+                                      <path d="M5 12h14"></path>
+                                    </svg>
+                                  </span>
+                                  Create "<span className="font-medium">{currentCategorySearch}</span>"
+                                </CommandItem>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Create a new {editedTransaction.type} category</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                          )}
                       </CommandGroup>
                     </CommandList>
