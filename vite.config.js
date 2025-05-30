@@ -30,6 +30,11 @@ export default defineConfig(({ mode }) => {
           },
         },
       },
+      cors: {
+        origin: ['http://localhost:5173', 'https://www.kpege.com'],
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Client-Info', 'apikey'],
+      }
     },
   };
 }); 

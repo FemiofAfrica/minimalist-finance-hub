@@ -6,7 +6,7 @@ import { createClient, User } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Define CORS headers (adjust origin as needed for security)
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://www.kpege.com",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Content-Type": "application/json",
 };

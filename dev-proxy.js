@@ -8,7 +8,7 @@ const port = 3000;
 
 // Enable CORS for all routes
 app.use(cors({
-  origin: '*',
+  origin: ['http://localhost:5173', 'https://www.kpege.com'],
   methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Client-Info', 'apikey']
 }));
@@ -109,7 +109,7 @@ app.use('/functions', createProxyMiddleware({
     console.log(`Received ${proxyRes.statusCode} response from Supabase for ${req.method} ${req.url}`);
     
     // Add CORS headers to the response
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || 'https://www.kpege.com');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Client-Info, apikey');
     

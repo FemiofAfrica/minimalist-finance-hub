@@ -1,6 +1,12 @@
+// This is a Deno module that runs in Supabase Edge Functions environment
+// deno-lint-ignore-file no-explicit-any
 
-// Follow imports from Deno
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// Follow Deno's import syntax for Supabase Edge Functions
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+
+// The OpenAI API configuration (your environment variables will be inserted here)
+const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+const openaiApiModel = Deno.env.get('OPENAI_API_MODEL') || 'gpt-3.5-turbo';
 
 // Define the required transaction properties
 interface ParsedTransaction {
@@ -10,11 +16,11 @@ interface ParsedTransaction {
   date: string;
 }
 
+// Define CORS headers for API responses
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'http://localhost:8080',
+  'Access-Control-Allow-Origin': 'https://www.kpege.com',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Max-Age': '86400',
   'Content-Type': 'application/json'
 };
 

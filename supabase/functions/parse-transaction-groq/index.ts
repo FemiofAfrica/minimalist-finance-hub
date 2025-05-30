@@ -13,7 +13,7 @@ const isDevelopment = Deno.env.get("ENVIRONMENT") === "development" ||
 
 // Define standard CORS headers for responses
 const corsHeaders = {
-  "Access-Control-Allow-Origin": isDevelopment ? "http://localhost:5173" : "*", // Allow localhost in dev mode
+  "Access-Control-Allow-Origin": isDevelopment ? "http://localhost:5173" : "https://www.kpege.com", // Allow kpege.com in production
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type", // Allowed headers

@@ -17,6 +17,9 @@ const localFunctionUrl = isDevelopment
 // For direct debugging if needed
 const directFunctionUrl = 'http://localhost:54321/functions/v1';
 
+// Get the current domain for CORS
+const currentDomain = typeof window !== 'undefined' ? window.location.origin : 'https://www.kpege.com';
+
 if (!supabaseUrl || !supabaseKey) {
   console.error('Missing Supabase environment variables. Check your .env file.');
 }
@@ -55,6 +58,7 @@ async function customFetch(
     headers: {
       ...init?.headers,
       'X-Client-Info': 'supabase-js/2.x',
+      'Origin': currentDomain,
     },
     credentials: 'omit',
   };
@@ -99,8 +103,8 @@ async function customFetch(
     }
   }
 
-  // If we get here, all retries failed
-  throw lastError || new Error('Failed to fetch after multiple retries');
+  // All retries failed
+  throw lastError || new Error('Failed to send request after retries');
 }
 
 // Utility function to safely call edge functions with better error handling
