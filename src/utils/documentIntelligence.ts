@@ -73,7 +73,7 @@ export async function analyzeDocument(
     if (options.skipAzure) {
       console.log("Bypassing Azure OCR and using OCR.space directly");
       try {
-        const extractedText = await useOcrSpace(file, progressCallback);
+        const extractedText = await useOcrSpace(file, progressCallback, options);
         if (extractedText && extractedText.trim().length > 0) {
           console.log("OCR.space direct mode succeeded.");
           progressCallback?.(100);
@@ -116,7 +116,7 @@ export async function analyzeDocument(
       console.warn("Azure OCR (Supabase) failed, falling back to OCR.space.", azureError);
       // Step 2: Fallback to OCR.space
       try {
-        const extractedText = await useOcrSpace(file, progressCallback);
+        const extractedText = await useOcrSpace(file, progressCallback, options);
         if (extractedText && extractedText.trim().length > 0) {
           console.log("OCR.space fallback succeeded.");
           progressCallback?.(100);
@@ -212,7 +212,7 @@ async function useAzureDocumentIntelligence(file: File, progressCallback?: (prog
 /**
  * Use OCR.space API (allows CORS requests from any origin)
  */
-export async function useOcrSpace(file: File, progressCallback?: (progress: number) => void): Promise<string> {
+export async function useOcrSpace(file: File, progressCallback?: (progress: number) => void, options: { skipAzure?: boolean } = {}): Promise<string> {
   progressCallback?.(30);
   
   console.log(`Using OCR.space service with file size: ${(file.size / 1024).toFixed(2)} KB`);
@@ -241,64 +241,113 @@ export async function useOcrSpace(file: File, progressCallback?: (progress: numb
       // Continue with original PDF
     }
   }
-
-  // If skipAzure is true, skip directly to OCR.space
-  if (options.skipAzure) {
-    console.log("Bypassing Azure OCR and using OCR.space directly");
-    try {
-      const extractedText = await useOcrSpace(file, progressCallback);
-      if (extractedText && extractedText.trim().length > 0) {
-        console.log("OCR.space direct mode succeeded.");
-        progressCallback?.(100);
-        return extractedText;
-      }
-      throw new Error("OCR.space returned empty result");
-    } catch (ocrSpaceError) {
-      console.error("OCR.space direct mode failed.", ocrSpaceError);
-      throw ocrSpaceError;
-    }
-  }
-
-  // Step 1: Try Azure OCR via Supabase Edge Function
+  
+  // Try OCR.space API directly
   try {
-    // Check if we should skip Azure OCR based on local storage preference
-    const skipAzure = localStorage.getItem('useDirectOcr') === 'true';
-    if (skipAzure) {
-      console.log("Skipping Azure OCR based on local storage preference");
-      throw new Error("Local preference is to skip Azure OCR");
-    }
-
-    console.log("Trying Azure OCR via Supabase Edge Function...");
-    const base64Source = await fileToBase64(file);
+    // Create form data for the OCR request
+    const formData = new FormData();
+    formData.append('apikey', API_KEY);
+    formData.append('file', file, file.name);
     
-    // Use our enhanced Supabase client with callEdgeFunction
-    const { data, error } = await callEdgeFunction('analyze-document', { base64Source });
+    // Basic settings for better reliability
+    formData.append('language', 'eng');
+    formData.append('scale', 'true');
+    formData.append('OCREngine', '2');
     
-    if (error) {
-      throw new Error(`Azure OCR function failed: ${error.message}`);
+    // Add more parameters for small files for better results
+    if (isSmallFile && !isPdf) {
+      formData.append('isCreateSearchablePdf', 'false');
+      formData.append('isSearchablePdfHideTextLayer', 'false');
+      formData.append('detectOrientation', 'true');
+      formData.append('isTable', 'true');
+      formData.append('isOverlayRequired', 'false');
     }
     
-    if (data?.text && data.text.trim().length > 0) {
-      console.log("Azure OCR (Supabase) succeeded.");
-      progressCallback?.(100);
-      return data.text;
-    } else {
-      throw new Error("Azure OCR function returned empty result");
-    }
-  } catch (azureError) {
-    console.warn("Azure OCR (Supabase) failed, falling back to OCR.space.", azureError);
-    // Step 2: Fallback to OCR.space
-    try {
-      const extractedText = await useOcrSpace(file, progressCallback);
-      if (extractedText && extractedText.trim().length > 0) {
-        console.log("OCR.space fallback succeeded.");
-        progressCallback?.(100);
-        return extractedText;
+    // Try multiple CORS proxies if needed
+    let proxyIndex = 0;
+    let success = false;
+    let lastError = null;
+    let result = null;
+    
+    progressCallback?.(50);
+    
+    // Try direct request first, then fall back to proxies if needed
+    const endpoints = [
+      'https://api.ocr.space/parse/image',
+      ...CORS_PROXIES.map(proxy => `${proxy}https://api.ocr.space/parse/image`)
+    ];
+    
+    while (!success && proxyIndex < endpoints.length) {
+      try {
+        const url = endpoints[proxyIndex];
+        console.log(`Trying OCR.space with endpoint: ${url}`);
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          throw new Error(`OCR.space API request failed: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data || data.IsErroredOnProcessing || !data.ParsedResults || data.ParsedResults.length === 0) {
+          throw new Error(data?.ErrorMessage || 'OCR.space processing failed with no results');
+        }
+        
+        // Extract text from all parsed results
+        const parsedText = data.ParsedResults
+          .map(result => result.ParsedText || '')
+          .join('\n')
+          .trim();
+        
+        if (parsedText.length === 0) {
+          throw new Error('OCR.space returned empty text');
+        }
+        
+        result = parsedText;
+        success = true;
+        
+      } catch (error) {
+        console.warn(`OCR.space attempt ${proxyIndex + 1} failed:`, error);
+        lastError = error;
+        proxyIndex++;
       }
-      throw new Error("OCR.space returned empty result");
-    } catch (ocrSpaceError) {
-      console.error("Both Azure (Supabase) and OCR.space failed.", ocrSpaceError);
-      throw ocrSpaceError;
     }
+    
+    if (!success || !result) {
+      throw lastError || new Error('All OCR.space attempts failed');
+    }
+    
+    progressCallback?.(90);
+    return result;
+    
+  } catch (error) {
+    console.error('OCR.space processing failed:', error);
+    throw error;
   }
+}
+
+/**
+ * Convert a File object to a base64 string
+ */
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
+      } else {
+        reject(new Error('Failed to convert file to base64'));
+      }
+    };
+    reader.onerror = error => {
+      reject(error);
+    };
+  });
 }

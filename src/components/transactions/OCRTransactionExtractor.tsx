@@ -171,7 +171,7 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
       console.log(`Original: "${testCase}" -> Processed: "${processed}"`);
       
       // Extract amounts using our extraction function
-      const amounts = Array.from(processed.matchAll(/(?:N|₦|NGN)(?:\s*)(I|1)(?:\s*)(?:O|0),(?:O|0)(?:O|0)(?:O|0)\.(?:O|0)(?:O|0)/i))
+      const amounts = Array.from(processed.matchAll(/(?:N|₦|NGN)(?:\s*)(I|1)(?:\s*)(?:O|0),(?:O|0)(?:O|0)(?:O|0)\.(?:O|0)(?:O|0)/gi))
         .map(match => match[0])
         .filter(Boolean);
       
@@ -255,35 +255,26 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
   
   // Extract amounts as a standalone function for testing
   const extractAmounts = (text: string): string[] => {
-    // Look for currency amounts in various formats
+    // Simplified amount patterns focusing on accuracy over complexity
     const patterns = [
-      // Nigerian currency with potential OCR errors for 10,000 appearing as NI O,OOO
-      /(?:N|₦|NGN)(?:\s*)(I|1)(?:\s*)(?:O|0),(?:O|0)(?:O|0)(?:O|0)\.(?:O|0)(?:O|0)/gi,
-      
-      // Format with currency symbol: NGN 1,234.56 or ₦1,234.56
+      // Primary pattern: currency symbol followed by amount with optional decimal
+      // This pattern will match N24000.00, NGN 5,000.00, ₦1,234.56
       /(?:NGN|₦|N)\s*([\d,]+(?:\.\d{2})?)/gi,
       
-      // Amount followed by currency: 1,234.56 NGN
+      // Secondary pattern: amount followed by currency name
       /([\d,]+(?:\.\d{2})?)\s*(?:NGN|naira)/gi,
       
-      // Amount near transaction words
-      /(?:amount|total|sum|fee|charge|payment)(?:\s*[:\-]?\s*)([\d,]+(?:\.\d{2})?)/gi,
+      // Amount near transaction keywords
+      /(?:amount|total|payment|fee|charge|bill)\s*(?:[:]\s*)?([\d,]+(?:\.\d{2})?)/gi,
       
-      // Amounts with comma instead of decimal point (10,000,00 format)
-      /\b([\d,]+,\d{2})\b/g,
-      
-      // Fallback for any number with decimal point and exactly 2 decimal places
-      /\b([\d,]+\.\d{2})\b/g,
-      
-      // Last resort - amounts without decimal places (risky)
-      /(?:NGN|₦|N)\s*([\d,]+)(?!\.\d)/gi
+      // Fallback for any number with exactly 2 decimal places (common in financial contexts)
+      /\b([\d,]+\.\d{2})\b/g
     ];
     
     let foundAmounts: string[] = [];
     
     // Try each pattern in order of priority
     for (const pattern of patterns) {
-      // Ensure pattern has global flag before using matchAll
       if (!pattern.flags.includes('g')) {
         console.warn('RegExp without global flag used with matchAll:', pattern);
         continue;
@@ -293,15 +284,10 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
         .map(match => match[1])
         .filter(Boolean)
         .map(amount => {
-          // Clean and normalize the amount string
-          let cleaned = amount.replace(/,/g, ''); // Remove commas
+          // Simple cleaning - just remove commas and ensure decimal point
+          let cleaned = amount.replace(/,/g, '');
           
-          // Convert comma used as decimal separator to period
-          if (/^\d+,\d{2}$/.test(cleaned)) {
-            cleaned = cleaned.replace(',', '.');
-          }
-          
-          // Replace any remaining O with 0
+          // Replace 'O' with '0' in numeric contexts (common OCR error)
           cleaned = cleaned.replace(/O/gi, '0');
           
           return cleaned;
@@ -313,7 +299,7 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
       }
     }
     
-    // Deduplicate and sort by value (descending)
+    // Deduplicate and sort by value (largest first, as it's likely the main amount)
     return [...new Set(foundAmounts)]
       .sort((a, b) => parseFloat(b) - parseFloat(a));
   };
@@ -353,7 +339,7 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     setParsedTransactions([]);
     setSelectedTransaction(null);
     
-    // Extract dates more thoroughly
+    // Extract dates
     const extractedDateMatches = Array.from(processedText.matchAll(DATE_REGEX))
       .map(match => match[0])
       .filter(Boolean);
@@ -367,36 +353,59 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     
     console.log('Formatted date for AI processing:', regexDate);
     
-    // Extract amount from text
-    const regexAmount = extractedAmounts[0] ? parseFloat(extractedAmounts[0]) : undefined;
+    // Get the largest amount as the primary transaction amount
+    const extractedAmounts = extractAmounts(processedText);
+    const regexAmount = extractedAmounts.length > 0 ? parseFloat(extractedAmounts[0]) : undefined;
+    console.log('Extracted primary amount:', regexAmount);
     
-    // Improve the narration detection regex with stronger patterns
-    const narrationRegex = /(?:narration|purpose|description|reference|note|memo|remarks)[\s:]*[:\-]?\s*([^\n\r.]+)|(?<=\bnarration\b\s+)([^\n\r.]+)/i;
-
-    // Update the section where narration is extracted to use the new function
-    // Look for narration keywords with enhanced pattern
-    const narrationMatch = processedText.match(narrationRegex);
-    let narrationText = narrationMatch ? cleanNarrationText(narrationMatch[1] || narrationMatch[2]).trim() : '';
-
-    // Also look for NARRATION without colon that might be followed directly by the text
-    if (!narrationText) {
-      const additionalNarrationRegex = /\b(?:NARRATION|DESCRIPTION)\b\s+([A-Za-z][\w\s]+)/i;
-      const additionalMatch = processedText.match(additionalNarrationRegex);
-      if (additionalMatch && additionalMatch[1]) {
-        narrationText = cleanNarrationText(additionalMatch[1].trim());
+    // Simplified narration extraction - focus on explicit narration markers
+    const narrationRegex = /(?:narration|purpose|description|reference)[\s:]+([^\n\r.]+)/gi;
+    const narrationMatches = Array.from(processedText.matchAll(narrationRegex));
+    
+    // Get the first match that isn't just a generic term
+    let narrationText = '';
+    if (narrationMatches.length > 0 && narrationMatches[0][1]) {
+      narrationText = narrationMatches[0][1].trim();
+      
+      // Filter out generic descriptions
+      const genericTerms = ['payment', 'transaction', 'transfer', 'online', 'receipt'];
+      if (genericTerms.some(term => narrationText.toLowerCase() === term)) {
+        narrationText = '';
       }
     }
-
-    console.log('Final extracted narration:', narrationText);
-    console.log('Final extracted date:', regexDate);
+    
+    console.log('Extracted narration:', narrationText);
     
     try {
-      // Break the OCR text into paragraphs or sentences for processing
+      // Split the OCR text into logical segments but with simpler approach
       const segments = splitTextIntoSegments(processedText);
       const parsedResults: ParsedTransactionData[] = [];
       
-      // Process each segment with Groq AI
-      for (const segment of segments) {
+      // Process the most relevant segment first (one with amount or narration)
+      const sortedSegments = [...segments].sort((a, b) => {
+        const aHasAmount = extractAmounts(a).length > 0;
+        const bHasAmount = extractAmounts(b).length > 0;
+        const aHasNarration = a.toLowerCase().includes('narration');
+        const bHasNarration = b.toLowerCase().includes('narration');
+        
+        // Prioritize segments with both amount and narration
+        if ((aHasAmount && aHasNarration) && !(bHasAmount && bHasNarration)) return -1;
+        if (!(aHasAmount && aHasNarration) && (bHasAmount && bHasNarration)) return 1;
+        
+        // Then prioritize segments with amounts
+        if (aHasAmount && !bHasAmount) return -1;
+        if (!aHasAmount && bHasAmount) return 1;
+        
+        // Then prioritize segments with narration
+        if (aHasNarration && !bHasNarration) return -1;
+        if (!aHasNarration && bHasNarration) return 1;
+        
+        // Longer segments might contain more complete information
+        return b.length - a.length;
+      });
+      
+      // Process each segment with the parser
+      for (const segment of sortedSegments) {
         if (segment.trim().length < 10) continue; // Skip very short segments
         
         console.log('Sending OCR segment to parse-transaction-groq function:', segment);
@@ -432,127 +441,64 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
           continue;
         }
         
-        // DIRECT OVERRIDE: Always use narration as description if it exists
+        // Use extracted narration if available
         if (narrationText) {
-          console.log(`CRITICAL: Directly overriding description with narration: "${narrationText}"`);
           parsedData.description = narrationText;
-          
-          // Auto-categorize based on narration content
-          const lowerNarration = narrationText.toLowerCase();
-          
-          // Enhanced categorization logic with more keywords for each category
-          if (lowerNarration.includes('water') || lowerNarration.includes('electricity') || 
-              lowerNarration.includes('power') || lowerNarration.includes('bill')) {
-            console.log('Auto-categorizing as Utilities based on narration content');
-            parsedData.category_name = 'Utilities';
-            parsedData.category_type = 'EXPENSE';
-          } else if (lowerNarration.includes('bus') || lowerNarration.includes('taxi') || 
-                     lowerNarration.includes('uber') || lowerNarration.includes('bolt') || 
-                     lowerNarration.includes('train') || lowerNarration.includes('transport') || 
-                     lowerNarration.includes('fare') || lowerNarration.includes('ride')) {
-            console.log('Auto-categorizing as Transport based on narration content');
-            parsedData.category_name = 'Transport';
-            parsedData.category_type = 'EXPENSE';
-          } else if (lowerNarration.includes('food') || lowerNarration.includes('restaurant') || 
-                     lowerNarration.includes('meal') || lowerNarration.includes('cafe') || 
-                     lowerNarration.includes('lunch') || lowerNarration.includes('dinner')) {
-            console.log('Auto-categorizing as Dining based on narration content');
-            parsedData.category_name = 'Dining';
-            parsedData.category_type = 'EXPENSE';
-          } else if (lowerNarration.includes('grocery') || lowerNarration.includes('supermarket') || 
-                     lowerNarration.includes('market') || lowerNarration.includes('store')) {
-            console.log('Auto-categorizing as Groceries based on narration content');
-            parsedData.category_name = 'Groceries';
-            parsedData.category_type = 'EXPENSE';
-          } else if (lowerNarration.includes('salary') || lowerNarration.includes('wage') || 
-                     lowerNarration.includes('income') || lowerNarration.includes('payment received')) {
-            console.log('Auto-categorizing as Salary based on narration content');
-            parsedData.category_name = 'Salary';
-            parsedData.category_type = 'INCOME';
-          }
         }
         
-        // Fallback: use regex values if AI returns empty/invalid
-        if ((!parsedData.amount || parsedData.amount <= 0) && regexAmount) {
+        // Always use the detected amount if available and significantly larger
+        // (Some receipts have small fees or taxes that shouldn't override the main amount)
+        if (regexAmount && (!parsedData.amount || regexAmount > parsedData.amount * 1.5)) {
+          console.log(`Overriding amount ${parsedData.amount} with larger detected amount ${regexAmount}`);
           parsedData.amount = regexAmount;
         }
         
         // Always use the detected date if available
         if (regexDate) {
           parsedData.date = regexDate;
-        } else if (parsedData.date) {
-          parsedData.date = formatAndValidateDate(parsedData.date);
+        }
+        
+        // Identify if this is a utility bill based on keywords
+        if (
+          (narrationText && /water|electricity|internet|power|utility|bill/i.test(narrationText)) ||
+          (segment && /water|electricity|internet|power|utility|bill/i.test(segment))
+        ) {
+          console.log('Transaction appears to be a utility bill, categorizing accordingly');
+          parsedData.category_name = 'Utilities';
+          parsedData.category_type = 'EXPENSE';
         }
         
         // Add to parsed results if it looks valid
         if (parsedData.description && parsedData.amount > 0) {
-          // Avoid duplicates with similar descriptions and amounts
+          // Check for duplicates but with simpler logic
           const isDuplicate = parsedResults.some(existing => 
-            Math.abs(existing.amount - parsedData.amount) < 0.01 &&
-            existing.description.toLowerCase().includes(parsedData.description.toLowerCase().substring(0, 10))
+            Math.abs(existing.amount - parsedData.amount) < 0.01
           );
           
           if (!isDuplicate) {
-            // Print the transaction to console for debugging
             console.log('Adding parsed transaction:', JSON.stringify(parsedData));
-          parsedResults.push(parsedData);
+            parsedResults.push(parsedData);
           }
+        }
+        
+        // If we've found a good transaction with a significant amount, stop processing
+        if (parsedResults.length > 0 && 
+            parsedResults[0].amount > 0 && 
+            parsedResults[0].description && 
+            parsedResults[0].description !== 'Transaction') {
+          break;
         }
       }
       
-      // Apply narration to all transactions one more time as a final check
-      if (narrationText && parsedResults.length > 0) {
-        // Override first transaction (or any that look generic)
-        parsedResults.forEach(transaction => {
-          if (transaction.description === 'Transaction' || 
-              transaction.description === 'Unknown Transaction' ||
-              transaction.description.toLowerCase().includes('online') ||
-              transaction.description.toLowerCase().includes('payment')) {
-            console.log(`Post-processing: Replacing generic description "${transaction.description}" with narration "${narrationText}"`);
-            transaction.description = narrationText;
-            
-            // Also categorize if it's still uncategorized
-            if (transaction.category_name === 'Uncategorized') {
-              const lowerNarration = narrationText.toLowerCase();
-              
-              // Comprehensive categorization logic
-              if (lowerNarration.includes('water') || lowerNarration.includes('electricity') || 
-                  lowerNarration.includes('power') || lowerNarration.includes('bill')) {
-                transaction.category_name = 'Utilities';
-                transaction.category_type = 'EXPENSE';
-              } else if (lowerNarration.includes('bus') || lowerNarration.includes('taxi') || 
-                         lowerNarration.includes('uber') || lowerNarration.includes('bolt') || 
-                         lowerNarration.includes('train') || lowerNarration.includes('transport') || 
-                         lowerNarration.includes('fare') || lowerNarration.includes('ride')) {
-                transaction.category_name = 'Transport';
-                transaction.category_type = 'EXPENSE';
-              } else if (lowerNarration.includes('food') || lowerNarration.includes('restaurant') || 
-                         lowerNarration.includes('meal') || lowerNarration.includes('cafe') || 
-                         lowerNarration.includes('lunch') || lowerNarration.includes('dinner')) {
-                transaction.category_name = 'Dining';
-                transaction.category_type = 'EXPENSE';
-              } else if (lowerNarration.includes('grocery') || lowerNarration.includes('supermarket') || 
-                         lowerNarration.includes('market') || lowerNarration.includes('store')) {
-                transaction.category_name = 'Groceries';
-                transaction.category_type = 'EXPENSE';
-              } else if (lowerNarration.includes('salary') || lowerNarration.includes('wage') || 
-                         lowerNarration.includes('income') || lowerNarration.includes('payment received')) {
-                transaction.category_name = 'Salary';
-                transaction.category_type = 'INCOME';
-              }
-            }
-          }
-        });
-      }
-      
-      // Set the parsed transactions for display
-      setParsedTransactions(parsedResults);
+      // Sort transactions by amount (descending) to prioritize the main transaction
+      const sortedTransactions = parsedResults.sort((a, b) => b.amount - a.amount);
+      setParsedTransactions(sortedTransactions);
       
       // If we found transactions, show a notification
-      if (parsedResults.length > 0) {
+      if (sortedTransactions.length > 0) {
         toast({
           title: "Transactions Found",
-          description: `Found ${parsedResults.length} potential transactions in the document.`,
+          description: `Found ${sortedTransactions.length} potential transactions in the document.`,
           variant: "default",
         });
       } else {
@@ -574,53 +520,52 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     }
   };
   
-  // Split OCR text into meaningful segments for processing
+  // Simplified text segmentation that focuses on transaction-relevant sections
   const splitTextIntoSegments = (text: string): string[] => {
-    // First try to split by obvious separators
     const segments: string[] = [];
     
-    // Try splitting by lines with just dashes, stars, etc. (common in receipts)
-    const lines = text.split('\n');
-    let currentSegment: string[] = [];
+    // Remove common footer content that might confuse extraction
+    const cleanedText = text.replace(/this is an authentic receipt.+/i, '')
+                           .replace(/for further inquiries.+/i, '')
+                           .replace(/generated from.+banking/i, '')
+                           .replace(/email customer.+/i, '');
     
-    for (const line of lines) {
-      const trimmedLine = line.trim();
+    // First split by blank lines (most receipts use these as separators)
+    const blocks = cleanedText.split(/\n\s*\n/);
+    
+    // Process each block
+    for (const block of blocks) {
+      if (block.trim().length < 5) continue;
       
-      // Check if this is a separator line
-      if (
-        /^[-_=*]{3,}$/.test(trimmedLine) ||  // Line with just separators
-        /^total:?\s+/i.test(trimmedLine) ||   // Line starting with "Total"
-        /^subtotal:?\s+/i.test(trimmedLine) || // Line starting with "Subtotal"
-        /^tax:?\s+/i.test(trimmedLine) ||     // Line starting with "Tax"
-        /^amount:?\s+/i.test(trimmedLine) ||  // Line starting with "Amount"
-        /^date:?\s+/i.test(trimmedLine)       // Line starting with "Date"
-      ) {
-        // End the current segment and start a new one
-        if (currentSegment.length > 0) {
-          segments.push(currentSegment.join(' '));
-          currentSegment = [];
-        }
-        // Add this line as its own segment if it contains useful information
-        if (!/^[-_=*]{3,}$/.test(trimmedLine)) {
-          segments.push(trimmedLine);
-        }
-      } else if (trimmedLine.length > 0) {
-        // Add non-empty lines to the current segment
-        currentSegment.push(trimmedLine);
+      // Check if this block has transaction-relevant keywords
+      const isRelevant = /amount|total|payment|narration|description|transaction|beneficiary|sender|bill/i.test(block);
+      
+      if (isRelevant) {
+        // This is a high-priority segment, add it first
+        segments.unshift(block.trim());
+      } else {
+        // Lower priority segment
+        segments.push(block.trim());
       }
     }
     
-    // Add the last segment if it exists
-    if (currentSegment.length > 0) {
-      segments.push(currentSegment.join(' '));
-    }
-    
-    // If we couldn't split effectively, fallback to sentence splitting
-    if (segments.length <= 1) {
-      return text
-        .replace(/\n/g, ' ')
-        .split(/[.!?]+/)
-        .filter(s => s.trim().length > 10);
+    // If no good segments found, fallback to line-by-line with minimum filtering
+    if (segments.length === 0) {
+      const lines = cleanedText.split('\n');
+      let currentSegment: string[] = [];
+      
+      for (const line of lines) {
+        if (line.trim().length > 0) {
+          currentSegment.push(line.trim());
+        } else if (currentSegment.length > 0) {
+          segments.push(currentSegment.join(' '));
+          currentSegment = [];
+        }
+      }
+      
+      if (currentSegment.length > 0) {
+        segments.push(currentSegment.join(' '));
+      }
     }
     
     return segments;
@@ -826,21 +771,32 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
       console.log('Transaction appears to be a transfer based on OCR text');
       
       // Look for sender and recipient information
-      const senderMatch = ocrText.match(/(?:sender|from)[:\s]+([^\n\r]+)/i);
-      const recipientMatch = ocrText.match(/(?:beneficiary|recipient|to)[:\s]+([^\n\r]+)/i);
+      const senderMatches = Array.from(ocrText.matchAll(/(?:sender|from)[:\s]+([^\n\r]+)/gi));
+      const recipientMatches = Array.from(ocrText.matchAll(/(?:beneficiary|recipient|to)[:\s]+([^\n\r]+)/gi));
       
-      if (senderMatch || recipientMatch) {
-        console.log('Found sender/recipient information, converting to transfer');
-        enhancedTransaction.is_transfer = true;
-        enhancedTransaction.category_type = 'TRANSFER';
-        enhancedTransaction.category_name = 'Transfer';
-        
-        if (senderMatch && senderMatch[1]) {
-          enhancedTransaction.source_account = senderMatch[1].trim();
+      if (senderMatches.length > 0 && senderMatches[0][1]) {
+        const senderName = senderMatches[0][1].trim();
+        const senderAccount = findMatchingAccount(senderName);
+        if (senderAccount) {
+          console.log('Found sender information, converting to transfer');
+          enhancedTransaction.is_transfer = true;
+          enhancedTransaction.category_type = 'TRANSFER';
+          enhancedTransaction.category_name = 'Transfer';
+          enhancedTransaction.source_account = senderName;
+          setSourceAccountId(senderAccount.account_id);
         }
-        
-        if (recipientMatch && recipientMatch[1]) {
-          enhancedTransaction.destination_account = recipientMatch[1].trim();
+      }
+      
+      if (recipientMatches.length > 0 && recipientMatches[0][1]) {
+        const recipientName = recipientMatches[0][1].trim();
+        const recipientAccount = findMatchingAccount(recipientName);
+        if (recipientAccount) {
+          console.log('Found recipient information, converting to transfer');
+          enhancedTransaction.is_transfer = true;
+          enhancedTransaction.category_type = 'TRANSFER';
+          enhancedTransaction.category_name = 'Transfer';
+          enhancedTransaction.destination_account = recipientName;
+          setDestinationAccountId(recipientAccount.account_id);
         }
       }
     }
@@ -1012,14 +968,14 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
         const finalAmount = parseFloat(amount);
         
         if (isNaN(finalAmount) || finalAmount <= 0) {
-      toast({
+          toast({
             title: "Invalid Amount",
             description: "Please enter a valid amount",
-        variant: "destructive",
-      });
-      return;
-    }
-    
+            variant: "destructive",
+          });
+          return;
+        }
+        
         console.log(`Creating transaction with description: ${finalDescription}, amount: ${finalAmount}, date: ${finalDate}, category: ${categoryName}`);
         
         const transactionData: TransactionInput = {

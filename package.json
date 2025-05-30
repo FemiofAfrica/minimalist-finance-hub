@@ -11,7 +11,10 @@
     "build": "vite build",
     "build:ci": "rm -rf dist && npm run type-check || true && npm run build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "local-parser": "node super-simple-proxy.js",
+    "dev:local": "node start-local-dev.js",
+    "dev:mock": "concurrently \"npm run dev\" \"npm run local-parser\""
   },
   "dependencies": {
     "@azure-rest/ai-document-intelligence": "^1.1.0",

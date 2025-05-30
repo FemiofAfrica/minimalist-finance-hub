@@ -915,8 +915,12 @@ async function serve(req: Request): Promise<Response> {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Log headers for debugging
+  console.log("Request headers:", Array.from(req.headers.entries()));
+
   // --- AUTHENTICATION CHECK ---
-  // Skip authentication in development mode
+  // Skip authentication in development mode - no exception handling here
+  let user = null;
   if (!isDevelopment) {
     const authHeader = req.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -926,23 +930,24 @@ async function serve(req: Request): Promise<Response> {
       });
     }
     const jwt = authHeader.replace("Bearer ", "");
-    const { data: { user }, error } = await supabaseClient.auth.getUser(jwt);
-    if (error || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized: Invalid JWT" }), {
+    try {
+      const { data, error } = await supabaseClient.auth.getUser(jwt);
+      if (error || !data.user) {
+        return new Response(JSON.stringify({ error: "Unauthorized: Invalid JWT" }), {
+          status: 401,
+          headers: corsHeaders,
+        });
+      }
+      user = data.user;
+    } catch (authError) {
+      console.error("Auth error:", authError);
+      return new Response(JSON.stringify({ error: "Unauthorized: JWT validation failed" }), {
         status: 401,
         headers: corsHeaders,
       });
     }
   } else {
-    console.log("Running in development mode - skipping authentication check");
-    
-    // If a dummy token is provided, log it but proceed anyway
-    const authHeader = req.headers.get("authorization");
-    if (authHeader) {
-      console.log("Auth header provided in development mode:", authHeader.substring(0, 20) + "...");
-    } else {
-      console.log("No auth header provided in development mode");
-    }
+    console.log("Running in development mode - AUTHENTICATION COMPLETELY SKIPPED");
   }
   // --- END AUTHENTICATION CHECK ---
 

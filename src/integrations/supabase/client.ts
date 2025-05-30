@@ -9,9 +9,9 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // Determine if we're in development mode
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
 
-// For local development, use our proxy server to avoid CORS issues
+// For local development, use our super simple proxy server
 const localFunctionUrl = isDevelopment
-  ? 'http://localhost:3000/direct-test'  // Direct test endpoint
+  ? 'http://localhost:3000/parse-transaction'  // Super simple proxy
   : 'http://localhost:54321/functions/v1';
   
 // For direct debugging if needed
@@ -114,39 +114,21 @@ export async function callEdgeFunction(
   const useLocalEdgeFunction = options?.useLocalhost ?? isDevelopment;
   
   try {
-    // Get the current session and access token
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    if (sessionError) {
-      console.error('Error getting Supabase session:', sessionError);
-      if (throwError) throw sessionError;
-      return { data: null, error: sessionError };
-    }
-
-    const accessToken = session?.access_token;
-
-    if (!accessToken) {
-      const noTokenError = new Error("No access token available. User might not be logged in.");
-      console.error(`Error calling ${functionName}:`, noTokenError);
-      if (throwError) throw noTokenError;
-      return { data: null, error: noTokenError };
-    }
-
     if (useLocalEdgeFunction) {
-      const url = `${localFunctionUrl}`;
-      console.log(`Using local Edge Function endpoint for ${functionName}. URL: ${url}`);
+      // For local development, we only support the parse-transaction-groq function
+      if (functionName !== 'parse-transaction-groq') {
+        console.warn(`Local development only supports parse-transaction-groq, got ${functionName}`);
+      }
+      
+      const url = localFunctionUrl;
+      console.log(`Using local parser at ${url}. Payload:`, payload);
       
       try {
-        console.log(`Payload for ${functionName}:`, JSON.stringify(payload || {}));
-        
         // For local development
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
         };
         
-        // We're using the direct-test endpoint which handles authentication
-        
-        // For local development, use the proxy URL to avoid CORS issues
         const response = await fetch(url, {
           method: 'POST',
           headers,
@@ -158,14 +140,14 @@ export async function callEdgeFunction(
           }),
         });
 
-        console.log(`Response status for ${functionName}:`, response.status);
+        console.log(`Response status for local parser: ${response.status}`);
 
         if (!response.ok) {
           const responseText = await response.text().catch(() => 'No response text');
-          console.error(`Error response for ${functionName}:`, responseText);
+          console.error(`Error response for local parser:`, responseText);
           
-          const error = new Error(`Local Edge Function error: ${response.status} ${response.statusText}`);
-          console.error(`Error calling local ${functionName}:`, error);
+          const error = new Error(`Local parser error: ${response.status} ${response.statusText}`);
+          console.error(`Error calling local parser:`, error);
           if (throwError) throw error;
           return { data: null, error };
         }
@@ -173,11 +155,29 @@ export async function callEdgeFunction(
         const data = await response.json();
         return { data, error: null };
       } catch (err) {
-        console.error(`Exception calling local ${functionName}:`, err);
+        console.error(`Exception calling local parser:`, err);
         if (throwError) throw err;
         return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
       }
     } else {
+      // For production, we need to get the access token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error('Error getting Supabase session:', sessionError);
+        if (throwError) throw sessionError;
+        return { data: null, error: sessionError };
+      }
+
+      const accessToken = session?.access_token;
+
+      if (!accessToken) {
+        const noTokenError = new Error("No access token available. User might not be logged in.");
+        console.error(`Error calling ${functionName}:`, noTokenError);
+        if (throwError) throw noTokenError;
+        return { data: null, error: noTokenError };
+      }
+      
       // Use the standard Supabase client for production
       const { data, error } = await supabase.functions.invoke(functionName, {
         body: payload,
