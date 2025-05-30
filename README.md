@@ -119,3 +119,33 @@ Run the following SQL migration in your Supabase SQL Editor:
 - Updated account service to handle default account logic
 - Visual indicators for default accounts in the UI
 - Added `account_number` field to accounts table for storing account numbers
+
+# Kpege - Track Income and Expenses
+
+Welcome to Kpege, an AI-powered, minimalist finance tracking application. This app aims to simplify personal finance management through an intuitive interface and intelligent features.
+
+## Project info
+
+**URL**: https://lovable.dev/projects/9e7980c0-6c09-4a72-9fca-0a7fe58c4f4e
+**Website**: www.kpege.com
+
+## Branding Information
+
+The application has been rebranded to "Kpege":
+
+- **Name**: Kpege
+- **Website**: www.kpege.com
+- **Page Title**: "Kpege | Track income and expenses | Financial insights"
+- **Favicon**: The Kpege logo (green square with magnifying glass and "K")
+
+### Updating the Favicon
+
+If you need to update the favicon:
+
+1. Save the Kpege logo as "kpege-logo.png" in the project root
+2. Run the conversion script:
+   ```
+   node convert-kpege-icon.js
+   ```
+3. Alternatively, use an online tool like [favicon.io](https://favicon.io/favicon-converter/) to convert the image
+4. Place the resulting favicon.ico file in the `public` directory
