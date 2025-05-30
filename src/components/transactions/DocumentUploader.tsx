@@ -31,9 +31,6 @@ const DocumentUploader = ({ onExtractedData }: DocumentUploaderProps) => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const [useDirectOcr, setUseDirectOcr] = useState(() => 
-    typeof localStorage !== 'undefined' && localStorage.getItem('useDirectOcr') === 'true'
-  );
   const [advancedSettings, setAdvancedSettings] = useState({
     maxPdfPages: 5,
   });
@@ -42,13 +39,6 @@ const DocumentUploader = ({ onExtractedData }: DocumentUploaderProps) => {
   useEffect(() => {
     initPDFWorker();
   }, []);
-
-  // Save the direct OCR preference to localStorage
-  useEffect(() => {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('useDirectOcr', useDirectOcr ? 'true' : 'false');
-    }
-  }, [useDirectOcr]);
 
   const handleFileSelected = (file: File | null) => {
     if (file) {
@@ -115,12 +105,8 @@ const DocumentUploader = ({ onExtractedData }: DocumentUploaderProps) => {
     setError(null);
     
     try {
-      // Use direct OCR.space if setting is enabled or retrying after a failure
-      const skipAzure = useDirectOcr || retryCount > 0;
-      
-      // Use Azure Document Intelligence for all file types
+      // Use OCR.space for all files
       const text = await analyzeDocument(currentFile, setProgress, { 
-        skipAzure,
         maxPdfPages: advancedSettings.maxPdfPages
       });
       
@@ -151,7 +137,7 @@ const DocumentUploader = ({ onExtractedData }: DocumentUploaderProps) => {
         toast({
           title: "Processing Failed",
           description: retryCount === 0 
-            ? "First attempt failed. Retrying with direct OCR processing..." 
+            ? "First attempt failed. Retrying..." 
             : "Retrying document processing...",
           variant: "default",
         });
@@ -220,21 +206,11 @@ const DocumentUploader = ({ onExtractedData }: DocumentUploaderProps) => {
               </Button>
             )}
             
-            <Button 
-              variant={useDirectOcr ? "default" : "outline"} 
-              size="sm"
-              className={`${isMobile ? 'flex-1' : ''}`}
-              onClick={() => setUseDirectOcr(!useDirectOcr)}
-              title={useDirectOcr ? "Using direct OCR (faster)" : "Using Azure OCR (more accurate)"}
-            >
-              <Zap className={`mr-2 h-4 w-4 ${useDirectOcr ? 'text-yellow-300' : ''}`} />
-              {useDirectOcr ? "Fast Mode: ON" : "Fast Mode: OFF"}
-            </Button>
-            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="ml-2">
-                  <Settings2 className="h-4 w-4" />
+                <Button variant="outline" size="sm" className="ml-auto">
+                  <Settings2 className="h-4 w-4 mr-2" />
+                  Settings
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -352,20 +328,6 @@ const DocumentUploader = ({ onExtractedData }: DocumentUploaderProps) => {
                     >
                       Try Another File
                     </Button>
-                    
-                    {(currentFile?.type === 'application/pdf' || currentFile?.name?.toLowerCase().endsWith('.pdf')) && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => {
-                          setAdvancedSettings({...advancedSettings, maxPdfPages: 3});
-                          setUseDirectOcr(true);
-                          processImage(1);
-                        }}
-                      >
-                        Try Fast Mode (3 pages)
-                      </Button>
-                    )}
                   </div>
                 </div>
               </div>

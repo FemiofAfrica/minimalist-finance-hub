@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Account } from "@/types/account";
 import { TransactionInput } from "@/types/transaction";
-import { supabase, callEdgeFunction, callLocalEdgeFunction } from "@/integrations/supabase/client";
+import { supabase, callEdgeFunction } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface OCRTransactionExtractorProps {
@@ -326,6 +326,53 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     setPossibleDescriptions([...new Set(descriptionsFound)]);
   };
   
+  // Parse transaction data using the Supabase Edge Function
+  const parseTransactionWithAI = async (segment: string, contextData: { 
+    regexAmount?: number, 
+    regexDate?: string, 
+    narrationText?: string 
+  }) => {
+    console.log('Sending OCR segment to parse-transaction-groq function:', segment);
+    
+    try {
+      // Call the edge function with proper error handling
+      const { data: parsedData, error: parseError } = await callEdgeFunction('parse-transaction-groq', {
+        text: segment,
+        context_amount: contextData.regexAmount,
+        context_date: contextData.regexDate,
+        context_narration: contextData.narrationText
+      });
+      
+      if (parseError) {
+        console.error('Error calling parse-transaction-groq function:', parseError);
+        return null;
+      }
+      
+      // Handle errors within the function's response
+      if (parsedData && parsedData.error) {
+        console.error('Error from parse-transaction-groq function:', parsedData);
+        return null;
+      }
+      
+      // Validate response data
+      if (
+        !parsedData || 
+        typeof parsedData.description !== 'string' || 
+        typeof parsedData.amount !== 'number' || 
+        typeof parsedData.category_name !== 'string' || 
+        typeof parsedData.category_type !== 'string'
+      ) {
+        console.error('Invalid data structure received from function:', parsedData);
+        return null;
+      }
+      
+      return parsedData;
+    } catch (error) {
+      console.error('Error calling parse-transaction-groq function:', error);
+      return null;
+    }
+  };
+  
   const processWithGroqAI = async (processedText = ocrText) => {
     // Skip if no text or already processing
     if (!processedText.trim() || isProcessingAI) return;
@@ -404,40 +451,22 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
         return b.length - a.length;
       });
       
+      // Context data for AI processing
+      const contextData = {
+        regexAmount,
+        regexDate,
+        narrationText
+      };
+      
       // Process each segment with the parser
       for (const segment of sortedSegments) {
         if (segment.trim().length < 10) continue; // Skip very short segments
         
-        console.log('Sending OCR segment to parse-transaction-groq function:', segment);
+        // Use the new parseTransactionWithAI function
+        const parsedData = await parseTransactionWithAI(segment, contextData);
         
-        // Use callLocalEdgeFunction for local development
-        const { data: parsedData, error: parseError } = await callLocalEdgeFunction('parse-transaction-groq', {
-          text: segment,
-          context_amount: regexAmount,
-          context_date: regexDate,
-          context_narration: narrationText
-        });
-        
-        if (parseError) {
-          console.error('Supabase function invocation error:', parseError);
-          continue;
-        }
-        
-        // Handle errors within the function's response
-        if (parsedData && parsedData.error) {
-          console.error('Error from parse-transaction-groq function:', parsedData);
-          continue;
-        }
-        
-        // Validate response data
-        if (
-          !parsedData || 
-          typeof parsedData.description !== 'string' || 
-          typeof parsedData.amount !== 'number' || 
-          typeof parsedData.category_name !== 'string' || 
-          typeof parsedData.category_type !== 'string'
-        ) {
-          console.error('Invalid data structure received from function:', parsedData);
+        if (!parsedData) {
+          console.warn('Failed to parse segment with AI, continuing to next segment');
           continue;
         }
         

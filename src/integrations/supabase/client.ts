@@ -9,13 +9,18 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // Determine if we're in development mode
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
 
-// For local development, use our super simple proxy server
+// Get the actual Supabase functions URL
+const supabaseFunctionsUrl = `${supabaseUrl.replace(/\/$/, '')}/functions/v1`;
+
+// For local development, use our proxy server
 const localFunctionUrl = isDevelopment
   ? 'http://localhost:3000/parse-transaction'  // Super simple proxy
-  : 'http://localhost:54321/functions/v1';
+  : supabaseFunctionsUrl; // In production, use the actual Supabase URL
   
 // For direct debugging if needed
-const directFunctionUrl = 'http://localhost:54321/functions/v1';
+const directFunctionUrl = isDevelopment 
+  ? 'http://localhost:54321/functions/v1'
+  : null; // Don't use this in production
 
 // Get the current domain for CORS
 const currentDomain = typeof window !== 'undefined' ? window.location.origin : 'https://www.kpege.com';
@@ -107,15 +112,31 @@ async function customFetch(
   throw lastError || new Error('Failed to send request after retries');
 }
 
+// Export a dedicated function for local testing with explicit option
+export function callLocalEdgeFunction(
+  functionName: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  payload?: any,
+  options?: { throwError?: boolean }
+) {
+  // Only allow local functions in development
+  if (!isDevelopment) {
+    console.warn('callLocalEdgeFunction was called in production - using regular edge function instead');
+    return callEdgeFunction(functionName, payload, options);
+  }
+  return callEdgeFunction(functionName, payload, { ...options, useLocalhost: true });
+}
+
 // Utility function to safely call edge functions with better error handling
 export async function callEdgeFunction(
   functionName: string, 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload?: any, 
   options?: { throwError?: boolean, useLocalhost?: boolean }
 ) {
   const throwError = options?.throwError ?? false;
-  // Allow explicit override with useLocalhost option, or auto-detect based on environment
-  const useLocalEdgeFunction = options?.useLocalhost ?? isDevelopment;
+  // Only allow useLocalhost in development
+  const useLocalEdgeFunction = isDevelopment && (options?.useLocalhost ?? isDevelopment);
   
   try {
     if (useLocalEdgeFunction) {
@@ -164,30 +185,42 @@ export async function callEdgeFunction(
         return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
       }
     } else {
-      // For production, we need to get the access token
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // For production, we use the standard Supabase client
+      console.log(`Calling Supabase Edge Function: ${functionName}`);
 
-      if (sessionError) {
-        console.error('Error getting Supabase session:', sessionError);
-        if (throwError) throw sessionError;
-        return { data: null, error: sessionError };
-      }
+      // Handle anonymous access - don't try to get a session if we don't need it
+      const needsAuth = !['parse-transaction-groq'].includes(functionName);
+      let accessToken = null;
 
-      const accessToken = session?.access_token;
+      if (needsAuth) {
+        // For authenticated functions, we need to get the access token
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      if (!accessToken) {
-        const noTokenError = new Error("No access token available. User might not be logged in.");
-        console.error(`Error calling ${functionName}:`, noTokenError);
-        if (throwError) throw noTokenError;
-        return { data: null, error: noTokenError };
+        if (sessionError) {
+          console.error('Error getting Supabase session:', sessionError);
+          if (throwError) throw sessionError;
+          return { data: null, error: sessionError };
+        }
+
+        accessToken = session?.access_token;
+
+        if (!accessToken) {
+          const noTokenError = new Error("No access token available. User might not be logged in.");
+          console.error(`Error calling ${functionName}:`, noTokenError);
+          if (throwError) throw noTokenError;
+          return { data: null, error: noTokenError };
+        }
       }
       
       // Use the standard Supabase client for production
+      const headers: Record<string, string> = {};
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
       const { data, error } = await supabase.functions.invoke(functionName, {
         body: payload,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        }
+        headers
       });
       
       if (error) {
@@ -203,15 +236,6 @@ export async function callEdgeFunction(
     if (throwError) throw err;
     return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
   }
-}
-
-// Export a dedicated function for local testing with explicit option
-export function callLocalEdgeFunction(
-  functionName: string,
-  payload?: any,
-  options?: { throwError?: boolean }
-) {
-  return callEdgeFunction(functionName, payload, { ...options, useLocalhost: true });
 }
 
 // Function to test if our proxy is working

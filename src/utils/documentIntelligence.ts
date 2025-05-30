@@ -1,7 +1,4 @@
-import { AnalyzeOperationOutput } from "@azure-rest/ai-document-intelligence";
-import { supabase, callEdgeFunction } from "@/integrations/supabase/client";
 import { compressImageIfNeeded, MAX_FILE_SIZE } from "./imageCompression";
-import { getSupabaseFunctionsUrl } from "./env";
 import { initPDFWorker, extractTextFromPDF, convertPdfToImage } from "./pdfUtils";
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -16,7 +13,7 @@ const CORS_PROXIES = [
 initPDFWorker();
 
 /**
- * Analyze a document using Supabase Edge Function (Azure OCR) and fallback to OCR.space
+ * Analyze a document using OCR.space and optionally PDFjs text extraction
  */
 export async function analyzeDocument(
   file: File,
@@ -69,144 +66,24 @@ export async function analyzeDocument(
       }
     }
 
-    // If skipAzure is true, skip directly to OCR.space
-    if (options.skipAzure) {
-      console.log("Bypassing Azure OCR and using OCR.space directly");
-      try {
-        const extractedText = await useOcrSpace(file, progressCallback, options);
-        if (extractedText && extractedText.trim().length > 0) {
-          console.log("OCR.space direct mode succeeded.");
-          progressCallback?.(100);
-          return extractedText;
-        }
-        throw new Error("OCR.space returned empty result");
-      } catch (ocrSpaceError) {
-        console.error("OCR.space direct mode failed.", ocrSpaceError);
-        throw ocrSpaceError;
-      }
-    }
-
-    // Step 1: Try Azure OCR via Supabase Edge Function
+    // Use OCR.space for all document processing
+    console.log("Using OCR.space for document processing");
     try {
-      // Check if we should skip Azure OCR based on local storage preference
-      const skipAzure = localStorage.getItem('useDirectOcr') === 'true';
-      if (skipAzure) {
-        console.log("Skipping Azure OCR based on local storage preference");
-        throw new Error("Local preference is to skip Azure OCR");
-      }
-
-      console.log("Trying Azure OCR via Supabase Edge Function...");
-      const base64Source = await fileToBase64(file);
-      
-      // Use our enhanced Supabase client with callEdgeFunction
-      const { data, error } = await callEdgeFunction('analyze-document', { base64Source });
-      
-      if (error) {
-        throw new Error(`Azure OCR function failed: ${error.message}`);
-      }
-      
-      if (data?.text && data.text.trim().length > 0) {
-        console.log("Azure OCR (Supabase) succeeded.");
+      const extractedText = await useOcrSpace(file, progressCallback, options);
+      if (extractedText && extractedText.trim().length > 0) {
+        console.log("OCR.space processing succeeded.");
         progressCallback?.(100);
-        return data.text;
-      } else {
-        throw new Error("Azure OCR function returned empty result");
+        return extractedText;
       }
-    } catch (azureError) {
-      console.warn("Azure OCR (Supabase) failed, falling back to OCR.space.", azureError);
-      // Step 2: Fallback to OCR.space
-      try {
-        const extractedText = await useOcrSpace(file, progressCallback, options);
-        if (extractedText && extractedText.trim().length > 0) {
-          console.log("OCR.space fallback succeeded.");
-          progressCallback?.(100);
-          return extractedText;
-        }
-        throw new Error("OCR.space returned empty result");
-      } catch (ocrSpaceError) {
-        console.error("Both Azure (Supabase) and OCR.space failed.", ocrSpaceError);
-        throw ocrSpaceError;
-      }
+      throw new Error("OCR.space returned empty result");
+    } catch (ocrSpaceError) {
+      console.error("OCR.space processing failed.", ocrSpaceError);
+      throw ocrSpaceError;
     }
   } catch (error) {
     console.error("Document processing error:", error);
     throw error;
   }
-}
-
-/**
- * Use Azure Document Intelligence OCR (prebuilt-read v4.0)
- */
-async function useAzureDocumentIntelligence(file: File, progressCallback?: (progress: number) => void): Promise<string> {
-  const endpoint = import.meta.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT || process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT;
-  const apiKey = import.meta.env.AZURE_DOCUMENT_INTELLIGENCE_KEY || process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
-
-  if (!endpoint || !apiKey) {
-    throw new Error("Azure Document Intelligence endpoint or key is not set in environment variables.");
-  }
-
-  // Azure Document Intelligence v4.0 prebuilt-read endpoint
-  const url = `${endpoint.replace(/\/$/, '')}/formrecognizer/documentModels/prebuilt-read:analyze?api-version=2023-10-31`;
-
-  // Prepare the request
-  const formData = new FormData();
-  formData.append('file', file);
-
-  progressCallback?.(30);
-
-  // Start the analysis
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Ocp-Apim-Subscription-Key': apiKey,
-    },
-    body: file,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Azure OCR request failed: ${response.status} ${response.statusText} - ${errorText}`);
-  }
-
-  // Get the operation-location for polling
-  const operationLocation = response.headers.get('operation-location');
-  if (!operationLocation) {
-    throw new Error('Azure OCR response missing operation-location header.');
-  }
-
-  // Poll for result
-  let pollCount = 0;
-  let result = null;
-  while (pollCount < 30) { // up to ~30 seconds
-    await new Promise(res => setTimeout(res, 1000));
-    progressCallback?.(35 + pollCount * 2);
-    const pollResponse = await fetch(operationLocation, {
-      headers: {
-        'Ocp-Apim-Subscription-Key': apiKey,
-      },
-    });
-    if (!pollResponse.ok) {
-      throw new Error(`Azure OCR polling failed: ${pollResponse.status} ${pollResponse.statusText}`);
-    }
-    const pollResult = await pollResponse.json();
-    if (pollResult.status === 'succeeded') {
-      result = pollResult;
-      break;
-    } else if (pollResult.status === 'failed') {
-      throw new Error('Azure OCR analysis failed.');
-    }
-    pollCount++;
-  }
-  if (!result) {
-    throw new Error('Azure OCR polling timed out.');
-  }
-
-  // Extract text from result
-  const pages = result.analyzeResult?.content || '';
-  if (!pages || typeof pages !== 'string') {
-    throw new Error('Azure OCR returned no text.');
-  }
-  return pages;
 }
 
 /**
