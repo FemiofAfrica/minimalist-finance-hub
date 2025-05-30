@@ -158,9 +158,10 @@ export const createSubscription = async (subscription: Omit<Subscription, 'subsc
     const mappedFrequency = mapAppFrequencyToDBFrequency(subscription.frequency);
     console.log("Original frequency (app type):", subscription.frequency);
     console.log("Mapped frequency for DB (DB type):", mappedFrequency);
+    console.log("Attempting to debug subscription_frequency_check constraint");
 
     // Check that the mapped frequency is one of the accepted DB enum values
-    const validDBFrequencies = ['monthly', 'yearly', 'quarterly', 'weekly']; // These are the direct values expected by DB
+    const validDBFrequencies = ['monthly', 'quarterly', 'weekly', 'ANNUALLY']; // These are the direct values expected by DB
     // Note: 'CUSTOM' from app maps to 'monthly' for DB via mapAppFrequencyToDBFrequency
 
     if (!validDBFrequencies.includes(mappedFrequency)) {

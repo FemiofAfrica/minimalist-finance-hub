@@ -33,13 +33,13 @@ export function mapAppFrequencyToDBFrequency(appFrequency: SubscriptionFrequency
       dbFrequency = 'monthly'; // DB expects lowercase
       break;
     case 'ANNUALLY':
-      dbFrequency = 'yearly';  // DB uses 'yearly' (lowercase) for this specific case
+      dbFrequency = 'ANNUALLY'; // Database expects this in uppercase
       break;
     case 'QUARTERLY':
       dbFrequency = 'quarterly'; // DB expects lowercase
       break;
     case 'WEEKLY':
-      dbFrequency = 'weekly';    // DB expects lowercase
+      dbFrequency = 'weekly'; // DB expects lowercase
       break;
     case 'CUSTOM':
       // Assuming CUSTOM app frequency should map to a default like MONTHLY for the DB
@@ -49,8 +49,8 @@ export function mapAppFrequencyToDBFrequency(appFrequency: SubscriptionFrequency
     default:
       // This case handles if appFrequency is not one of the known SubscriptionFrequency types.
       // It could also be a defensive measure if a raw DB value was somehow passed in.
-      const potentialDirectDBValue = String(appFrequency).toLowerCase();
-      if (['monthly', 'yearly', 'quarterly', 'weekly'].includes(potentialDirectDBValue)) {
+      const potentialDirectDBValue = String(appFrequency);
+      if (['monthly', 'quarterly', 'weekly', 'ANNUALLY'].includes(potentialDirectDBValue)) {
           console.warn(`mapAppFrequencyToDBFrequency - App frequency '${appFrequency}' appears to be a direct DB value. Passing it through.`);
           dbFrequency = potentialDirectDBValue;
       } else {
