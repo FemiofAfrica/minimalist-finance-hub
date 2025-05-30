@@ -191,18 +191,30 @@ export async function callEdgeFunction(
       // Special case for parse-transaction-groq - use direct fetch with anon key instead of authenticated request
       if (functionName === 'parse-transaction-groq') {
         try {
-          const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+          console.log(`Calling parse-transaction-groq via direct fetch with anon key`);
+          
+          // Create a URL with all parameters
+          const url = `${supabaseUrl}/functions/v1/${functionName}`;
+          
+          const response = await fetch(url, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${supabaseKey}`, // Use the anon key directly
+              'apikey': supabaseKey, // Include apikey header as well
               'X-Client-Info': 'supabase-js/2.x',
               'Origin': currentDomain,
             },
             body: JSON.stringify(payload),
           });
 
+          // Log the response status for debugging
+          console.log(`Edge function response status: ${response.status}`);
+
           if (!response.ok) {
+            const responseText = await response.text().catch(() => null);
+            console.error('Error response body:', responseText);
+            
             const error = new Error(`Edge function error: ${response.status} ${response.statusText}`);
             console.error(`Error calling ${functionName}:`, error);
             if (throwError) throw error;

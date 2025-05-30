@@ -5,10 +5,17 @@ import { TextItem } from 'pdfjs-dist/types/src/display/api';
  * Initialize PDF.js worker with robust fallback handling
  */
 export const initPDFWorker = () => {
-  const workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  // Use a known available version on CDN instead of the dynamic version
+  // The latest stable version on CDNJS is 3.11.174
+  const workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
   
-  console.log(`Initialized PDF.js ${pdfjsLib.version} with matching worker version`);
+  console.log(`Initialized PDF.js worker using version 3.11.174 (API version: ${pdfjsLib.version})`);
+  
+  // If there's a version mismatch, warn about it
+  if (pdfjsLib.version !== '3.11.174') {
+    console.warn(`PDF.js version mismatch: API is ${pdfjsLib.version} but worker is 3.11.174. This might cause issues.`);
+  }
 };
 
 /**

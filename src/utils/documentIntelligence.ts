@@ -34,41 +34,80 @@ export async function analyzeDocument(
     }
     progressCallback?.(20);
 
-    // For PDF files, try extracting text directly first as a fallback
+    // For PDF files, try extracting text directly first
     if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
       try {
         console.log("Attempting to extract text directly from PDF...");
-        // Try to reinitialize worker explicitly before extraction
-        try {
-          initPDFWorker();
-        } catch (workerError) {
-          console.warn("Error initializing PDF worker:", workerError);
+        
+        // Skip PDF text extraction if it's likely to fail based on past errors
+        const skipPdfExtraction = window.localStorage.getItem('pdfjs_extraction_failed') === 'true';
+        
+        if (!skipPdfExtraction) {
+          // Try to reinitialize worker explicitly before extraction
+          try {
+            initPDFWorker();
+          } catch (workerError) {
+            console.warn("Error initializing PDF worker:", workerError);
+            // Mark as failed for future attempts in this session
+            window.localStorage.setItem('pdfjs_extraction_failed', 'true');
+          }
+          
+          try {
+            // Use our PDF utility with a timeout
+            const pdfTextPromise = extractTextFromPDF(file);
+            const timeoutPromise = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error('PDF extraction timed out')), 5000);
+            });
+            
+            // Race the extraction against the timeout
+            const pdfText = await Promise.race([pdfTextPromise, timeoutPromise]) as string;
+            
+            if (pdfText && pdfText.trim().length > 0) {
+              console.log("Successfully extracted text directly from PDF.");
+              progressCallback?.(100);
+              return pdfText;
+            }
+          } catch (innerError) {
+            console.warn("PDF text extraction failed:", innerError);
+            // Mark as failed for future attempts in this session
+            window.localStorage.setItem('pdfjs_extraction_failed', 'true');
+          }
+        } else {
+          console.log("Skipping PDF text extraction due to previous failures");
         }
         
-        // Use our PDF utility
-        const pdfText = await extractTextFromPDF(file);
-        if (pdfText && pdfText.trim().length > 0) {
-          console.log("Successfully extracted text directly from PDF.");
-          progressCallback?.(100);
-          return pdfText;
-        }
-        console.log("PDF has no extractable text, will proceed with OCR.");
+        console.log("PDF has no extractable text or extraction failed, will proceed with OCR.");
         
         // If direct text extraction failed but file is PDF, try converting to image first
         try {
           console.log("Converting first page of PDF to image for better OCR...");
           progressCallback?.(25);
-          const pdfImage = await convertPdfToImage(file, 1); // Just convert first page
-          if (pdfImage) {
-            console.log("Successfully converted PDF to image for OCR");
-            file = pdfImage; // Use the image for OCR instead
+          
+          // Skip conversion if likely to fail
+          const skipPdfConversion = window.localStorage.getItem('pdf_conversion_failed') === 'true';
+          
+          if (!skipPdfConversion) {
+            const pdfImage = await convertPdfToImage(file, 1); // Just convert first page
+            if (pdfImage) {
+              console.log("Successfully converted PDF to image for OCR");
+              file = pdfImage; // Use the image for OCR instead
+            } else {
+              // Mark conversion as failed
+              window.localStorage.setItem('pdf_conversion_failed', 'true');
+            }
+          } else {
+            console.log("Skipping PDF conversion due to previous failures");
           }
         } catch (conversionError) {
           console.warn("Failed to convert PDF to image:", conversionError);
+          // Mark conversion as failed
+          window.localStorage.setItem('pdf_conversion_failed', 'true');
           // Continue with original PDF
         }
       } catch (pdfError) {
         console.warn("Failed to extract text directly from PDF:", pdfError);
+        // Mark as failed for future attempts
+        window.localStorage.setItem('pdfjs_extraction_failed', 'true');
         // Continue with OCR since direct extraction failed
       }
     }
