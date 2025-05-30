@@ -188,35 +188,59 @@ export async function callEdgeFunction(
       // For production, we use the standard Supabase client
       console.log(`Calling Supabase Edge Function: ${functionName}`);
 
-      // Handle anonymous access - don't try to get a session if we don't need it
-      const needsAuth = !['parse-transaction-groq'].includes(functionName);
-      let accessToken = null;
+      // Special case for parse-transaction-groq - use direct fetch with anon key instead of authenticated request
+      if (functionName === 'parse-transaction-groq') {
+        try {
+          const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseKey}`, // Use the anon key directly
+              'X-Client-Info': 'supabase-js/2.x',
+              'Origin': currentDomain,
+            },
+            body: JSON.stringify(payload),
+          });
 
-      if (needsAuth) {
-        // For authenticated functions, we need to get the access token
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          if (!response.ok) {
+            const error = new Error(`Edge function error: ${response.status} ${response.statusText}`);
+            console.error(`Error calling ${functionName}:`, error);
+            if (throwError) throw error;
+            return { data: null, error };
+          }
 
-        if (sessionError) {
-          console.error('Error getting Supabase session:', sessionError);
-          if (throwError) throw sessionError;
-          return { data: null, error: sessionError };
-        }
-
-        accessToken = session?.access_token;
-
-        if (!accessToken) {
-          const noTokenError = new Error("No access token available. User might not be logged in.");
-          console.error(`Error calling ${functionName}:`, noTokenError);
-          if (throwError) throw noTokenError;
-          return { data: null, error: noTokenError };
+          const data = await response.json();
+          return { data, error: null };
+        } catch (err) {
+          console.error(`Exception calling ${functionName}:`, err);
+          if (throwError) throw err;
+          return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
         }
       }
       
-      // Use the standard Supabase client for production
-      const headers: Record<string, string> = {};
-      if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
+      // Handle authenticated functions with standard Supabase approach
+      // Get the access token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error('Error getting Supabase session:', sessionError);
+        if (throwError) throw sessionError;
+        return { data: null, error: sessionError };
       }
+
+      const accessToken = session?.access_token;
+
+      if (!accessToken) {
+        const noTokenError = new Error("No access token available. User might not be logged in.");
+        console.error(`Error calling ${functionName}:`, noTokenError);
+        if (throwError) throw noTokenError;
+        return { data: null, error: noTokenError };
+      }
+      
+      // Use the standard Supabase client for production
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${accessToken}`,
+      };
 
       const { data, error } = await supabase.functions.invoke(functionName, {
         body: payload,

@@ -1,61 +1,14 @@
 import * as pdfjsLib from 'pdfjs-dist';
+import { TextItem } from 'pdfjs-dist/types/src/display/api';
 
 /**
  * Initialize PDF.js worker with robust fallback handling
  */
-export const initPDFWorker = (): void => {
-  if (typeof window === 'undefined' || pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    return; // Already initialized or running server-side
-  }
-
-  try {
-    // Get PDF.js version
-    const version = pdfjsLib.version;
-    console.log(`Initializing PDF.js worker (version: ${version})`);
-
-    // Try multiple possible worker locations in order of preference
-    const possibleWorkerSources = [
-      // Local worker from public directory (most reliable)
-      '/pdf.worker.min.js',
-      // CDN with specific version
-      `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.js`,
-      // Fallback to a known working version if specific version fails
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.7.107/pdf.worker.min.js',
-      // Final fallback to unpkg
-      `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.js`,
-    ];
-
-    // Test load the worker from the first available source
-    const loadWorker = async () => {
-      for (const source of possibleWorkerSources) {
-        try {
-          // Try to fetch the worker script to see if it's available
-          const response = await fetch(source, { method: 'HEAD' });
-          if (response.ok) {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = source;
-            console.log(`PDF.js worker loaded from: ${source}`);
-            return true;
-          }
-        } catch (e) {
-          console.warn(`Failed to load PDF.js worker from ${source}:`, e);
-        }
-      }
-      // If all sources fail, use fake worker mode as last resort
-      console.warn('All PDF.js worker sources failed, falling back to fake worker mode');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-      return false;
-    };
-
-    // Start worker loading process
-    loadWorker().catch(err => {
-      console.error('Fatal error initializing PDF.js worker:', err);
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-    });
-  } catch (error) {
-    console.error('Error in PDF.js worker initialization:', error);
-    // Set empty worker source to enable fake worker mode
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-  }
+export const initPDFWorker = () => {
+  const workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+  
+  console.log(`Initialized PDF.js ${pdfjsLib.version} with matching worker version`);
 };
 
 /**
@@ -63,15 +16,12 @@ export const initPDFWorker = (): void => {
  * @param file PDF file to extract text from
  * @returns Promise resolving to extracted text
  */
-export const extractTextFromPDF = async (file: File): Promise<string> => {
-  // Ensure worker is initialized
-  initPDFWorker();
-
+export async function extractTextFromPDF(file: File): Promise<string> {
   try {
-    // Convert file to ArrayBuffer
+    // Convert File to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
     
-    // Load PDF document
+    // Load the PDF document
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
     const pdf = await loadingTask.promise;
     
@@ -79,27 +29,24 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
     
     // Process each page
     for (let i = 1; i <= pdf.numPages; i++) {
-      try {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        
-        // Extract text items
-        const pageText = textContent.items
-          .map(item => 'str' in item ? item.str : '')
-          .join(' ');
-          
-        fullText += pageText + '\n';
-      } catch (pageError) {
-        console.error(`Error extracting text from page ${i}:`, pageError);
-      }
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      
+      // Extract and concatenate text from the page
+      const pageText = textContent.items
+        .map((item: TextItem) => item.str)
+        .join(' ');
+      
+      fullText += pageText + '\n';
     }
     
-    return fullText.trim();
+    console.log(`Successfully extracted text from PDF with ${pdf.numPages} pages`);
+    return fullText;
   } catch (error) {
     console.error('Error extracting text from PDF:', error);
     throw new Error('Failed to extract text from PDF. The file may be corrupted or password protected.');
   }
-};
+}
 
 /**
  * Convert a PDF to an image (first page) for OCR processing
@@ -107,60 +54,65 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
  * @param pageNumber Page number to convert (1-based)
  * @returns A File object with the converted image
  */
-export const convertPdfToImage = async (file: File, pageNumber: number = 1): Promise<File | null> => {
+export async function convertPdfToImage(file: File, pageNum = 1): Promise<File | null> {
   try {
-    // Initialize PDF.js worker
-    initPDFWorker();
-    
-    // Convert file to ArrayBuffer
+    // Convert File to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
     
-    // Load PDF document
+    // Load the PDF
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
     const pdf = await loadingTask.promise;
     
-    // Ensure page number is valid
-    if (pageNumber < 1 || pageNumber > pdf.numPages) {
-      console.error(`Invalid page number: ${pageNumber}. PDF has ${pdf.numPages} pages.`);
-      return null;
+    // Get the requested page
+    if (pageNum > pdf.numPages) {
+      pageNum = 1;
     }
+    const page = await pdf.getPage(pageNum);
     
-    // Get the page
-    const page = await pdf.getPage(pageNumber);
-    
-    // Set scale to get a reasonably sized image (adjust as needed)
-    const scale = 2.0;
+    // Set scale for reasonable resolution (72dpi)
+    const scale = 2;
     const viewport = page.getViewport({ scale });
     
-    // Create a canvas to render the page
+    // Create canvas
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
+    
     if (!context) {
-      throw new Error('Could not create canvas context');
+      throw new Error('Canvas context could not be created');
     }
     
-    canvas.height = viewport.height;
     canvas.width = viewport.width;
+    canvas.height = viewport.height;
     
-    // Render the page to the canvas
-    await page.render({
+    // Render PDF page to canvas
+    const renderContext = {
       canvasContext: context,
-      viewport,
-    }).promise;
+      viewport: viewport
+    };
     
-    // Convert canvas to a data URL and then to a Blob
-    const dataUrl = canvas.toDataURL('image/png');
-    const response = await fetch(dataUrl);
-    const blob = await response.blob();
+    await page.render(renderContext).promise;
     
-    // Create a new File object from the Blob
-    const fileName = file.name.replace(/\.pdf$/i, '') + '-page' + pageNumber + '.png';
-    return new File([blob], fileName, { type: 'image/png' });
+    // Convert canvas to file
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('Failed to convert PDF to image'));
+          return;
+        }
+        
+        const file = new File([blob], 'pdf-image.png', {
+          type: 'image/png'
+        });
+        
+        resolve(file);
+      }, 'image/png');
+    });
+    
   } catch (error) {
     console.error('Error converting PDF to image:', error);
     return null;
   }
-};
+}
 
 export default {
   initPDFWorker,

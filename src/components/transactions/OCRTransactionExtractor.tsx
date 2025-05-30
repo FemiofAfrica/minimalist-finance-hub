@@ -345,13 +345,15 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
       
       if (parseError) {
         console.error('Error calling parse-transaction-groq function:', parseError);
-        return null;
+        // Use local fallback parser if edge function fails
+        return createLocalParsedTransaction(segment, contextData);
       }
       
       // Handle errors within the function's response
       if (parsedData && parsedData.error) {
         console.error('Error from parse-transaction-groq function:', parsedData);
-        return null;
+        // Use local fallback parser if edge function fails
+        return createLocalParsedTransaction(segment, contextData);
       }
       
       // Validate response data
@@ -363,12 +365,91 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
         typeof parsedData.category_type !== 'string'
       ) {
         console.error('Invalid data structure received from function:', parsedData);
-        return null;
+        // Use local fallback parser if edge function returns invalid data
+        return createLocalParsedTransaction(segment, contextData);
       }
       
       return parsedData;
     } catch (error) {
       console.error('Error calling parse-transaction-groq function:', error);
+      // Use local fallback parser if edge function throws
+      return createLocalParsedTransaction(segment, contextData);
+    }
+  };
+  
+  // Fallback parser when the edge function fails
+  const createLocalParsedTransaction = (text: string, contextData: {
+    regexAmount?: number,
+    regexDate?: string,
+    narrationText?: string
+  }): ParsedTransactionData | null => {
+    try {
+      console.log('Using local fallback parser for transaction data');
+      
+      // Extract description from text
+      let description = '';
+      const narrationMatch = text.match(/narration(?:\s*:)?\s*([^\n\r.]+)/i);
+      if (narrationMatch && narrationMatch[1]) {
+        description = narrationMatch[1].trim();
+      } else if (contextData.narrationText) {
+        description = contextData.narrationText;
+      } else {
+        // Look for beneficiary or purpose
+        const beneficiaryMatch = text.match(/beneficiary(?:\s*:)?\s*([^\n\r.]+)/i);
+        const purposeMatch = text.match(/purpose(?:\s*:)?\s*([^\n\r.]+)/i);
+        
+        if (beneficiaryMatch && beneficiaryMatch[1]) {
+          description = `To: ${beneficiaryMatch[1].trim()}`;
+        } else if (purposeMatch && purposeMatch[1]) {
+          description = purposeMatch[1].trim();
+        } else {
+          // Default to a generic description
+          description = text.split('\n')[0]?.trim() || 'Transaction';
+        }
+      }
+      
+      // Use regex amount or extract from text
+      let amount = contextData.regexAmount || 0;
+      if (!amount) {
+        const amountMatch = text.match(/(?:ngn|₦|n)\s*([\d,]+(?:\.\d{2})?)/i);
+        if (amountMatch && amountMatch[1]) {
+          amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+        }
+      }
+      
+      // Determine if this is a transfer
+      const isTransfer = /transfer|sent|beneficiary|recipient/i.test(text);
+      
+      // Determine category
+      let category = 'Uncategorized';
+      let categoryType = 'EXPENSE';
+      
+      if (isTransfer) {
+        category = 'Transfer';
+        categoryType = 'TRANSFER';
+      } else if (/water|electricity|bill|utility/i.test(text)) {
+        category = 'Utilities';
+      } else if (/transport|uber|bolt|taxi|fuel/i.test(text)) {
+        category = 'Transport';
+      } else if (/food|restaurant|meal|cafe/i.test(text)) {
+        category = 'Dining';
+      } else if (/grocery|supermarket|market|store/i.test(text)) {
+        category = 'Groceries';
+      } else if (/salary|wage|income/i.test(text)) {
+        category = 'Salary';
+        categoryType = 'INCOME';
+      }
+      
+      return {
+        description,
+        amount,
+        category_name: category,
+        category_type: categoryType,
+        date: contextData.regexDate,
+        is_transfer: isTransfer
+      };
+    } catch (error) {
+      console.error('Error in local fallback parser:', error);
       return null;
     }
   };

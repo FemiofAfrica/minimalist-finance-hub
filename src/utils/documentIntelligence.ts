@@ -38,7 +38,14 @@ export async function analyzeDocument(
     if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
       try {
         console.log("Attempting to extract text directly from PDF...");
-        // Use our new PDF utility
+        // Try to reinitialize worker explicitly before extraction
+        try {
+          initPDFWorker();
+        } catch (workerError) {
+          console.warn("Error initializing PDF worker:", workerError);
+        }
+        
+        // Use our PDF utility
         const pdfText = await extractTextFromPDF(file);
         if (pdfText && pdfText.trim().length > 0) {
           console.log("Successfully extracted text directly from PDF.");
