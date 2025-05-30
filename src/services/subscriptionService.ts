@@ -545,21 +545,88 @@ export const convertSubscriptionToTransaction = async (subscriptionId: string): 
       accountCurrency = anyAccount.currency || 'NGN';
     }
     
+    // Determine the category type
+    const categoryType = (subscription.category_type?.toLowerCase() === 'income' ? 'income' : 'expense');
+    
+    // Ensure we have a valid category ID by checking if it exists
+    let categoryId = subscription.category_id;
+    const categoryName = subscription.category_name || 'Subscriptions';
+    
+    if (categoryId) {
+      // Verify that the category exists
+      const { data: categoryExists, error: categoryCheckError } = await supabase
+        .from('categories')
+        .select('category_id')
+        .eq('category_id', categoryId)
+        .maybeSingle();
+      
+      if (categoryCheckError) {
+        console.error('Error checking category existence:', categoryCheckError);
+      }
+      
+      // If category doesn't exist, clear the ID so we'll create or find one
+      if (!categoryExists) {
+        console.log(`Category ID ${categoryId} does not exist, will create/find one`);
+        categoryId = null;
+      }
+    }
+    
+    // If we don't have a valid category ID, find or create one
+    if (!categoryId) {
+      // Try to find existing category by name and type
+      const { data: existingCategory, error: findCategoryError } = await supabase
+        .from('categories')
+        .select('category_id')
+        .eq('user_id', user.id)
+        .eq('name', categoryName)
+        .eq('type', categoryType)
+        .maybeSingle();
+      
+      if (findCategoryError) {
+        console.error('Error finding category:', findCategoryError);
+      }
+      
+      if (existingCategory && existingCategory.category_id) {
+        // Use existing category
+        categoryId = existingCategory.category_id;
+        console.log(`Using existing category: ${categoryId}`);
+      } else {
+        // Create a new category
+        const { data: newCategory, error: createCategoryError } = await supabase
+          .from('categories')
+          .insert({
+            name: categoryName,
+            type: categoryType,
+            user_id: user.id
+          })
+          .select('category_id')
+          .single();
+        
+        if (createCategoryError) {
+          console.error('Error creating category:', createCategoryError);
+          throw createCategoryError;
+        }
+        
+        categoryId = newCategory.category_id;
+        console.log(`Created new category: ${categoryId}`);
+      }
+    }
+    
     // Create a transaction from the subscription using the createTransaction function
-    // to ensure all necessary fields and validation are applied
     const transactionInput = {
       user_id: user.id,
       account_id: accountId,
       amount: subscription.amount,
       currency: accountCurrency,
-      type: (subscription.category_type?.toLowerCase() === 'income' ? 'income' : 'expense') as 'income' | 'expense',
+      type: categoryType as 'income' | 'expense',
       date: new Date().toLocaleDateString('en-CA'), // Today's date
       description: `${subscription.name} Subscription Payment`,
-      category_id: subscription.category_id,
-      category_name: subscription.category_name || 'Subscriptions',
+      category_id: categoryId,
       notes: `Automatic payment for subscription: ${subscription.name}`,
       subscription_id: subscription.subscription_id // Link it to the subscription
     };
+    
+    console.log("Creating transaction with input:", transactionInput);
     
     // Use the createTransaction function instead of direct insert
     await createTransaction(transactionInput);
