@@ -260,64 +260,62 @@ const Login = () => {
 
   return (
     <PublicLayout>
-      <div className="min-h-screen flex items-center justify-center bg-[#004D40] w-screen h-screen m-0 p-0 overflow-hidden auth-page">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#e8f1df] w-screen h-screen m-0 p-0 overflow-auto auth-page">
+        <div className="flex flex-col items-center justify-center mt-20 mb-6">
+          <img src="/kpege-logo.svg" alt="Kpege Logo" className="h-14 w-auto" style={{ maxHeight: 96 }} />
+        </div>
         <div className="w-full max-w-xl space-y-6 px-8">
-          <div className="text-center space-y-2">
-            <div className="flex justify-center items-center mb-8">
-              {/* <img src="/assets/logo.svg" alt="Kpege Logo" className="h-10 w-10 mr-3" /> */}
-              <h1 className="text-4xl font-bold text-white">Kpege</h1>
-              <p className="text-lg text-green-200 font-medium mt-2">Follow your money</p>
-            </div>
-            <h2 className="text-2xl font-semibold text-center text-white mb-3">Sign In</h2>
-            <p className="text-gray-200">
-              Please enter your details to sign in to your account
+          <div className="text-center space-y-0">
+            <h2 className="text-2xl font-semibold text-center text-black mb-3">
+              {isSignUp ? 'Sign Up' : 'Sign In'}
+            </h2>
+            <p className="text-black">
+              {isSignUp ? 'Please enter your details to create an account' : 'Please enter your details to sign in to your account'}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 bg-[#00695C] rounded-lg p-6">
+          <form onSubmit={handleSubmit} className="space-y-4 p-6">
             <div className="space-y-4">
               {isSignUp ? (
                 <>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName" className="text-sm font-medium text-gray-200">First Name</Label>
-                      <Input
-                        id="firstName"
-                        type="text"
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        required
-                        className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
-                        placeholder="Enter your first name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName" className="text-sm font-medium text-gray-200">Last Name</Label>
-                      <Input
-                        id="lastName"
-                        type="text"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        required
-                        className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
-                        placeholder="Enter your last name"
-                      />
-                    </div>
+                  <div>
+                    <Label htmlFor="firstName" className="text-sm font-medium text-black">First Name</Label>
+                    <Input
+                      id="firstName"
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      required
+                      className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
+                      placeholder="Enter your first name"
+                    />
                   </div>
                   <div>
-                    <Label htmlFor="email" className="text-sm font-medium text-gray-200">Email</Label>
+                    <Label htmlFor="lastName" className="text-sm font-medium text-black">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      required
+                      className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
+                      placeholder="Enter your last name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email" className="text-sm font-medium text-black">Email</Label>
                     <Input
                       id="email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
+                      className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
                       placeholder="Enter your email"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="password" className="text-sm font-medium text-gray-200">Password</Label>
+                    <Label htmlFor="password" className="text-sm font-medium text-black">Password</Label>
                     <div className="relative">
                       <Input
                         id="password"
@@ -325,28 +323,30 @@ const Login = () => {
                         value={password}
                         onChange={handlePasswordChange}
                         required
-                        className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300 pr-10"
+                        className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10"
                         placeholder="Enter your password"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-200 hover:text-white"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#217a39] hover:text-black"
                         tabIndex={-1}
                       >
                         {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                       </button>
                     </div>
                     <div className="mt-2">
-                      <Progress value={passwordStrength} className="h-2" />
-                      <div className="flex justify-between text-xs mt-1 text-gray-200">
-                        <span>{passwordStrength === 0 ? 'Weak' : passwordStrength <= 40 ? 'Fair' : passwordStrength <= 80 ? 'Good' : 'Strong'}</span>
+                      <Progress value={passwordStrength} className={`h-2 ${passwordStrength === 0 ? 'bg-red-400' : passwordStrength <= 40 ? 'bg-yellow-400' : passwordStrength <= 80 ? 'bg-blue-400' : 'bg-green-500'}`} />
+                      <div className="flex justify-between text-xs mt-1 text-black">
+                        <span style={{ color: passwordStrength === 0 ? '#dc2626' : passwordStrength <= 40 ? '#ca8a04' : passwordStrength <= 80 ? '#2563eb' : '#15803d' }}>
+                          {passwordStrength === 0 ? 'Weak' : passwordStrength <= 40 ? 'Fair' : passwordStrength <= 80 ? 'Good' : 'Strong'}
+                        </span>
                         <span>{passwordStrength}%</span>
                       </div>
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-200">Confirm Password</Label>
+                    <Label htmlFor="confirmPassword" className="text-sm font-medium text-black">Confirm Password</Label>
                     <div className="relative">
                       <Input
                         id="confirmPassword"
@@ -354,13 +354,13 @@ const Login = () => {
                         value={confirmPassword}
                         onChange={handleConfirmPasswordChange}
                         required
-                        className={`mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300 pr-10 ${!passwordsMatch && confirmPassword.length > 0 ? 'border-red-500' : ''}`}
+                        className={`mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10 ${!passwordsMatch && confirmPassword.length > 0 ? 'border-red-500' : ''}`}
                         placeholder="Confirm your password"
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-200 hover:text-white"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#217a39] hover:text-black"
                         tabIndex={-1}
                       >
                         {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -374,19 +374,19 @@ const Login = () => {
               ) : (
                 <>
                   <div>
-                    <Label htmlFor="email" className="text-sm font-medium text-gray-200">Email</Label>
+                    <Label htmlFor="email" className="text-sm font-medium text-black">Email</Label>
                     <Input
                       id="email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
+                      className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
                       placeholder="Enter your email"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="password" className="text-sm font-medium text-gray-200">Password</Label>
+                    <Label htmlFor="password" className="text-sm font-medium text-black">Password</Label>
                     <div className="relative">
                       <Input
                         id="password"
@@ -394,13 +394,13 @@ const Login = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300 pr-10"
+                        className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10"
                         placeholder="Enter your password"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-200 hover:text-white"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#217a39] hover:text-black"
                         tabIndex={-1}
                       >
                         {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -412,14 +412,14 @@ const Login = () => {
             </div>
 
             {!isSignUp && (
-              <div className="flex justify-end">
+              <div className="flex justify-end mb-2">
                 <button
                   type="button"
                   onClick={() => {
                     setResetEmail(email);
                     setIsResetDialogOpen(true);
                   }}
-                  className="text-sm text-gray-200 hover:text-white"
+                  className="text-sm text-[#217a39] hover:text-black transition-colors"
                 >
                   Forgot password?
                 </button>
@@ -428,7 +428,7 @@ const Login = () => {
 
             <Button 
               type="submit" 
-              className="w-full h-11 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent"
+              className="px-8 py-2 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent rounded-md mx-auto block text-base min-w-[120px]"
               disabled={isProcessing || (isSignUp && (!passwordsMatch || confirmPassword.length === 0))}
             >
               {isProcessing ? 'Processing...' : isSignUp ? 'Sign Up' : 'Sign In'}
@@ -438,7 +438,7 @@ const Login = () => {
               <button
                 type="button"
                 onClick={() => setIsSignUp(!isSignUp)}
-                className="text-sm text-gray-200 hover:text-white"
+                className="text-sm text-[#217a39] hover:text-black transition-colors"
               >
                 {isSignUp
                   ? 'Already have an account? Sign in'
@@ -453,7 +453,7 @@ const Login = () => {
                       setVerificationEmail(email);
                       setIsVerifyDialogOpen(true);
                     }}
-                    className="text-sm text-gray-200 hover:text-white block mx-auto mt-2"
+                    className="text-sm text-[#217a39] hover:text-black block mx-auto mt-2 transition-colors"
                   >
                     Need to verify your email?
                   </button>
@@ -475,10 +475,10 @@ const Login = () => {
             setResetError(null);
           }
         }}>
-          <DialogContent className="bg-[#00695C] text-white border-none sm:max-w-[500px]">
+          <DialogContent className="bg-white text-black border-none sm:max-w-[500px] font-sans">
             <DialogHeader>
-              <DialogTitle className="text-white">Reset Password</DialogTitle>
-              <DialogDescription className="text-gray-200">
+              <DialogTitle className="text-2xl font-semibold text-black font-sans">Reset Password</DialogTitle>
+              <DialogDescription className="text-black font-sans">
                 {isCodeResetView 
                   ? "Enter the code from your email and your new password" 
                   : "Enter your email address and we'll send you a password reset link."}
@@ -486,7 +486,7 @@ const Login = () => {
             </DialogHeader>
             
             {resetError && (
-              <div className="bg-red-500/20 text-white p-3 rounded-md text-sm">
+              <div className="bg-red-500/20 text-black p-3 rounded-md text-sm">
                 {resetError}
               </div>
             )}
@@ -496,7 +496,7 @@ const Login = () => {
                 <div className="grid gap-4 py-4">
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="resetEmail2" className="text-white">Email</Label>
+                      <Label htmlFor="resetEmail2" className="text-black">Email</Label>
                       <Input
                         id="resetEmail2"
                         type="email"
@@ -504,11 +504,11 @@ const Login = () => {
                         onChange={(e) => setResetEmail(e.target.value)}
                         required
                         placeholder="your@email.com"
-                        className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
+                        className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="resetCode" className="text-white">Reset Code</Label>
+                      <Label htmlFor="resetCode" className="text-black">Reset Code</Label>
                       <Input
                         id="resetCode"
                         type="text"
@@ -516,13 +516,13 @@ const Login = () => {
                         onChange={(e) => setResetCode(e.target.value)}
                         required
                         placeholder="Enter the code"
-                        className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
+                        className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
                       />
                     </div>
                   </div>
                   
                   <div className="grid gap-2">
-                    <Label htmlFor="newPassword" className="text-white">New Password</Label>
+                    <Label htmlFor="newPassword" className="text-black">New Password</Label>
                     <div className="relative">
                       <Input
                         id="newPassword"
@@ -531,12 +531,12 @@ const Login = () => {
                         onChange={handleNewPasswordChange}
                         required
                         placeholder="Enter your new password"
-                        className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300 pr-10"
+                        className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10"
                       />
                       <button
                         type="button"
                         onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-200 hover:text-white"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#217a39] hover:text-black"
                         tabIndex={-1}
                       >
                         {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -545,7 +545,7 @@ const Login = () => {
                   </div>
                   
                   <div className="grid gap-2">
-                    <Label htmlFor="confirmNewPassword" className="text-white">Confirm Password</Label>
+                    <Label htmlFor="confirmNewPassword" className="text-black">Confirm Password</Label>
                     <div className="relative">
                       <Input
                         id="confirmNewPassword"
@@ -554,12 +554,12 @@ const Login = () => {
                         onChange={handleConfirmNewPasswordChange}
                         required
                         placeholder="Confirm your new password"
-                        className={`mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300 pr-10 ${!newPasswordsMatch && confirmNewPassword.length > 0 ? 'border-red-500' : ''}`}
+                        className={`mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10 ${!newPasswordsMatch && confirmNewPassword.length > 0 ? 'border-red-500' : ''}`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-200 hover:text-white"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#217a39] hover:text-black"
                         tabIndex={-1}
                       >
                         {showConfirmNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -576,7 +576,7 @@ const Login = () => {
                     type="button"
                     variant="ghost"
                     onClick={() => setIsCodeResetView(false)}
-                    className="text-white hover:bg-[#004D40]/50"
+                    className="bg-transparent text-black border-black hover:bg-[#e8f1df]"
                   >
                     Back to Email Reset
                   </Button>
@@ -587,13 +587,13 @@ const Login = () => {
                     type="button"
                     variant="outline"
                     onClick={() => setIsResetDialogOpen(false)}
-                    className="bg-transparent text-white border-white hover:bg-[#004D40]"
+                    className="bg-transparent text-black border-black hover:bg-[#e8f1df]"
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
-                    className="bg-[#004D40] hover:bg-[#003D30] text-white"
+                    className="bg-[#217a39] hover:bg-black text-white"
                     disabled={isProcessing || !newPasswordsMatch || confirmNewPassword.length === 0}
                   >
                     {isProcessing ? 'Processing...' : 'Reset Password'}
@@ -604,7 +604,7 @@ const Login = () => {
               <form onSubmit={handlePasswordReset}>
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="resetEmail" className="text-white">Email</Label>
+                    <Label htmlFor="resetEmail" className="text-black">Email</Label>
                     <Input
                       id="resetEmail"
                       type="email"
@@ -612,7 +612,7 @@ const Login = () => {
                       onChange={(e) => setResetEmail(e.target.value)}
                       required
                       placeholder="your@email.com"
-                      className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
+                      className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
                     />
                   </div>
                 </div>
@@ -622,7 +622,7 @@ const Login = () => {
                     type="button"
                     variant="ghost"
                     onClick={() => setIsCodeResetView(true)}
-                    className="text-white hover:bg-[#004D40]/50"
+                    className="bg-transparent text-black border-black hover:bg-[#e8f1df]"
                   >
                     I have a reset code
                   </Button>
@@ -633,13 +633,13 @@ const Login = () => {
                     type="button"
                     variant="outline"
                     onClick={() => setIsResetDialogOpen(false)}
-                    className="bg-transparent text-white border-white hover:bg-[#004D40]"
+                    className="bg-transparent text-black border-black hover:bg-[#e8f1df]"
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
-                    className="bg-[#004D40] hover:bg-[#003D30] text-white"
+                    className="bg-[#217a39] hover:bg-black text-white"
                     disabled={isProcessing}
                   >
                     {isProcessing ? 'Sending...' : 'Send Reset Link'}
@@ -652,17 +652,17 @@ const Login = () => {
 
         {/* Email Verification Dialog */}
         <Dialog open={isVerifyDialogOpen} onOpenChange={setIsVerifyDialogOpen}>
-          <DialogContent className="bg-[#00695C] text-white border-none sm:max-w-[500px]">
+          <DialogContent className="bg-white text-black border-none sm:max-w-[500px] font-sans">
             <DialogHeader>
-              <DialogTitle className="text-white">Resend Verification Email</DialogTitle>
-              <DialogDescription className="text-gray-200">
+              <DialogTitle className="text-2xl font-semibold text-black font-sans">Resend Verification Email</DialogTitle>
+              <DialogDescription className="text-black font-sans">
                 Enter your email address and we'll send you a new verification link.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleResendVerification}>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="verificationEmail" className="text-white">Email</Label>
+                  <Label htmlFor="verificationEmail" className="text-black">Email</Label>
                   <Input
                     id="verificationEmail"
                     type="email"
@@ -670,7 +670,7 @@ const Login = () => {
                     onChange={(e) => setVerificationEmail(e.target.value)}
                     required
                     placeholder="your@email.com"
-                    className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300"
+                    className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
                   />
                 </div>
               </div>
@@ -679,13 +679,13 @@ const Login = () => {
                   type="button"
                   variant="outline"
                   onClick={() => setIsVerifyDialogOpen(false)}
-                  className="bg-transparent text-white border-white hover:bg-[#004D40]"
+                  className="bg-transparent text-black border-black hover:bg-[#e8f1df]"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  className="bg-[#004D40] hover:bg-[#003D30] text-white"
+                  className="bg-[#217a39] hover:bg-black text-white"
                   disabled={isProcessing}
                 >
                   {isProcessing ? 'Sending...' : 'Resend Verification'}

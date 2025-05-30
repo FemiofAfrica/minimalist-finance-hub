@@ -79,29 +79,28 @@ const ResetPassword = () => {
 
   return (
     <PublicLayout>
-      <div className="min-h-screen flex items-center justify-center bg-[#004D40] w-screen h-screen m-0 p-0 overflow-hidden auth-page">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#e8f1df] w-screen h-screen m-0 p-0 overflow-auto auth-page">
+        <div className="flex flex-col items-center justify-center mt-20 mb-6">
+          <img src="/kpege-logo.svg" alt="Kpege Logo" className="h-14 w-auto" style={{ maxHeight: 96 }} />
+        </div>
         <div className="w-full max-w-md space-y-6 px-8">
-          <div className="text-center space-y-2">
-            <div className="flex justify-center items-center mb-8">
-              <h1 className="text-4xl font-bold text-white">Kpege</h1>
-            </div>
-            <p className="text-lg text-green-200 font-medium mt-2">Follow your money</p>
-            <h2 className="text-2xl font-bold text-white">Reset Password</h2>
-            <p className="text-gray-200">
+          <div className="text-center space-y-0">
+            <h2 className="text-2xl font-semibold text-center text-black mb-3">Reset Password</h2>
+            <p className="text-black">
               Enter your new password below
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 bg-[#00695C] rounded-lg p-6">
+          <form onSubmit={handleSubmit} className="space-y-4 p-6">
             {error && (
-              <div className="bg-red-500/20 text-white p-3 rounded-md text-sm">
+              <div className="bg-red-500/10 text-red-700 p-3 rounded-md text-sm">
                 {error}
               </div>
             )}
             
             <div className="space-y-4">
               <div>
-                <Label htmlFor="password" className="text-sm font-medium text-gray-200">New Password</Label>
+                <Label htmlFor="password" className="text-sm font-medium text-black">New Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -109,13 +108,13 @@ const ResetPassword = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300 pr-10"
+                    className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10"
                     placeholder="Enter your new password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-200 hover:text-white"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#217a39] hover:text-black"
                     tabIndex={-1}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -123,7 +122,7 @@ const ResetPassword = () => {
                 </div>
               </div>
               <div>
-                <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-200">Confirm Password</Label>
+                <Label htmlFor="confirmPassword" className="text-sm font-medium text-black">Confirm Password</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
@@ -131,13 +130,13 @@ const ResetPassword = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
-                    className="mt-1 h-11 bg-[#004D40] border-gray-200 text-white placeholder-gray-300 pr-10"
+                    className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10"
                     placeholder="Confirm your new password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-200 hover:text-white"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#217a39] hover:text-black"
                     tabIndex={-1}
                   >
                     {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -148,17 +147,17 @@ const ResetPassword = () => {
 
             <Button 
               type="submit" 
-              className="w-full h-11 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent"
+              className="px-8 py-2 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent rounded-md mx-auto block text-base min-w-[120px]"
               disabled={loading}
             >
               {loading ? 'Updating Password...' : 'Reset Password'}
             </Button>
 
-            <div className="text-center">
+            <div className="text-center mt-2">
               <button
                 type="button"
                 onClick={() => navigate('/login')}
-                className="text-sm text-gray-200 hover:text-white"
+                className="text-sm text-[#217a39] hover:text-black transition-colors"
               >
                 Back to Login
               </button>
