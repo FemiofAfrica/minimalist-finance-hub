@@ -117,8 +117,8 @@ export function DashboardSidebar() {
     <div className="flex h-full flex-col">
       <div className="flex items-center p-4 border-b border-slate-200 dark:border-neutral-700">
         <Link to="/" className="flex items-center gap-2 text-slate-900 dark:text-white">
-          {/* <img src="/assets/logo.svg" alt="EvryFin Logo" className="h-6 w-6" /> */}
-          <span className="text-xl font-semibold">EvryFin</span>
+          {/* <img src="/assets/logo.svg" alt="Kpege Logo" className="h-6 w-6" /> */}
+          <span className="text-xl font-semibold">Kpege</span>
         </Link>
       </div>
       <div className="flex flex-1 flex-col overflow-hidden">

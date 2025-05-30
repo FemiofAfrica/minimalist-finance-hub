@@ -264,8 +264,9 @@ const Login = () => {
         <div className="w-full max-w-xl space-y-6 px-8">
           <div className="text-center space-y-2">
             <div className="flex justify-center items-center mb-8">
-              {/* <img src="/assets/logo.svg" alt="SayFin Logo" className="h-10 w-10 mr-3" /> */}
-              <h1 className="text-4xl font-bold text-white">EvryFin</h1>
+              {/* <img src="/assets/logo.svg" alt="Kpege Logo" className="h-10 w-10 mr-3" /> */}
+              <h1 className="text-4xl font-bold text-white">Kpege</h1>
+              <p className="text-lg text-green-200 font-medium mt-2">Follow your money</p>
             </div>
             <h2 className="text-2xl font-semibold text-center text-white mb-3">Sign In</h2>
             <p className="text-gray-200">

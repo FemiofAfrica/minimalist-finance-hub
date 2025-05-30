@@ -1,6 +1,6 @@
 # Notification System
 
-This document explains the notification system implemented in the EvryFin application.
+This document explains the notification system implemented in the Kpege application.
 
 ## Features
 

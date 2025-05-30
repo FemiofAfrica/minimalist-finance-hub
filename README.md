@@ -68,9 +68,9 @@ Simply open [Lovable](https://lovable.dev/projects/9e7980c0-6c09-4a72-9fca-0a7fe
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
 
-# EvryFin - Minimalist Finance Hub
+# Kpege - Follow your money
 
-Welcome to the an AI-powered, minimalist finance tracking application. This app aims to simplify personal finance management through an intuitive interface and intelligent features.
+Welcome to Kpege, an AI-powered, minimalist finance tracking application. This app aims to simplify personal finance management through an intuitive interface and intelligent features.
 
 ## Default Account Implementation
 

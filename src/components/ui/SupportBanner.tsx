@@ -15,7 +15,7 @@ export function SupportBanner({ className = '', initialText, isPreviewMode = fal
   const [visible, setVisible] = useState(true);
   const [bannerText, setBannerText] = useState(
     initialText || 
-    "You may have noticed some of your data is missing. We apologize for the inconvenience. An engineering intern, AKA Femi, caused this and is making sure it doesn't happen again. Keep using EvryFin."
+    "You may have noticed some of your data is missing. We apologize for the inconvenience. An engineering intern, AKA Femi, caused this and is making sure it doesn't happen again. Keep using Kpege."
   );
 
   // useEffect to fetch banner text from API - Placeholder for now

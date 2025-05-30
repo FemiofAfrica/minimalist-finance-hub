@@ -1,9 +1,9 @@
 # Field Name Conventions
 
-This document outlines the naming conventions used throughout the EvryFin application to help maintain consistency and avoid confusion.
+This document outlines the naming conventions used throughout the Kpege application to help maintain consistency and avoid confusion.
 
 ## Overview
-This document outlines the naming conventions used throughout the EvryFin application to help maintain consistency and avoid confusion.
+This document outlines the naming conventions used throughout the Kpege application to help maintain consistency and avoid confusion.
 
 ## General Principles
 
