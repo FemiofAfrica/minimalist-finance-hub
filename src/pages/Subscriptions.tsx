@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchSubscriptions, deleteSubscription, convertSubscriptionToTransaction, createSubscription, updateSubscription, getUpcomingSubscriptions } from '@/services/subscriptionService';
 import { Subscription, SubscriptionFrequency } from '@/types/subscription';
+import { fetchCategories, createCategory } from '@/services/categoryService';
+import { Category } from '@/types/category';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { formatNaira } from '@/utils/formatters';
 import { Button } from '@/components/ui/button';
@@ -41,6 +43,9 @@ const SubscriptionsPage: React.FC = () => {
   const [dueSoonCount, setDueSoonCount] = useState<number>(0);
   const [renewingSubscriptionId, setRenewingSubscriptionId] = useState<string | null>(null);
   const { formatPossiblyConvertedCurrency, isLiveConversionEnabled, currentCurrency, exchangeRates } = useCurrency();
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState<string>('');
+  const [isAddingCategory, setIsAddingCategory] = useState<boolean>(false);
   
   // Helper function to convert NGN amounts to USD (which is the base currency in CurrencyContext)
   const convertNgnToUsd = (amountNgn: number): number | null => {
@@ -136,7 +141,7 @@ const SubscriptionsPage: React.FC = () => {
         amount: formData.amount,
         frequency: frequency,
         next_billing_date: adjustedBillingDate,
-        category_id: null,
+        category_id: formData.category_id,
         category_name: formData.category_name,
         category_type: formData.category_type,
         is_active: formData.is_active,
@@ -204,6 +209,7 @@ const SubscriptionsPage: React.FC = () => {
         amount: formData.amount,
         frequency: formData.frequency as SubscriptionFrequency,
         next_billing_date: adjustedBillingDate,
+        category_id: formData.category_id,
         category_name: formData.category_name,
         category_type: formData.category_type,
         is_active: formData.is_active,
@@ -237,6 +243,7 @@ const SubscriptionsPage: React.FC = () => {
     amount: 0,
     frequency: 'MONTHLY',
     next_billing_date: new Date().toISOString().split('T')[0],
+    category_id: null as string | null,
     category_name: 'Subscriptions',
     category_type: 'EXPENSE',
     is_active: true,
@@ -247,6 +254,7 @@ const SubscriptionsPage: React.FC = () => {
 
   useEffect(() => {
     loadSubscriptions();
+    loadCategories();
     // Check for subscription renewals to generate notifications
     checkSubscriptionRenewals().catch(err => {
       console.error("Error checking subscription renewals:", err);
@@ -271,6 +279,15 @@ const SubscriptionsPage: React.FC = () => {
     }
   };
 
+  const loadCategories = async () => {
+    try {
+      const categoriesData = await fetchCategories();
+      setCategories(categoriesData);
+    } catch (err) {
+      console.error('Failed to load categories:', err);
+    }
+  };
+
   const handleAddSubscription = () => {
     setFormData({
       name: '',
@@ -278,6 +295,7 @@ const SubscriptionsPage: React.FC = () => {
       amount: 0,
       frequency: 'MONTHLY',
       next_billing_date: new Date().toISOString().split('T')[0],
+      category_id: null,
       category_name: 'Subscriptions',
       category_type: 'EXPENSE',
       is_active: true,
@@ -285,6 +303,7 @@ const SubscriptionsPage: React.FC = () => {
       reminder_days: 3,
       provider_id: null
     });
+    setNewCategoryName('');
     setIsAddDialogOpen(true);
   };
 
@@ -296,6 +315,7 @@ const SubscriptionsPage: React.FC = () => {
       amount: subscription.amount,
       frequency: subscription.frequency,
       next_billing_date: subscription.next_billing_date,
+      category_id: subscription.category_id,
       category_name: subscription.category_name || 'Subscriptions',
       category_type: subscription.category_type || 'EXPENSE',
       is_active: subscription.is_active,
@@ -553,6 +573,46 @@ const SubscriptionsPage: React.FC = () => {
     }
   };
 
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      toast({
+        title: "Error",
+        description: "Category name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsAddingCategory(true);
+      const newCategory = await createCategory({
+        name: newCategoryName,
+        type: formData.category_type?.toLowerCase() as 'income' | 'expense' | 'transfer' || 'expense',
+      });
+
+      setCategories([...categories, newCategory]);
+      setFormData(prev => ({
+        ...prev,
+        category_id: newCategory.category_id,
+        category_name: newCategory.name,
+      }));
+      setNewCategoryName('');
+      toast({
+        title: "Success",
+        description: "Category added successfully",
+      });
+    } catch (err) {
+      console.error("Error adding category:", err);
+      toast({
+        title: "Error",
+        description: "Failed to add category",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingCategory(false);
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -761,6 +821,7 @@ const SubscriptionsPage: React.FC = () => {
                           name: transaction.description,
                           amount: transaction.amount,
                           next_billing_date: transaction.date,
+                          category_id: transaction.category_id,
                           category_name: transaction.category_name || 'Subscriptions',
                           category_type: transaction.category_type || 'EXPENSE'
                         }));
@@ -851,14 +912,71 @@ const SubscriptionsPage: React.FC = () => {
                   <Label htmlFor="category" className="text-right">
                     Category
                   </Label>
-                  <Input
-                    id="category_name"
-                    name="category_name"
-                    value={formData.category_name}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                    placeholder="Subscriptions"
-                  />
+                  <div className="col-span-3">
+                    <div className="flex space-x-2">
+                      <Select
+                        value={formData.category_id || "uncategorized"}
+                        onValueChange={(value) => {
+                          if (value === "new") {
+                            // This will trigger the UI for adding a new category
+                            return;
+                          }
+                          if (value === "uncategorized") {
+                            setFormData(prev => ({
+                              ...prev,
+                              category_id: null,
+                              category_name: "Uncategorized",
+                              category_type: "EXPENSE"
+                            }));
+                            return;
+                          }
+                          const selectedCategory = categories.find(c => c.category_id === value);
+                          if (selectedCategory) {
+                            setFormData(prev => ({
+                              ...prev,
+                              category_id: selectedCategory.category_id,
+                              category_name: selectedCategory.name,
+                              category_type: selectedCategory.type.toUpperCase()
+                            }));
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="uncategorized">Uncategorized</SelectItem>
+                          {categories
+                            .filter(c => c.type === 'expense')
+                            .map(category => (
+                              <SelectItem key={category.category_id} value={category.category_id}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          <SelectItem value="new">+ Add New Category</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {formData.category_id === "new" && (
+                      <div className="mt-2 flex space-x-2">
+                        <Input
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          placeholder="Enter new category name"
+                          className="flex-1"
+                        />
+                        <Button 
+                          type="button" 
+                          size="sm" 
+                          onClick={handleAddCategory}
+                          disabled={isAddingCategory || !newCategoryName.trim()}
+                        >
+                          {isAddingCategory ? "Adding..." : "Add"}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <div className="text-right">
@@ -952,6 +1070,7 @@ const SubscriptionsPage: React.FC = () => {
                           name: transaction.description,
                           amount: transaction.amount,
                           next_billing_date: transaction.date,
+                          category_id: transaction.category_id,
                           category_name: transaction.category_name || 'Subscriptions',
                           category_type: transaction.category_type || 'EXPENSE'
                         }));
@@ -1042,14 +1161,71 @@ const SubscriptionsPage: React.FC = () => {
                   <Label htmlFor="category" className="text-right">
                     Category
                   </Label>
-                  <Input
-                    id="category_name"
-                    name="category_name"
-                    value={formData.category_name}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                    placeholder="Subscriptions"
-                  />
+                  <div className="col-span-3">
+                    <div className="flex space-x-2">
+                      <Select
+                        value={formData.category_id || "uncategorized"}
+                        onValueChange={(value) => {
+                          if (value === "new") {
+                            // This will trigger the UI for adding a new category
+                            return;
+                          }
+                          if (value === "uncategorized") {
+                            setFormData(prev => ({
+                              ...prev,
+                              category_id: null,
+                              category_name: "Uncategorized",
+                              category_type: "EXPENSE"
+                            }));
+                            return;
+                          }
+                          const selectedCategory = categories.find(c => c.category_id === value);
+                          if (selectedCategory) {
+                            setFormData(prev => ({
+                              ...prev,
+                              category_id: selectedCategory.category_id,
+                              category_name: selectedCategory.name,
+                              category_type: selectedCategory.type.toUpperCase()
+                            }));
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="uncategorized">Uncategorized</SelectItem>
+                          {categories
+                            .filter(c => c.type === 'expense')
+                            .map(category => (
+                              <SelectItem key={category.category_id} value={category.category_id}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          <SelectItem value="new">+ Add New Category</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {formData.category_id === "new" && (
+                      <div className="mt-2 flex space-x-2">
+                        <Input
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          placeholder="Enter new category name"
+                          className="flex-1"
+                        />
+                        <Button 
+                          type="button" 
+                          size="sm" 
+                          onClick={handleAddCategory}
+                          disabled={isAddingCategory || !newCategoryName.trim()}
+                        >
+                          {isAddingCategory ? "Adding..." : "Add"}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <div className="text-right">

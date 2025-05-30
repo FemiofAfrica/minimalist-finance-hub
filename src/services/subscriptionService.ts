@@ -177,6 +177,55 @@ export const createSubscription = async (subscription: Omit<Subscription, 'subsc
       frequency: mappedFrequency // Use the correctly cased frequency from mapAppFrequencyToDBFrequency
     };
 
+    // Check if we need to find or create a category
+    let categoryId = subscriptionWithUserId.category_id;
+    const categoryName = subscriptionWithUserId.category_name || 'Subscriptions';
+    const categoryType = (subscriptionWithUserId.category_type?.toLowerCase() === 'income' ? 'income' : 'expense');
+    
+    if (!categoryId && categoryName) {
+      console.log(`No category ID provided but name "${categoryName}" exists, finding or creating category...`);
+      
+      // Try to find existing category by name and type
+      const { data: existingCategory, error: findCategoryError } = await supabase
+        .from('categories')
+        .select('category_id')
+        .eq('user_id', user.id)
+        .eq('name', categoryName)
+        .eq('type', categoryType)
+        .maybeSingle();
+      
+      if (findCategoryError) {
+        console.error('Error finding category:', findCategoryError);
+      }
+      
+      if (existingCategory && existingCategory.category_id) {
+        // Use existing category
+        categoryId = existingCategory.category_id;
+        console.log(`Using existing category: ${categoryId}`);
+      } else {
+        // Create a new category
+        const { data: newCategory, error: createCategoryError } = await supabase
+          .from('categories')
+          .insert({
+            name: categoryName,
+            type: categoryType,
+            user_id: user.id
+          })
+          .select('category_id')
+          .single();
+        
+        if (createCategoryError) {
+          console.error('Error creating category:', createCategoryError);
+        } else if (newCategory) {
+          categoryId = newCategory.category_id;
+          console.log(`Created new category: ${categoryId}`);
+        }
+      }
+    }
+
+    // Update the subscription with the found/created category ID
+    subscriptionWithUserId.category_id = categoryId;
+
     // Remove any fields that might be causing problems
     const { category_name, category_type, ...dbSubscription } = subscriptionWithUserId;
 
@@ -363,7 +412,8 @@ export const updateSubscription = async (subscription: Partial<Subscription> & {
       name: subscription.name,
       auto_renew: subscription.auto_renew,
       reminder_days: subscription.reminder_days,
-      provider_id: subscription.provider_id
+      provider_id: subscription.provider_id,
+      category_id: subscription.category_id
       // category_name and category_type should not be sent directly
       // as they are typically derived or handled via category_id
     };
