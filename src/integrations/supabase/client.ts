@@ -196,15 +196,30 @@ export async function callEdgeFunction(
           // Create a URL with all parameters
           const url = `${supabaseUrl}/functions/v1/${functionName}`;
           
+          // Get a fresh session token if available - this addresses potential authorization issues
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          // Prepare authorization headers - try both authenticated and anonymous approaches
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'X-Client-Info': 'supabase-js/2.x',
+            'Origin': currentDomain,
+          };
+          
+          // If user is logged in, use their session token
+          if (session?.access_token) {
+            console.log('Using authenticated session for parse-transaction-groq');
+            headers['Authorization'] = `Bearer ${session.access_token}`;
+          } else {
+            // Otherwise fall back to anon key
+            console.log('Using anonymous key for parse-transaction-groq');
+            headers['Authorization'] = `Bearer ${supabaseKey}`;
+            headers['apikey'] = supabaseKey;
+          }
+          
           const response = await fetch(url, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseKey}`, // Use the anon key directly
-              'apikey': supabaseKey, // Include apikey header as well
-              'X-Client-Info': 'supabase-js/2.x',
-              'Origin': currentDomain,
-            },
+            headers,
             body: JSON.stringify(payload),
           });
 
@@ -217,6 +232,25 @@ export async function callEdgeFunction(
             
             const error = new Error(`Edge function error: ${response.status} ${response.statusText}`);
             console.error(`Error calling ${functionName}:`, error);
+            
+            // If we still get an error, try using the standard client
+            if (response.status === 401 || response.status === 403) {
+              console.log('Authorization failed with direct fetch, trying standard client');
+              
+              // Try using the Supabase client's built-in function invocation
+              const { data, error: invokeError } = await supabase.functions.invoke(functionName, {
+                body: payload
+              });
+              
+              if (invokeError) {
+                console.error(`Error calling ${functionName} with standard client:`, invokeError);
+                if (throwError) throw invokeError;
+                return { data: null, error: invokeError };
+              }
+              
+              return { data, error: null };
+            }
+            
             if (throwError) throw error;
             return { data: null, error };
           }
@@ -225,52 +259,79 @@ export async function callEdgeFunction(
           return { data, error: null };
         } catch (err) {
           console.error(`Exception calling ${functionName}:`, err);
-          if (throwError) throw err;
-          return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+          
+          // As a last resort, try using the standard client
+          try {
+            console.log('Trying standard Supabase client as fallback');
+            const { data, error: fallbackError } = await supabase.functions.invoke(functionName, {
+              body: payload
+            });
+            
+            if (fallbackError) {
+              console.error(`Fallback attempt failed for ${functionName}:`, fallbackError);
+              if (throwError) throw fallbackError;
+              return { data: null, error: fallbackError };
+            }
+            
+            return { data, error: null };
+          } catch (fallbackErr) {
+            console.error(`Fallback attempt exception for ${functionName}:`, fallbackErr);
+            if (throwError) throw fallbackErr;
+            return { data: null, error: fallbackErr instanceof Error ? fallbackErr : new Error(String(fallbackErr)) };
+          }
         }
       }
       
       // Handle authenticated functions with standard Supabase approach
-      // Get the access token
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        console.error('Error getting Supabase session:', sessionError);
-        if (throwError) throw sessionError;
-        return { data: null, error: sessionError };
-      }
-
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
-        const noTokenError = new Error("No access token available. User might not be logged in.");
-        console.error(`Error calling ${functionName}:`, noTokenError);
-        if (throwError) throw noTokenError;
-        return { data: null, error: noTokenError };
-      }
-      
-      // Use the standard Supabase client for production
-      const headers: Record<string, string> = {
-        'Authorization': `Bearer ${accessToken}`,
-      };
-
-      const { data, error } = await supabase.functions.invoke(functionName, {
-        body: payload,
-        headers
-      });
-      
-      if (error) {
-        console.error(`Error calling ${functionName}:`, error);
-        if (throwError) throw error;
-        return { data: null, error };
-      }
-      
-      return { data, error: null };
+      return await callWithStandardClient(functionName, payload, throwError);
     }
   } catch (err) {
     console.error(`Exception calling ${functionName}:`, err);
     if (throwError) throw err;
     return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+  }
+}
+
+// Helper function to call edge function with standard Supabase client
+async function callWithStandardClient(
+  functionName: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  payload?: any,
+  throwError?: boolean
+) {
+  // Get the access token
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+  if (sessionError) {
+    console.error('Error getting Supabase session:', sessionError);
+    if (throwError) throw sessionError;
+    return { data: null, error: sessionError };
+  }
+
+  // If user is logged in, use their token
+  const headers: Record<string, string> = {};
+  if (session?.access_token) {
+    headers['Authorization'] = `Bearer ${session.access_token}`;
+  }
+  
+  // Use the standard Supabase client
+  try {
+    const { data, error } = await supabase.functions.invoke(functionName, {
+      body: payload,
+      headers
+    });
+    
+    if (error) {
+      console.error(`Error calling ${functionName}:`, error);
+      if (throwError) throw error;
+      return { data: null, error };
+    }
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error(`Error in standard client call to ${functionName}:`, error);
+    if (throwError) throw error;
+    return { data: null, error };
   }
 }
 
