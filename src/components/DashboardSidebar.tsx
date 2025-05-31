@@ -25,7 +25,7 @@ import { BANNER_HEIGHT } from "@/components/ui/SupportBanner";
 
 const links = [
   { 
-    href: "/", 
+    href: "/dashboard", 
     label: "Dashboard", 
     icon: <LayoutDashboard className="mr-2 h-4 w-4" />
   },
@@ -116,7 +116,7 @@ export function DashboardSidebar() {
   const navigation = (
     <div className="flex h-full flex-col">
       <div className="flex items-center p-4 border-b border-slate-200 dark:border-neutral-700">
-        <Link to="/" className="flex items-center gap-2 text-slate-900 dark:text-white">
+        <Link to="/dashboard" className="flex items-center gap-2 text-slate-900 dark:text-white">
           <img
             src={theme === 'dark' ? '/kpege-logo-light.svg' : '/kpege-logo.svg'}
             alt="Kpege Logo"

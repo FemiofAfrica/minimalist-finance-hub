@@ -7,26 +7,46 @@ import { ChevronDown, Send, Upload, Mic, CreditCard, Tag, Calendar, PiggyBank, C
 
 // Currency configuration - expanded with more options
 const currencies = [
-  { code: 'NGN', symbol: '₦', name: 'Nigerian Naira', country: 'Nigeria' },
-  { code: 'USD', symbol: '$', name: 'US Dollar', country: 'United States' },
-  { code: 'EUR', symbol: '€', name: 'Euro', country: 'European Union' },
-  { code: 'GBP', symbol: '£', name: 'British Pound', country: 'United Kingdom' },
-  { code: 'INR', symbol: '₹', name: 'Indian Rupee', country: 'India' },
-  { code: 'ZAR', symbol: 'R', name: 'South African Rand', country: 'South Africa' },
-  { code: 'GHS', symbol: 'GH₵', name: 'Ghanaian Cedi', country: 'Ghana' },
-  { code: 'KES', symbol: 'KSh', name: 'Kenyan Shilling', country: 'Kenya' },
-  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', country: 'Australia' },
-  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar', country: 'Canada' },
-  { code: 'JPY', symbol: '¥', name: 'Japanese Yen', country: 'Japan' },
-  { code: 'CNY', symbol: '¥', name: 'Chinese Yuan', country: 'China' },
-  { code: 'BRL', symbol: 'R$', name: 'Brazilian Real', country: 'Brazil' },
-  { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham', country: 'United Arab Emirates' },
-  { code: 'EGP', symbol: 'E£', name: 'Egyptian Pound', country: 'Egypt' },
-  { code: 'MXN', symbol: 'Mex$', name: 'Mexican Peso', country: 'Mexico' },
-  { code: 'SAR', symbol: '﷼', name: 'Saudi Riyal', country: 'Saudi Arabia' },
-  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar', country: 'Singapore' },
-  { code: 'RUB', symbol: '₽', name: 'Russian Ruble', country: 'Russia' },
-  { code: 'CHF', symbol: 'Fr', name: 'Swiss Franc', country: 'Switzerland' }
+  { code: 'NGN', symbol: '₦', name: 'Nigerian Naira', country: 'Nigeria', countries: ['Nigeria'] },
+  { code: 'USD', symbol: '$', name: 'US Dollar', country: 'United States', countries: ['United States', 'Puerto Rico', 'Ecuador', 'El Salvador', 'Panama', 'Zimbabwe'] },
+  { code: 'EUR', symbol: '€', name: 'Euro', country: 'European Union', countries: ['Germany', 'France', 'Italy', 'Spain', 'Netherlands', 'Austria', 'Belgium', 'Greece', 'Portugal', 'Ireland', 'Finland', 'Slovakia', 'Slovenia', 'Luxembourg', 'Lithuania', 'Latvia', 'Estonia', 'Cyprus', 'Malta', 'Montenegro', 'European Union'] },
+  { code: 'GBP', symbol: '£', name: 'British Pound', country: 'United Kingdom', countries: ['United Kingdom', 'England', 'Scotland', 'Wales', 'Northern Ireland'] },
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee', country: 'India', countries: ['India', 'Bhutan'] },
+  { code: 'ZAR', symbol: 'R', name: 'South African Rand', country: 'South Africa', countries: ['South Africa', 'Namibia', 'Lesotho', 'Eswatini'] },
+  { code: 'GHS', symbol: 'GH₵', name: 'Ghanaian Cedi', country: 'Ghana', countries: ['Ghana'] },
+  { code: 'KES', symbol: 'KSh', name: 'Kenyan Shilling', country: 'Kenya', countries: ['Kenya'] },
+  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', country: 'Australia', countries: ['Australia', 'Kiribati', 'Nauru', 'Tuvalu'] },
+  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar', country: 'Canada', countries: ['Canada'] },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen', country: 'Japan', countries: ['Japan'] },
+  { code: 'CNY', symbol: '¥', name: 'Chinese Yuan', country: 'China', countries: ['China', 'People\'s Republic of China'] },
+  { code: 'BRL', symbol: 'R$', name: 'Brazilian Real', country: 'Brazil', countries: ['Brazil'] },
+  { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham', country: 'United Arab Emirates', countries: ['United Arab Emirates', 'Dubai', 'Abu Dhabi'] },
+  { code: 'EGP', symbol: 'E£', name: 'Egyptian Pound', country: 'Egypt', countries: ['Egypt'] },
+  { code: 'MXN', symbol: 'Mex$', name: 'Mexican Peso', country: 'Mexico', countries: ['Mexico'] },
+  { code: 'SAR', symbol: '﷼', name: 'Saudi Riyal', country: 'Saudi Arabia', countries: ['Saudi Arabia'] },
+  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar', country: 'Singapore', countries: ['Singapore'] },
+  { code: 'RUB', symbol: '₽', name: 'Russian Ruble', country: 'Russia', countries: ['Russia', 'Russian Federation'] },
+  { code: 'CHF', symbol: 'Fr', name: 'Swiss Franc', country: 'Switzerland', countries: ['Switzerland', 'Liechtenstein'] },
+  { code: 'TRY', symbol: '₺', name: 'Turkish Lira', country: 'Turkey', countries: ['Turkey'] },
+  { code: 'SEK', symbol: 'kr', name: 'Swedish Krona', country: 'Sweden', countries: ['Sweden'] },
+  { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone', country: 'Norway', countries: ['Norway'] },
+  { code: 'DKK', symbol: 'kr', name: 'Danish Krone', country: 'Denmark', countries: ['Denmark', 'Greenland', 'Faroe Islands'] },
+  { code: 'PLN', symbol: 'zł', name: 'Polish Złoty', country: 'Poland', countries: ['Poland'] },
+  { code: 'CZK', symbol: 'Kč', name: 'Czech Koruna', country: 'Czech Republic', countries: ['Czech Republic', 'Czechia'] },
+  { code: 'HUF', symbol: 'Ft', name: 'Hungarian Forint', country: 'Hungary', countries: ['Hungary'] },
+  { code: 'RON', symbol: 'lei', name: 'Romanian Leu', country: 'Romania', countries: ['Romania'] },
+  { code: 'BGN', symbol: 'лв', name: 'Bulgarian Lev', country: 'Bulgaria', countries: ['Bulgaria'] },
+  { code: 'HRK', symbol: 'kn', name: 'Croatian Kuna', country: 'Croatia', countries: ['Croatia'] },
+  { code: 'ILS', symbol: '₪', name: 'Israeli New Shekel', country: 'Israel', countries: ['Israel'] },
+  { code: 'KRW', symbol: '₩', name: 'South Korean Won', country: 'South Korea', countries: ['South Korea'] },
+  { code: 'THB', symbol: '฿', name: 'Thai Baht', country: 'Thailand', countries: ['Thailand'] },
+  { code: 'IDR', symbol: 'Rp', name: 'Indonesian Rupiah', country: 'Indonesia', countries: ['Indonesia'] },
+  { code: 'MYR', symbol: 'RM', name: 'Malaysian Ringgit', country: 'Malaysia', countries: ['Malaysia'] },
+  { code: 'PHP', symbol: '₱', name: 'Philippine Peso', country: 'Philippines', countries: ['Philippines'] },
+  { code: 'VND', symbol: '₫', name: 'Vietnamese Dong', country: 'Vietnam', countries: ['Vietnam'] },
+  { code: 'PKR', symbol: '₨', name: 'Pakistani Rupee', country: 'Pakistan', countries: ['Pakistan'] },
+  { code: 'BDT', symbol: '৳', name: 'Bangladeshi Taka', country: 'Bangladesh', countries: ['Bangladesh'] },
+  { code: 'NZD', symbol: 'NZ$', name: 'New Zealand Dollar', country: 'New Zealand', countries: ['New Zealand', 'Cook Islands', 'Niue', 'Pitcairn Islands', 'Tokelau'] }
 ];
 
 // Helper function to get last Monday's date
@@ -259,8 +279,24 @@ const LandingPage: React.FC = () => {
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Currency selection state
-  const [selectedCurrency, setSelectedCurrency] = useState(currencies[0]); // Default to NGN
+  // Currency selection state - with localStorage persistence
+  const [selectedCurrency, setSelectedCurrency] = useState(() => {
+    // Try to get saved currency from localStorage
+    const savedCurrency = localStorage.getItem('kpege-selected-currency');
+    if (savedCurrency) {
+      try {
+        const parsed = JSON.parse(savedCurrency);
+        // Validate that the parsed object has the expected properties
+        if (parsed && parsed.code && parsed.symbol && parsed.name) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error('Error parsing saved currency:', e);
+      }
+    }
+    // Default to NGN if no saved currency or parsing error
+    return currencies[0];
+  });
   const [showCurrencySelector, setShowCurrencySelector] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -268,12 +304,24 @@ const LandingPage: React.FC = () => {
   // Ref for the demo section to allow scrolling to it
   const demoSectionRef = useRef<HTMLElement>(null);
   
+  // Save selected currency to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('kpege-selected-currency', JSON.stringify(selectedCurrency));
+  }, [selectedCurrency]);
+  
   // Filter currencies based on search query
-  const filteredCurrencies = currencies.filter(currency => 
-    currency.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    currency.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    currency.country.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCurrencies = currencies.filter(currency => {
+    const query = searchQuery.toLowerCase();
+    if (currency.name.toLowerCase().includes(query) || 
+        currency.code.toLowerCase().includes(query)) {
+      return true;
+    }
+    
+    // Search through all countries associated with this currency
+    return currency.countries.some(country => 
+      country.toLowerCase().includes(query)
+    );
+  });
   
   // Start demo by selecting currency
   const selectCurrency = (currency: typeof currencies[0]) => {
@@ -392,7 +440,7 @@ const LandingPage: React.FC = () => {
       <section className="flex flex-col items-center justify-center px-4 py-16 md:py-24 text-center">
       <div className="mb-8">
           <img 
-            src="/kpege-logo.svg" 
+            src="/main-kpege-logo.svg" 
             alt="Kpege Dashboard Preview" 
             className="h-20 md:h-24 mx-auto" 
           />
@@ -513,11 +561,15 @@ const LandingPage: React.FC = () => {
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
                               type="text"
-                              placeholder="Search currency or country..."
+                              placeholder="Search by currency or country name..."
                               className="pl-10"
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
+                              autoFocus
                             />
+                          </div>
+                          <div className="text-xs text-center mt-1 text-muted-foreground">
+                            Try searching for your country (e.g., "Germany", "India")
                           </div>
                         </div>
                         
@@ -535,7 +587,20 @@ const LandingPage: React.FC = () => {
                                   <span className="text-lg font-bold mr-2">{currency.symbol}</span>
                                   <div>
                                     <div>{currency.name}</div>
-                                    <div className="text-xs text-muted-foreground">{currency.country}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {currency.country}
+                                      {currency.countries.length > 1 && (
+                                        <button 
+                                          className="ml-1 text-green-700 hover:underline focus:outline-none"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            alert(`${currency.name} is used in: ${currency.countries.join(', ')}`);
+                                          }}
+                                        >
+                                          + {currency.countries.length - 1} more
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                                 {selectedCurrency.code === currency.code && (
@@ -794,6 +859,9 @@ const LandingPage: React.FC = () => {
                 <Globe className="mr-2 h-4 w-4" />
                 Change currency from {selectedCurrency.name}
               </Button>
+              <p className="text-xs text-muted-foreground mt-2">
+                Your currency preference is saved for future visits
+              </p>
             </div>
           )}
         </div>

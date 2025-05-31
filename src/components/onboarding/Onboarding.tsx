@@ -105,7 +105,7 @@ export const Onboarding = () => {
     completeOnboarding();
     setOpen(false);
     // Navigate to dashboard
-    navigate('/');
+    navigate('/dashboard');
   };
 
   const handleSkip = () => {

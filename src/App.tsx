@@ -12,7 +12,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import Login from '@/pages/Login';
 import ResetPassword from '@/pages/ResetPassword';
-import Index from '@/pages/Index';
+import Dashboard from '@/pages/Dashboard';
 import Transactions from '@/pages/Transactions';
 import Subscriptions from '@/pages/Subscriptions';
 import AccountsAndCards from '@/pages/AccountsAndCards';
@@ -89,7 +89,7 @@ function App() {
                   <Route path="/" element={<LandingPage />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/dashboard" element={<PrivateRoute><Index /></PrivateRoute>} />
+                  <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
                   <Route path="/transactions" element={<PrivateRoute><Transactions /></PrivateRoute>} />
                   <Route path="/subscriptions" element={<PrivateRoute><Subscriptions /></PrivateRoute>} />
                   <Route path="/accounts" element={<PrivateRoute><AccountsAndCards /></PrivateRoute>} />

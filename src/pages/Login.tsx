@@ -121,7 +121,7 @@ const Login = () => {
         });
       } else {
         await signIn(email, password);
-        navigate('/');
+        navigate('/dashboard');
         toast({
           title: "Welcome back!",
           description: "You have successfully logged in.",

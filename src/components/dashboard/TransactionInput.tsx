@@ -19,7 +19,7 @@ const TransactionInput = ({ onTransactionAdded }: TransactionInputProps) => {
   return (
     <Card className="p-6 mb-6">
       <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-4">Add Transaction</h3>
+        <h3 className="text-lg font-semibold text-center mb-4">Add Transaction</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Button 
