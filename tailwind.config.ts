@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 import tailwindcssAnimate from "tailwindcss-animate";
 
@@ -48,6 +47,11 @@ export default {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        green: {
+          '50': "hsl(var(--fintrack-green-50))",
+          '700': "hsl(var(--fintrack-green-700))",
+          '800': "hsl(var(--fintrack-green-800))",
         },
       },
       borderRadius: {

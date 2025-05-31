@@ -261,10 +261,10 @@ const Login = () => {
   return (
     <PublicLayout>
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#e8f1df] w-screen h-screen m-0 p-0 overflow-auto auth-page">
-        <div className="flex flex-col items-center justify-center mt-20 mb-6">
-          <img src="/kpege-logo.svg" alt="Kpege Logo" className="h-14 w-auto" style={{ maxHeight: 96 }} />
+        <div className="flex flex-col items-center justify-center mt-16 mb-6 w-full">
+          <img src="/kpege-logo.svg" alt="Kpege Logo" className="h-14 w-auto mx-auto" style={{ maxHeight: 96 }} />
         </div>
-        <div className="w-full max-w-xl space-y-6 px-8">
+        <div className="w-full max-w-xl space-y-6 px-4 sm:px-8 mx-auto">
           <div className="text-center space-y-0">
             <h2 className="text-2xl font-semibold text-center text-black mb-3">
               {isSignUp ? 'Sign Up' : 'Sign In'}
@@ -274,48 +274,48 @@ const Login = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 p-6">
+          <form onSubmit={handleSubmit} className="space-y-4 p-0 sm:p-6 w-full">
             <div className="space-y-4">
               {isSignUp ? (
                 <>
                   <div>
-                    <Label htmlFor="firstName" className="text-sm font-medium text-black">First Name</Label>
+                    <Label htmlFor="firstName" className="text-base font-medium text-black text-left w-full">First Name</Label>
                     <Input
                       id="firstName"
                       type="text"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       required
-                      className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
+                      className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black w-full"
                       placeholder="Enter your first name"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="lastName" className="text-sm font-medium text-black">Last Name</Label>
+                    <Label htmlFor="lastName" className="text-base font-medium text-black text-left w-full">Last Name</Label>
                     <Input
                       id="lastName"
                       type="text"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                       required
-                      className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
+                      className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black w-full"
                       placeholder="Enter your last name"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="email" className="text-sm font-medium text-black">Email</Label>
+                    <Label htmlFor="email" className="text-base font-medium text-black text-left w-full">Email</Label>
                     <Input
                       id="email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
+                      className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black w-full"
                       placeholder="Enter your email"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="password" className="text-sm font-medium text-black">Password</Label>
+                    <Label htmlFor="password" className="text-base font-medium text-black text-left w-full">Password</Label>
                     <div className="relative">
                       <Input
                         id="password"
@@ -323,7 +323,7 @@ const Login = () => {
                         value={password}
                         onChange={handlePasswordChange}
                         required
-                        className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10"
+                        className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10 w-full"
                         placeholder="Enter your password"
                       />
                       <button
@@ -346,7 +346,7 @@ const Login = () => {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="confirmPassword" className="text-sm font-medium text-black">Confirm Password</Label>
+                    <Label htmlFor="confirmPassword" className="text-base font-medium text-black text-left w-full">Confirm Password</Label>
                     <div className="relative">
                       <Input
                         id="confirmPassword"
@@ -354,7 +354,7 @@ const Login = () => {
                         value={confirmPassword}
                         onChange={handleConfirmPasswordChange}
                         required
-                        className={`mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10 ${!passwordsMatch && confirmPassword.length > 0 ? 'border-red-500' : ''}`}
+                        className={`mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10 ${!passwordsMatch && confirmPassword.length > 0 ? 'border-red-500' : ''} w-full`}
                         placeholder="Confirm your password"
                       />
                       <button
@@ -374,19 +374,19 @@ const Login = () => {
               ) : (
                 <>
                   <div>
-                    <Label htmlFor="email" className="text-sm font-medium text-black">Email</Label>
+                    <Label htmlFor="email" className="text-base font-medium text-black text-left w-full">Email</Label>
                     <Input
                       id="email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
+                      className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black w-full"
                       placeholder="Enter your email"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="password" className="text-sm font-medium text-black">Password</Label>
+                    <Label htmlFor="password" className="text-base font-medium text-black text-left w-full">Password</Label>
                     <div className="relative">
                       <Input
                         id="password"
@@ -394,7 +394,7 @@ const Login = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10"
+                        className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10 w-full"
                         placeholder="Enter your password"
                       />
                       <button
@@ -428,7 +428,7 @@ const Login = () => {
 
             <Button 
               type="submit" 
-              className="px-8 py-2 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent rounded-md mx-auto block text-base min-w-[120px]"
+              className="px-8 py-2 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent rounded-md mx-auto block text-base min-w-[120px] w-full sm:w-auto"
               disabled={isProcessing || (isSignUp && (!passwordsMatch || confirmPassword.length === 0))}
             >
               {isProcessing ? 'Processing...' : isSignUp ? 'Sign Up' : 'Sign In'}

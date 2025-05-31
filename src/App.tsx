@@ -20,6 +20,7 @@ import Budgeting from '@/pages/Budgeting';
 import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
+import LandingPage from '@/pages/LandingPage';
 import './App.css';
 import { OnboardingProvider } from '@/contexts/OnboardingContext';
 import { useEffect } from 'react';
@@ -85,9 +86,10 @@ function App() {
             <OnboardingProvider>
               <NotificationProvider>
                 <Routes>
+                  <Route path="/" element={<LandingPage />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/" element={<PrivateRoute><Index /></PrivateRoute>} />
+                  <Route path="/dashboard" element={<PrivateRoute><Index /></PrivateRoute>} />
                   <Route path="/transactions" element={<PrivateRoute><Transactions /></PrivateRoute>} />
                   <Route path="/subscriptions" element={<PrivateRoute><Subscriptions /></PrivateRoute>} />
                   <Route path="/accounts" element={<PrivateRoute><AccountsAndCards /></PrivateRoute>} />
