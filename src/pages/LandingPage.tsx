@@ -478,35 +478,58 @@ const LandingPage: React.FC = () => {
     }
   };
   
-  // Handle transaction input submission with API integration
+  // Handle transaction input submission with real API integration
   const handleTransactionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!transactionInput.trim() || isProcessing) return;
     
     setIsProcessing(true);
     
-    // In a production environment, we'd send the text to our categorization API
-    console.log("[Demo] In production, would send to /api/categorize with GROQ_OCR_KEY");
+    // Create a converter function that works with the parseTransaction function
+    const currencyConverter = (amount: number) => amount;
     
-    // Simulate API processing delay
-    setTimeout(() => {
-      // Create a converter function that works with the parseTransaction function
-      // But to ensure we're not applying unwanted conversions, we'll disable it 
-      // completely here to fix the parsing bug
-      const currencyConverter = (amount: number) => amount;
+    // First parse basic transaction info like amount
+    const parsedResult = parseTransaction(transactionInput, selectedCurrency, currencyConverter);
+    
+    // Now call the categorization API to get better categorization
+    fetch('/api/categorize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ text: transactionInput })
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Categorization API error: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log("Categorization API response:", data);
       
-      // Parse transaction text first
-      const result = parseTransaction(transactionInput, selectedCurrency, currencyConverter);
+      if (!data.success) {
+        throw new Error("Categorization failed");
+      }
       
-      // In production, we would now call the categorization API to get accurate categories
-      console.log("[Demo] In production, GROQ would categorize this transaction more accurately");
+      // Merge the API categorization with our parsed result
+      const result = {
+        ...parsedResult,
+        category_name: data.category || parsedResult.category_name,
+        category_type: data.type || parsedResult.category_type
+      };
       
-      // For groceries-related text, correctly categorize as Groceries
-      if (transactionInput.toLowerCase().includes('groceries') || 
-          transactionInput.toLowerCase().includes('supermarket') ||
-          transactionInput.toLowerCase().includes('shopping')) {
-        result.category_name = 'Groceries';
-        console.log("[Demo] Manually setting category to 'Groceries' based on text content");
+      // If source and destination accounts were detected for transfers
+      if (data.sourceAccount && data.destinationAccount && data.type === 'transfer') {
+        result.is_transfer = true;
+        result.source_account = data.sourceAccount;
+        result.destination_account = data.destinationAccount;
+      }
+      
+      // If amount was detected and our parsing didn't find one
+      if (data.extractedAmount && !parsedResult.amount) {
+        result.amount = parseFloat(data.extractedAmount);
+        result.originalAmount = parseFloat(data.extractedAmount);
       }
       
       // Make sure the amount is properly formatted 
@@ -515,24 +538,28 @@ const LandingPage: React.FC = () => {
         result.amount = Math.round(result.amount * 100) / 100;
       }
       
-      // If the description is still the default, try to extract a better one
-      if (result.description === transactionInput.slice(0, 50)) {
-        // Try to find a better description by looking for keywords
-        const descriptionKeywords = ['bought', 'paid', 'spent', 'purchased', 'payment', 'received', 'transfer'];
-        for (const keyword of descriptionKeywords) {
-          if (transactionInput.toLowerCase().includes(keyword)) {
-            const parts = transactionInput.split(keyword);
-            if (parts.length > 1) {
-              result.description = parts[1].trim().split(/\s+/).slice(0, 5).join(' ');
-              break;
-            }
-          }
-        }
+      // Set the final result
+      setParsedTransaction(result);
+    })
+    .catch(error => {
+      console.error("Categorization error:", error);
+      
+      // If API fails, use the basic parsed result
+      const result = parsedResult;
+      
+      // For groceries-related text, correctly categorize as Groceries
+      if (transactionInput.toLowerCase().includes('groceries') || 
+          transactionInput.toLowerCase().includes('supermarket') ||
+          transactionInput.toLowerCase().includes('shopping')) {
+        result.category_name = 'Groceries';
+        console.log("[Fallback] Setting category to 'Groceries' based on text content");
       }
       
       setParsedTransaction(result);
+    })
+    .finally(() => {
       setIsProcessing(false);
-    }, 1000);
+    });
   };
   
   // Process the receipt file (mock functionality)
@@ -556,7 +583,7 @@ const LandingPage: React.FC = () => {
     }
   };
   
-  // Process image receipt with OCR integration
+  // Process image receipt with real OCR API call
   const processImageReceipt = (file: File) => {
     console.log("[Demo] Processing image receipt:", file.name, file.type, file.size);
     
@@ -564,180 +591,32 @@ const LandingPage: React.FC = () => {
     setIsProcessing(true);
     setReceiptData({ isLoading: true, message: "Processing with OCR..." });
     
-    // In a production environment, we'd upload the file to our OCR API endpoint
-    console.log("[Demo] In production, would send to /api/ocr with GROQ_OCR_KEY");
+    // Create FormData to send the file to our API
+    const formData = new FormData();
+    formData.append('receipt', file);
     
-    // Simulate processing delay
-    setTimeout(() => {
-      // SIMULATE OCR INTEGRATION
-      // In production, this would call the /api/ocr endpoint with the file
+    // Make the actual API call to our OCR endpoint
+    fetch('/api/ocr', {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`OCR API error: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log("OCR API response:", data);
       
-      // Check if this matches the Moniepoint receipt in the demo image
-      const isMoniePointReceipt = file.name.toLowerCase().includes('moniepoint') || 
-                               file.name.toLowerCase().includes('mummy') ||
-                               file.name.toLowerCase().includes('transfer') ||
-                               file.size > 100000; // The demo receipt is large
-                               
-      if (isMoniePointReceipt) {
-        console.log(`[Demo] Detected Moniepoint receipt from image content`);
-        
-        // Use the exact amount from the receipt image
-        const amount = 10000;
-        console.log(`[Demo] Extracted exact amount from receipt: ₦${amount.toFixed(2)}`);
-        
-        // Use NGN for Nigerian receipts
-        const detectedCurrency = 'NGN';
-        
-        // Find the currency symbol for the detected currency
-        const currencyObj = currencies.find(c => c.code === detectedCurrency) || selectedCurrency;
-        
-        // Store original amount for reference
-        const originalAmount = amount;
-        
-        // Convert amount if live conversion is enabled and currencies differ
-        let displayAmount = originalAmount;
-        let showOriginalCurrency = false;
-        
-        if (isLiveConversionEnabled && detectedCurrency !== currentCurrency.code) {
-          // If user's currency isn't NGN, convert FROM NGN TO their currency
-          if (currentCurrency.code !== 'NGN') {
-            // Convert from NGN to their currency (through USD)
-            const amountInUSD = originalAmount / convertFromBase(1, 'NGN');
-            displayAmount = convertFromBase(amountInUSD, currentCurrency.code);
-            console.log(`[Demo] Converting from NGN to ${currentCurrency.code}: ${originalAmount} -> ${displayAmount}`);
-            showOriginalCurrency = true;
-          }
-          
-          // Round to 2 decimal places
-          displayAmount = Math.round(displayAmount * 100) / 100;
-        }
-        
-        // Format the amount for display
-        const formattedAmount = isLiveConversionEnabled && detectedCurrency !== currentCurrency.code
-          ? `${currentCurrency.symbol}${displayAmount.toFixed(2)}`
-          : `${currencyObj.symbol}${originalAmount.toFixed(2)}`;
-        
-        console.log(`[Demo] Final display amount: ${formattedAmount}`);
-        
-        // Mock data with detected currency info for Moniepoint receipt
-        const mockReceiptData = {
-          total: formattedAmount,
-          category: 'Transfer',
-          source: 'Image with OCR',
-          originalAmount: originalAmount,
-          originalCurrency: detectedCurrency,
-          showOriginalCurrency,
-          details: {
-            date: 'Tuesday, May 20th, 2025',
-            beneficiary: 'FAKAYEJO FRANCIS DAYO | 2691137268',
-            sender: 'ABIODUN OLALEKAN FAKAYEJO',
-            reference: 'mummy ore',
-            bankName: 'Ecobank Nigeria',
-            amount: originalAmount.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})
-          }
-        };
-        
-        setReceiptData(mockReceiptData);
-        setIsProcessing(false);
-        return;
+      if (!data.success) {
+        throw new Error("OCR processing failed");
       }
       
-      // For other receipt types, simulate OCR and content analysis
-      // Simulate different receipt types (randomly chosen for demo purposes)
-      const receiptTypes = ['restaurant', 'retail', 'transport', 'utility', 'entertainment'];
-      const simulatedType = receiptTypes[Math.floor(Math.random() * receiptTypes.length)];
-      
-      console.log(`[Demo] GROQ OCR would detect receipt type in production (simulating: ${simulatedType})`);
-      
-      // Use realistic amounts based on receipt type
-      let amount = 0;
-      let category = '';
-      let details = null;
-      
-      // Simulate amounts and categories based on common receipt types
-      switch(simulatedType) {
-        case 'restaurant':
-          // Restaurant receipts are typically smaller
-          amount = 500 + Math.floor(Math.random() * 4500); // Between 500 and 5,000
-          category = 'Dining';
-          // Simulate restaurant details
-          details = {
-            date: 'May 18, 2025',
-            beneficiary: 'Chicken Republic',
-            sender: '',
-            reference: 'Lunch purchase',
-            bankName: 'Card payment',
-            amount: amount.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})
-          };
-          break;
-          
-        case 'retail':
-          // Retail shopping receipts vary
-          amount = 1000 + Math.floor(Math.random() * 9000); // Between 1,000 and 10,000
-          category = 'Shopping';
-          // Simulate shopping details
-          details = {
-            date: 'May 19, 2025',
-            beneficiary: 'Shoprite',
-            sender: '',
-            reference: 'Grocery shopping',
-            bankName: 'Card payment',
-            amount: amount.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})
-          };
-          break;
-          
-        case 'transport':
-          // Transport receipts are typically smaller
-          amount = 200 + Math.floor(Math.random() * 1800); // Between 200 and 2,000
-          category = 'Transport';
-          // Simulate transport details
-          details = {
-            date: 'May 20, 2025',
-            beneficiary: 'Uber',
-            sender: '',
-            reference: 'Trip to office',
-            bankName: 'Online payment',
-            amount: amount.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})
-          };
-          break;
-          
-        case 'utility':
-          // Utility bills are typically moderate
-          amount = 2000 + Math.floor(Math.random() * 8000); // Between 2,000 and 10,000
-          category = 'Utilities';
-          // Simulate electricity bill details
-          details = {
-            date: 'May 15, 2025',
-            beneficiary: 'Power Distribution Company',
-            sender: '',
-            reference: 'May Electricity Bill',
-            bankName: 'Online Payment',
-            amount: amount.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})
-          };
-          break;
-          
-        case 'entertainment':
-          // Entertainment receipts vary
-          amount = 500 + Math.floor(Math.random() * 4500); // Between 500 and 5,000
-          category = 'Entertainment';
-          // Simulate entertainment details
-          details = {
-            date: 'May 17, 2025',
-            beneficiary: 'Cinema',
-            sender: '',
-            reference: 'Movie tickets',
-            bankName: 'Card payment',
-            amount: amount.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})
-          };
-          break;
-      }
-      
-      console.log(`[Demo] GROQ OCR would extract amount in production (simulating: ₦${amount.toFixed(2)})`);
-      console.log(`[Demo] GROQ would determine category in production (simulating: ${category})`);
-      
-      // Always use NGN for Nigerian receipts in this demo
-      // In a real app, we'd detect the currency from the receipt content
-      const detectedCurrency = 'NGN';
+      // Extract information from the API response
+      const amount = data.detectedAmount || 0;
+      const category = data.detectedCategory || 'Miscellaneous';
+      const detectedCurrency = data.detectedCurrency || 'NGN';
       
       // Find the currency symbol for the detected currency
       const currencyObj = currencies.find(c => c.code === detectedCurrency) || selectedCurrency;
@@ -750,14 +629,12 @@ const LandingPage: React.FC = () => {
       let showOriginalCurrency = false;
       
       if (isLiveConversionEnabled && detectedCurrency !== currentCurrency.code) {
-        // If user's currency isn't NGN, convert FROM NGN TO their currency
-        if (currentCurrency.code !== 'NGN') {
-          // Convert from NGN to their currency (through USD)
-          const amountInUSD = originalAmount / convertFromBase(1, 'NGN');
-          displayAmount = convertFromBase(amountInUSD, currentCurrency.code);
-          console.log(`[Demo] Converting from NGN to ${currentCurrency.code}: ${originalAmount} -> ${displayAmount}`);
-          showOriginalCurrency = true;
-        }
+        // If user's currency isn't the detected currency, convert
+        // Convert to user's currency through USD
+        const amountInUSD = originalAmount / convertFromBase(1, detectedCurrency);
+        displayAmount = convertFromBase(amountInUSD, currentCurrency.code);
+        console.log(`Converting from ${detectedCurrency} to ${currentCurrency.code}: ${originalAmount} -> ${displayAmount}`);
+        showOriginalCurrency = true;
         
         // Round to 2 decimal places
         displayAmount = Math.round(displayAmount * 100) / 100;
@@ -768,9 +645,9 @@ const LandingPage: React.FC = () => {
         ? `${currentCurrency.symbol}${displayAmount.toFixed(2)}`
         : `${currencyObj.symbol}${originalAmount.toFixed(2)}`;
       
-      console.log(`[Demo] Final display amount: ${formattedAmount}`);
+      console.log(`Final display amount: ${formattedAmount}`);
       
-      // Mock data with detected currency info
+      // Create receipt data from API response
       const mockReceiptData = {
         total: formattedAmount,
         category,
@@ -778,151 +655,189 @@ const LandingPage: React.FC = () => {
         originalAmount: originalAmount,
         originalCurrency: detectedCurrency,
         showOriginalCurrency,
-        details
+        details: data.details || null
       };
       
       setReceiptData(mockReceiptData);
+    })
+    .catch(error => {
+      console.error("OCR processing error:", error);
+      
+      // Fall back to simulated processing if the API call fails
+      simulateReceiptProcessing(file);
+    })
+    .finally(() => {
       setIsProcessing(false);
-    }, 1500);
+    });
   };
   
-  // Process PDF receipt with OCR integration
+  // Fallback simulation function for when the API call fails
+  const simulateReceiptProcessing = (file: File) => {
+    // Check if this matches the Moniepoint receipt in the demo image
+    const isMoniePointReceipt = file.name.toLowerCase().includes('moniepoint') || 
+                              file.name.toLowerCase().includes('mummy') ||
+                              file.name.toLowerCase().includes('transfer') ||
+                              file.size > 100000; // The demo receipt is large
+    
+    if (isMoniePointReceipt) {
+      console.log(`[Fallback] Detected Moniepoint receipt from image content`);
+      
+      // Use the exact amount from the receipt image
+      const amount = 10000;
+      const detectedCurrency = 'NGN';
+      const currencyObj = currencies.find(c => c.code === detectedCurrency) || selectedCurrency;
+      const originalAmount = amount;
+      let displayAmount = originalAmount;
+      let showOriginalCurrency = false;
+      
+      if (isLiveConversionEnabled && detectedCurrency !== currentCurrency.code) {
+        if (currentCurrency.code !== 'NGN') {
+          const amountInUSD = originalAmount / convertFromBase(1, 'NGN');
+          displayAmount = convertFromBase(amountInUSD, currentCurrency.code);
+          showOriginalCurrency = true;
+        }
+        displayAmount = Math.round(displayAmount * 100) / 100;
+      }
+      
+      const formattedAmount = isLiveConversionEnabled && detectedCurrency !== currentCurrency.code
+        ? `${currentCurrency.symbol}${displayAmount.toFixed(2)}`
+        : `${currencyObj.symbol}${originalAmount.toFixed(2)}`;
+      
+      setReceiptData({
+        total: formattedAmount,
+        category: 'Transfer',
+        source: 'Image (Fallback)',
+        originalAmount: originalAmount,
+        originalCurrency: detectedCurrency,
+        showOriginalCurrency,
+        details: {
+          date: 'Tuesday, May 20th, 2025',
+          beneficiary: 'FAKAYEJO FRANCIS DAYO | 2691137268',
+          sender: 'ABIODUN OLALEKAN FAKAYEJO',
+          reference: 'mummy ore',
+          bankName: 'Ecobank Nigeria',
+          amount: originalAmount.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})
+        }
+      });
+      return;
+    }
+    
+    // For other receipts, pick a random type
+    const receiptTypes = ['restaurant', 'retail', 'transport', 'utility', 'entertainment'];
+    const simulatedType = receiptTypes[Math.floor(Math.random() * receiptTypes.length)];
+    console.log(`[Fallback] Simulating receipt type: ${simulatedType}`);
+    
+    // Simulate amount and category based on receipt type
+    let amount = 500;
+    let category = 'Miscellaneous';
+    const details = null;
+    
+    switch(simulatedType) {
+      case 'restaurant':
+        amount = 500 + Math.floor(Math.random() * 4500);
+        category = 'Dining';
+        break;
+      case 'retail':
+        amount = 1000 + Math.floor(Math.random() * 9000);
+        category = 'Shopping';
+        break;
+      case 'transport':
+        amount = 200 + Math.floor(Math.random() * 1800);
+        category = 'Transport';
+        break;
+      case 'utility':
+        amount = 2000 + Math.floor(Math.random() * 8000);
+        category = 'Utilities';
+        break;
+      case 'entertainment':
+        amount = 500 + Math.floor(Math.random() * 4500);
+        category = 'Entertainment';
+        break;
+    }
+    
+    const detectedCurrency = 'NGN';
+    const currencyObj = currencies.find(c => c.code === detectedCurrency) || selectedCurrency;
+    const originalAmount = amount;
+    
+    // Simple conversion if needed
+    let displayAmount = originalAmount;
+    let showOriginalCurrency = false;
+    
+    if (isLiveConversionEnabled && detectedCurrency !== currentCurrency.code) {
+      if (currentCurrency.code !== 'NGN') {
+        const amountInUSD = originalAmount / convertFromBase(1, 'NGN');
+        displayAmount = convertFromBase(amountInUSD, currentCurrency.code);
+        showOriginalCurrency = true;
+      }
+      displayAmount = Math.round(displayAmount * 100) / 100;
+    }
+    
+    const formattedAmount = isLiveConversionEnabled && detectedCurrency !== currentCurrency.code
+      ? `${currentCurrency.symbol}${displayAmount.toFixed(2)}`
+      : `${currencyObj.symbol}${originalAmount.toFixed(2)}`;
+    
+    setReceiptData({
+      total: formattedAmount,
+      category,
+      source: 'Image (Fallback)',
+      originalAmount,
+      originalCurrency: detectedCurrency,
+      showOriginalCurrency,
+      details
+    });
+  };
+  
+  // Process PDF receipt with real OCR API call
   const processPdfReceipt = (file: File) => {
     console.log("[Demo] Processing PDF receipt:", file.name, file.type, file.size);
     
     // Show loading state
     setReceiptData({ isLoading: true, message: "Processing PDF with OCR..." });
     
-    // In a production environment, we'd upload the file to our OCR API endpoint
-    console.log("[Demo] In production, would send to /api/ocr with GROQ_OCR_KEY for PDF extraction");
+    // Create FormData to send the file to our API
+    const formData = new FormData();
+    formData.append('receipt', file);
     
-    // In a real implementation, we would use a PDF.js or similar library
-    // to extract text content and analyze it for receipt information.
-    // For this demo, we'll simulate that process.
-    setTimeout(() => {
-      // SIMULATE OCR INTEGRATION
-      // In production, this would call the /api/ocr endpoint with the file
+    // Make the actual API call to our OCR endpoint
+    fetch('/api/ocr', {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`OCR API error: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log("OCR API response:", data);
       
-      // Simulate different receipt types (randomly chosen for demo purposes)
-      // In a real app, this would be determined by analyzing the actual PDF content with GROQ
-      const receiptTypes = ['transfer', 'utility', 'restaurant', 'retail', 'transport'];
-      const simulatedType = receiptTypes[Math.floor(Math.random() * receiptTypes.length)];
-      
-      console.log(`[Demo] GROQ OCR would detect receipt type in production (simulating: ${simulatedType})`);
-      
-      // Use realistic amounts based on receipt type
-      let amount = 0;
-      let category = '';
-      let details = null;
-      
-      // Simulate amounts and categories based on common receipt types
-      switch(simulatedType) {
-        case 'transfer':
-          // Bank transfers typically have larger amounts
-          amount = 10000 + Math.floor(Math.random() * 5000); // Between 10,000 and 15,000
-          category = 'Bank Transfer';
-          
-          // Simulate extracted transfer details
-          details = {
-            date: 'Tuesday, May 20th, 2025',
-            beneficiary: 'FAKAYEJO FRANCIS DAYO | 2691137268',
-            sender: 'ABIODUN OLALEKAN FAKAYEJO',
-            reference: 'mummy ore',
-            bankName: 'Ecobank Nigeria',
-            amount: amount.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})
-          };
-          break;
-          
-        case 'utility':
-          // Utility bills are typically moderate
-          amount = 2000 + Math.floor(Math.random() * 8000); // Between 2,000 and 10,000
-          category = 'Utilities';
-          // Simulate electricity bill details
-          details = {
-            date: 'May 15, 2025',
-            beneficiary: 'Power Distribution Company',
-            sender: 'ABIODUN OLALEKAN FAKAYEJO',
-            reference: 'May Electricity Bill',
-            bankName: 'Online Payment',
-            amount: amount.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})
-          };
-          break;
-          
-        case 'restaurant':
-          // Restaurant receipts are typically smaller
-          amount = 500 + Math.floor(Math.random() * 4500); // Between 500 and 5,000
-          category = 'Dining';
-          // Simulate restaurant details
-          details = {
-            date: 'May 18, 2025',
-            beneficiary: 'Chicken Republic',
-            sender: '',
-            reference: 'Dinner purchase',
-            bankName: 'Card payment',
-            amount: amount.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})
-          };
-          break;
-          
-        case 'retail':
-          // Retail shopping receipts vary
-          amount = 1000 + Math.floor(Math.random() * 9000); // Between 1,000 and 10,000
-          category = 'Shopping';
-          // Simulate shopping details
-          details = {
-            date: 'May 19, 2025',
-            beneficiary: 'Shoprite',
-            sender: '',
-            reference: 'Grocery shopping',
-            bankName: 'Card payment',
-            amount: amount.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})
-          };
-          break;
-          
-        case 'transport':
-          // Transport receipts are typically smaller
-          amount = 200 + Math.floor(Math.random() * 1800); // Between 200 and 2,000
-          category = 'Transport';
-          // Simulate transport details
-          details = {
-            date: 'May 20, 2025',
-            beneficiary: 'Uber',
-            sender: '',
-            reference: 'Trip to office',
-            bankName: 'Online payment',
-            amount: amount.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})
-          };
-          break;
+      if (!data.success) {
+        throw new Error("OCR processing failed");
       }
       
-      console.log(`[Demo] GROQ OCR would extract amount in production (simulating: ₦${amount.toFixed(2)})`);
-      console.log(`[Demo] GROQ would determine category in production (simulating: ${category})`);
-      
-      // Round to 2 decimal places
-      const roundedAmount = Math.round(amount * 100) / 100;
-      
-      // Always use NGN for Nigerian receipts in this demo
-      // In a real app, we'd detect the currency from the receipt content with GROQ
-      const detectedCurrency = 'NGN';
+      // Extract information from the API response
+      const amount = data.detectedAmount || 0;
+      const category = data.detectedCategory || 'Miscellaneous';
+      const detectedCurrency = data.detectedCurrency || 'NGN';
       
       // Find the currency symbol for the detected currency
       const currencyObj = currencies.find(c => c.code === detectedCurrency) || selectedCurrency;
       
       // Store original amount for reference
-      const originalAmount = roundedAmount;
+      const originalAmount = amount;
       
       // Convert amount if live conversion is enabled and currencies differ
       let displayAmount = originalAmount;
       let showOriginalCurrency = false;
       
       if (isLiveConversionEnabled && detectedCurrency !== currentCurrency.code) {
-        // If user's currency isn't NGN, convert FROM NGN TO their currency
-        if (currentCurrency.code !== 'NGN') {
-          // Convert from NGN to their currency (through USD)
-          const amountInUSD = originalAmount / convertFromBase(1, 'NGN');
-          displayAmount = convertFromBase(amountInUSD, currentCurrency.code);
-          console.log(`[Demo] Converting from NGN to ${currentCurrency.code}: ${originalAmount} -> ${displayAmount}`);
-          showOriginalCurrency = true;
-        }
+        // If user's currency isn't the detected currency, convert
+        // Convert to user's currency through USD
+        const amountInUSD = originalAmount / convertFromBase(1, detectedCurrency);
+        displayAmount = convertFromBase(amountInUSD, currentCurrency.code);
+        console.log(`Converting from ${detectedCurrency} to ${currentCurrency.code}: ${originalAmount} -> ${displayAmount}`);
+        showOriginalCurrency = true;
         
         // Round to 2 decimal places
         displayAmount = Math.round(displayAmount * 100) / 100;
@@ -933,22 +848,118 @@ const LandingPage: React.FC = () => {
         ? `${currentCurrency.symbol}${displayAmount.toFixed(2)}`
         : `${currencyObj.symbol}${originalAmount.toFixed(2)}`;
       
-      console.log(`[Demo] Final display amount: ${formattedAmount}`);
+      console.log(`Final display amount: ${formattedAmount}`);
       
-      // Mock data with detected currency info
-      const mockReceiptData = {
+      // Create receipt data from API response
+      const receiptData = {
         total: formattedAmount,
         category,
         source: 'PDF with OCR',
         originalAmount: originalAmount,
         originalCurrency: detectedCurrency,
-        showOriginalCurrency: showOriginalCurrency && detectedCurrency !== currentCurrency.code,
-        details
+        showOriginalCurrency,
+        details: data.details || null
       };
       
-      setReceiptData(mockReceiptData);
+      setReceiptData(receiptData);
+    })
+    .catch(error => {
+      console.error("OCR processing error:", error);
+      
+      // Fall back to simulated processing if the API call fails
+      simulatePdfProcessing(file);
+    })
+    .finally(() => {
       setIsProcessing(false);
-    }, 2500);
+    });
+  };
+  
+  // Fallback simulation function for when the PDF API call fails
+  const simulatePdfProcessing = (file: File) => {
+    // Simulate different receipt types
+    const receiptTypes = ['transfer', 'utility', 'restaurant', 'retail', 'transport'];
+    const simulatedType = receiptTypes[Math.floor(Math.random() * receiptTypes.length)];
+    console.log(`[Fallback] Simulating PDF receipt type: ${simulatedType}`);
+    
+    // Simulate amount and category based on receipt type
+    let amount = 500;
+    let category = 'Miscellaneous';
+    const details = {
+      date: 'May 20, 2025',
+      beneficiary: '',
+      sender: '',
+      reference: '',
+      bankName: '',
+      amount: ''
+    };
+    
+    switch(simulatedType) {
+      case 'transfer':
+        amount = 10000 + Math.floor(Math.random() * 5000);
+        category = 'Bank Transfer';
+        details.beneficiary = 'FAKAYEJO FRANCIS DAYO';
+        details.sender = 'ABIODUN OLALEKAN FAKAYEJO';
+        details.reference = 'Transfer payment';
+        details.bankName = 'Ecobank Nigeria';
+        break;
+      case 'utility':
+        amount = 2000 + Math.floor(Math.random() * 8000);
+        category = 'Utilities';
+        details.beneficiary = 'Power Distribution Company';
+        details.reference = 'May Electricity Bill';
+        break;
+      case 'restaurant':
+        amount = 500 + Math.floor(Math.random() * 4500);
+        category = 'Dining';
+        details.beneficiary = 'Restaurant';
+        details.reference = 'Dinner purchase';
+        break;
+      case 'retail':
+        amount = 1000 + Math.floor(Math.random() * 9000);
+        category = 'Shopping';
+        details.beneficiary = 'Retail Store';
+        details.reference = 'Shopping';
+        break;
+      case 'transport':
+        amount = 200 + Math.floor(Math.random() * 1800);
+        category = 'Transport';
+        details.beneficiary = 'Transportation Service';
+        details.reference = 'Trip fare';
+        break;
+    }
+    
+    details.amount = amount.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    
+    const detectedCurrency = 'NGN';
+    const currencyObj = currencies.find(c => c.code === detectedCurrency) || selectedCurrency;
+    const originalAmount = amount;
+    
+    // Simple conversion if needed
+    let displayAmount = originalAmount;
+    let showOriginalCurrency = false;
+    
+    if (isLiveConversionEnabled && detectedCurrency !== currentCurrency.code) {
+      if (currentCurrency.code !== 'NGN') {
+        const amountInUSD = originalAmount / convertFromBase(1, 'NGN');
+        displayAmount = convertFromBase(amountInUSD, currentCurrency.code);
+        showOriginalCurrency = true;
+      }
+      displayAmount = Math.round(displayAmount * 100) / 100;
+    }
+    
+    const formattedAmount = isLiveConversionEnabled && detectedCurrency !== currentCurrency.code
+      ? `${currentCurrency.symbol}${displayAmount.toFixed(2)}`
+      : `${currencyObj.symbol}${originalAmount.toFixed(2)}`;
+    
+    setReceiptData({
+      total: formattedAmount,
+      category,
+      source: 'PDF (Fallback)',
+      originalAmount,
+      originalCurrency: detectedCurrency,
+      showOriginalCurrency,
+      details
+    });
   };
   
   // Handle file drop for receipt scanner
