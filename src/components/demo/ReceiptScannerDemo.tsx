@@ -396,14 +396,14 @@ const ReceiptScannerDemo: React.FC<ReceiptScannerDemoProps> = ({
   };
 
   return (
-    <Card className="p-8">
-      <h3 className="text-2xl font-bold mb-4">Receipt Scanner</h3>
-      <p className="text-muted-foreground mb-6">
+    <Card className="p-4 md:p-6 lg:p-8">
+      <h3 className="text-xl md:text-2xl font-bold mb-3 md:mb-4">Receipt Scanner</h3>
+      <p className="text-sm md:text-base text-muted-foreground mb-4 md:mb-6 leading-relaxed">
         Upload a receipt to see how Kpege automatically extracts and categorizes your expenses.
       </p>
       
       <div 
-        className={`border-2 border-dashed rounded-lg p-8 text-center mb-6 ${
+        className={`border-2 border-dashed rounded-lg p-4 md:p-6 lg:p-8 text-center mb-4 md:mb-6 transition-colors ${
           isDragging ? 'border-green-700 bg-green-50' : 'border-slate-200'
         } ${receiptData && !receiptData.isLoading ? 'opacity-50' : ''}`}
         onDragOver={(e) => {
@@ -414,8 +414,11 @@ const ReceiptScannerDemo: React.FC<ReceiptScannerDemoProps> = ({
         onDrop={handleDrop}
       >
         <div className="flex flex-col items-center justify-center">
-          <Upload className={`h-12 w-12 mb-4 ${isDragging ? 'text-green-700' : 'text-slate-300'}`} />
-          <p className="text-muted-foreground mb-2">Drag & drop your receipt or</p>
+          <Upload className={`h-8 w-8 md:h-10 md:w-10 lg:h-12 lg:w-12 mb-3 md:mb-4 ${isDragging ? 'text-green-700' : 'text-slate-300'}`} />
+          <p className="text-sm md:text-base text-muted-foreground mb-2">
+            <span className="hidden sm:inline">Drag & drop your receipt or</span>
+            <span className="sm:hidden">Upload your receipt</span>
+          </p>
           <input
             type="file"
             ref={fileInputRef}
@@ -425,30 +428,36 @@ const ReceiptScannerDemo: React.FC<ReceiptScannerDemoProps> = ({
           />
           <Button 
             variant="outline" 
-            className="mt-2"
+            className="mt-2 text-sm md:text-base"
             onClick={() => fileInputRef.current?.click()}
             disabled={isProcessing}
           >
             Browse Files
           </Button>
-          <p className="text-xs text-muted-foreground mt-2">
+          <p className="text-xs md:text-sm text-muted-foreground mt-2">
             Supports JPG, PNG, GIF, and PDF files
           </p>
         </div>
       </div>
       
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-slate-50 p-4 rounded-lg">
-          <h4 className="font-medium mb-2">Total</h4>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+        <div className="bg-slate-50 p-3 md:p-4 rounded-lg">
+          <h4 className="font-medium mb-2 text-sm md:text-base">Total</h4>
           {isProcessing || (receiptData && receiptData.isLoading) ? (
             <div className="flex items-center space-x-2">
-              <div className="h-4 w-4 rounded-full bg-green-700 animate-pulse"></div>
-              <p className="text-sm text-muted-foreground">Processing...</p>
+              <div className="h-3 w-3 md:h-4 md:w-4 rounded-full bg-green-700 animate-pulse"></div>
+              <p className="text-xs md:text-sm text-muted-foreground">Processing...</p>
             </div>
           ) : (
-            <p className="text-lg font-bold">
-              {receiptData ? receiptData.total : `${selectedCurrency.symbol}0.00`}
-              {!receiptData && <span className="text-sm text-muted-foreground block">Upload a receipt to see</span>}
+            <div>
+              <p className="text-base md:text-lg font-bold">
+                {receiptData ? receiptData.total : `${selectedCurrency.symbol}0.00`}
+              </p>
+              {!receiptData && (
+                <span className="text-xs md:text-sm text-muted-foreground block mt-1">
+                  Upload a receipt to see
+                </span>
+              )}
               
               {/* Show original currency if conversion happened */}
               {receiptData && 
@@ -460,29 +469,36 @@ const ReceiptScannerDemo: React.FC<ReceiptScannerDemoProps> = ({
                   }{receiptData.originalAmount?.toFixed(2)} {receiptData.originalCurrency}
                 </span>
               )}
-            </p>
+            </div>
           )}
         </div>
-        <div className="bg-slate-50 p-4 rounded-lg">
-          <h4 className="font-medium mb-2">Category</h4>
+        
+        <div className="bg-slate-50 p-3 md:p-4 rounded-lg">
+          <h4 className="font-medium mb-2 text-sm md:text-base">Category</h4>
           {isProcessing || (receiptData && receiptData.isLoading) ? (
             <div className="flex items-center space-x-2">
-              <div className="h-4 w-4 rounded-full bg-green-700 animate-pulse"></div>
-              <p className="text-sm text-muted-foreground">Processing...</p>
+              <div className="h-3 w-3 md:h-4 md:w-4 rounded-full bg-green-700 animate-pulse"></div>
+              <p className="text-xs md:text-sm text-muted-foreground">Processing...</p>
             </div>
           ) : (
-            <p className="text-lg font-bold">
-              {receiptData ? receiptData.category : '-'}
-              {!receiptData && <span className="text-sm text-muted-foreground block">Auto-categorization</span>}
-            </p>
+            <div>
+              <p className="text-base md:text-lg font-bold">
+                {receiptData ? receiptData.category : '-'}
+              </p>
+              {!receiptData && (
+                <span className="text-xs md:text-sm text-muted-foreground block mt-1">
+                  Auto-categorization
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>
       
       {receiptData && receiptData.source && (
-        <div className="mt-4 bg-slate-50 p-3 rounded-lg">
-          <div className="text-center mb-2">
-            <p className="text-sm text-muted-foreground">
+        <div className="mt-3 md:mt-4 bg-slate-50 p-3 md:p-4 rounded-lg">
+          <div className="text-center mb-2 md:mb-3">
+            <p className="text-xs md:text-sm text-muted-foreground">
               Processed from {receiptData.source} file
               {isLiveConversionEnabled && (
                 <span className="block mt-1">
@@ -497,26 +513,32 @@ const ReceiptScannerDemo: React.FC<ReceiptScannerDemoProps> = ({
           
           {/* Show additional details if available */}
           {receiptData.details && (
-            <div className="mt-2 text-sm border-t pt-2">
-              <h5 className="font-medium mb-1">Transaction Details</h5>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                <div>
-                  <span className="text-muted-foreground">Date:</span> {receiptData.details.date}
+            <div className="mt-2 text-xs md:text-sm border-t pt-2">
+              <h5 className="font-medium mb-2 text-sm md:text-base">Transaction Details</h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 md:gap-x-4 gap-y-1 md:gap-y-2">
+                <div className="flex justify-between sm:block">
+                  <span className="text-muted-foreground">Date:</span> 
+                  <span className="sm:block">{receiptData.details.date}</span>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Type:</span> {receiptData.details.reference}
+                <div className="flex justify-between sm:block">
+                  <span className="text-muted-foreground">Type:</span> 
+                  <span className="sm:block">{receiptData.details.reference}</span>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Amount:</span> <span className="font-medium text-green-700">₦{receiptData.details.amount}</span>
+                <div className="flex justify-between sm:block">
+                  <span className="text-muted-foreground">Amount:</span> 
+                  <span className="font-medium text-green-700 sm:block">₦{receiptData.details.amount}</span>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Bank:</span> {receiptData.details.bankName}
+                <div className="flex justify-between sm:block">
+                  <span className="text-muted-foreground">Bank:</span> 
+                  <span className="sm:block truncate">{receiptData.details.bankName}</span>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">From:</span> {receiptData.details.sender}
+                <div className="flex justify-between sm:block">
+                  <span className="text-muted-foreground">From:</span> 
+                  <span className="sm:block truncate">{receiptData.details.sender}</span>
                 </div>
-                <div className="col-span-2">
-                  <span className="text-muted-foreground">To:</span> {receiptData.details.beneficiary}
+                <div className="flex justify-between sm:block sm:col-span-2">
+                  <span className="text-muted-foreground">To:</span> 
+                  <span className="sm:block truncate">{receiptData.details.beneficiary}</span>
                 </div>
               </div>
             </div>

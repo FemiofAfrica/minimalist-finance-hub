@@ -310,43 +310,45 @@ const TransactionParserDemo: React.FC<TransactionParserDemoProps> = ({ selectedC
   };
 
   return (
-    <Card className="p-8 overflow-hidden">
-      <h3 className="text-2xl font-bold mb-4">Transaction Parser</h3>
-      <p className="text-muted-foreground mb-6">
+    <Card className="p-4 md:p-6 lg:p-8 overflow-hidden">
+      <h3 className="text-xl md:text-2xl font-bold mb-3 md:mb-4">Transaction Parser</h3>
+      <p className="text-sm md:text-base text-muted-foreground mb-4 md:mb-6 leading-relaxed">
         Describe your transaction in plain language and see how Kpege understands it.
       </p>
       
-      <div className="mb-6">
-        <form onSubmit={handleTransactionSubmit} className="flex flex-col space-y-2">
-          <div className="flex items-center space-x-2">
+      <div className="mb-4 md:mb-6">
+        <form onSubmit={handleTransactionSubmit} className="flex flex-col space-y-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
             <Input 
               value={transactionInput}
               onChange={(e) => setTransactionInput(e.target.value)}
               placeholder={`E.g., Spent 5000 ${selectedCurrency.code} on groceries yesterday`}
               disabled={isProcessing}
-              className="flex-1"
+              className="flex-1 text-sm md:text-base"
             />
-            <Button 
-              type="submit"
-              size="icon"
-              disabled={!transactionInput.trim() || isProcessing}
-              className="h-10 w-10 bg-green-700 hover:bg-green-800 text-white"
-            >
-              <Send className="h-5 w-5" />
-            </Button>
-            <Button
-              type="button"
-              size="icon"
-              disabled={isProcessing}
-              className="h-10 w-10"
-              variant="outline"
-            >
-              <Mic className="h-5 w-5" />
-            </Button>
+            <div className="flex space-x-2">
+              <Button 
+                type="submit"
+                size="icon"
+                disabled={!transactionInput.trim() || isProcessing}
+                className="h-10 w-10 bg-green-700 hover:bg-green-800 text-white flex-shrink-0"
+              >
+                <Send className="h-4 w-4 md:h-5 md:w-5" />
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                disabled={isProcessing}
+                className="h-10 w-10 flex-shrink-0"
+                variant="outline"
+              >
+                <Mic className="h-4 w-4 md:h-5 md:w-5" />
+              </Button>
+            </div>
           </div>
           
           {isProcessing && (
-            <div className="text-sm text-muted-foreground">
+            <div className="text-xs md:text-sm text-muted-foreground text-center sm:text-left">
               Processing your transaction...
             </div>
           )}
@@ -354,68 +356,69 @@ const TransactionParserDemo: React.FC<TransactionParserDemoProps> = ({ selectedC
       </div>
       
       {parsedTransaction && (
-        <div className="bg-slate-50 rounded-lg p-4">
-          <h4 className="font-medium mb-4">Parsed Transaction</h4>
+        <div className="bg-slate-50 rounded-lg p-3 md:p-4">
+          <h4 className="font-medium mb-3 md:mb-4 text-sm md:text-base">Parsed Transaction</h4>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-green-700" />
-              <div>
-                <p className="text-sm text-muted-foreground">Description</p>
-                <p className="font-medium">{parsedTransaction.description}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+            <div className="flex items-start gap-2 md:gap-3">
+              <CreditCard className="h-4 w-4 text-green-700 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs md:text-sm text-muted-foreground">Description</p>
+                <p className="font-medium text-sm md:text-base break-words">{parsedTransaction.description}</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
-              <PiggyBank className="h-4 w-4 text-green-700" />
-              <div>
-                <p className="text-sm text-muted-foreground">Amount</p>
-                <p className="font-medium">{selectedCurrency.symbol}{parsedTransaction.amount.toLocaleString()}</p>
+            <div className="flex items-start gap-2 md:gap-3">
+              <PiggyBank className="h-4 w-4 text-green-700 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs md:text-sm text-muted-foreground">Amount</p>
+                <p className="font-medium text-sm md:text-base">{selectedCurrency.symbol}{parsedTransaction.amount.toLocaleString()}</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
-              <Tag className="h-4 w-4 text-green-700" />
-              <div>
-                <p className="text-sm text-muted-foreground">Category</p>
-                <p className="font-medium">{parsedTransaction.category_name}</p>
+            <div className="flex items-start gap-2 md:gap-3">
+              <Tag className="h-4 w-4 text-green-700 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs md:text-sm text-muted-foreground">Category</p>
+                <p className="font-medium text-sm md:text-base">{parsedTransaction.category_name}</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-green-700" />
-              <div>
-                <p className="text-sm text-muted-foreground">Date</p>
-                <p className="font-medium">{parsedTransaction.date}</p>
+            <div className="flex items-start gap-2 md:gap-3">
+              <Calendar className="h-4 w-4 text-green-700 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs md:text-sm text-muted-foreground">Date</p>
+                <p className="font-medium text-sm md:text-base">{parsedTransaction.date}</p>
               </div>
             </div>
             
             {parsedTransaction.is_transfer && (
               <>
-                <div className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-green-700" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">From</p>
-                    <p className="font-medium">{parsedTransaction.source_account}</p>
+                <div className="flex items-start gap-2 md:gap-3">
+                  <CreditCard className="h-4 w-4 text-green-700 mt-0.5 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs md:text-sm text-muted-foreground">From</p>
+                    <p className="font-medium text-sm md:text-base break-words">{parsedTransaction.source_account}</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-green-700" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">To</p>
-                    <p className="font-medium">{parsedTransaction.destination_account}</p>
+                <div className="flex items-start gap-2 md:gap-3">
+                  <CreditCard className="h-4 w-4 text-green-700 mt-0.5 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs md:text-sm text-muted-foreground">To</p>
+                    <p className="font-medium text-sm md:text-base break-words">{parsedTransaction.destination_account}</p>
                   </div>
                 </div>
               </>
             )}
           </div>
           
-          <div className="mt-4 flex justify-end">
+          <div className="mt-3 md:mt-4 flex justify-center sm:justify-end">
             <Button 
               size="sm" 
               variant="outline"
               onClick={() => setParsedTransaction(null)}
+              className="text-xs md:text-sm"
             >
               Reset
             </Button>
@@ -424,11 +427,11 @@ const TransactionParserDemo: React.FC<TransactionParserDemoProps> = ({ selectedC
       )}
       
       {!parsedTransaction && !isProcessing && (
-        <div className="bg-slate-50 rounded-lg p-4 text-center">
-          <p className="text-muted-foreground">Enter a transaction description to see the parsed result</p>
-          <div className="mt-4 text-sm text-muted-foreground">
-            <p>Try these examples:</p>
-            <ul className="list-disc list-inside mt-2 space-y-1 text-left ml-4">
+        <div className="bg-slate-50 rounded-lg p-3 md:p-4 text-center">
+          <p className="text-sm md:text-base text-muted-foreground mb-3 md:mb-4">Enter a transaction description to see the parsed result</p>
+          <div className="text-xs md:text-sm text-muted-foreground">
+            <p className="font-medium mb-2">Try these examples:</p>
+            <ul className="list-disc list-inside space-y-1 text-left max-w-xs mx-auto">
               <li>Spent 5000 on groceries yesterday</li>
               <li>Received 150000 salary today</li>
               <li>Paid 25000 for rent on Monday</li>

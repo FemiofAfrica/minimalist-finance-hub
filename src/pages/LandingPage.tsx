@@ -491,27 +491,27 @@ const LandingPage: React.FC = () => {
       />
 
       {/* Hero Section */}
-      <section className="flex flex-col items-center justify-center min-h-screen px-4 text-center relative bg-[#e8f1df]">
-        <div className="container mx-auto">
-          <h1 className="text-2xl md:text-5xl lg:text-3xl font-bold max-w-3xl mx-auto mb-4">
-          Personal Finance Management Made Simple with <span className="text-green-700">Kpege</span>
+      <section className="flex flex-col items-center justify-center min-h-[calc(100vh-3.5rem)] md:min-h-screen px-4 py-8 md:py-0 text-center relative bg-[#e8f1df]">
+        <div className="container mx-auto max-w-4xl">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold max-w-4xl mx-auto mb-6 leading-tight">
+            Personal Finance Management Made Simple with <span className="text-green-700">Kpege</span>
           </h1>
           
-          <p className="text-sm md:text-lg text-muted-foreground max-w-2xl mx-auto mb-12">
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 md:mb-12 leading-relaxed">
             Eliminate financial stress and gain complete visibility into your money habits. 
             Track expenses, visualize trends, and achieve your financial goals effortlessly.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-            <Link to="/login">
-              <Button size="lg" className="bg-green-700 hover:bg-green-800 text-white px-5 py-4 text-sm">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-8 max-w-md sm:max-w-none mx-auto">
+            <Link to="/login" className="w-full sm:w-auto">
+              <Button size="lg" className="w-full sm:w-auto bg-green-700 hover:bg-green-800 text-white px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium">
                 Control Your Money Now
               </Button>
             </Link>
             <Button 
               variant="outline" 
               size="lg" 
-              className="px-5 py-4 text-sm hover:border-green-700 hover:text-green-700 transition-colors"
+              className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium hover:border-green-700 hover:text-green-700 transition-colors"
               onClick={scrollToDemo}
             >
               See Kpege in Action
@@ -521,66 +521,66 @@ const LandingPage: React.FC = () => {
       </section>
       
       {/* Features Section */}
-      <section ref={featuresRef} className="flex flex-col items-center justify-center min-h-screen px-4 text-center relative bg-[#e8f1df]">
+      <section ref={featuresRef} className="py-16 md:py-20 lg:min-h-screen lg:flex lg:flex-col lg:items-center lg:justify-center px-4 text-center relative bg-[#e8f1df]">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">Why choose Kpege?</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Kpege helps you manage money without stress.
-            No spreadsheets. No manual math. Just clarity and confidence.
+          <div className="text-center mb-12 md:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 md:mb-6">Why choose Kpege?</h2>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+              Kpege helps you manage money without stress.
+              No spreadsheets. No manual math. Just clarity and confidence.
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="p-6 transition-all hover:translate-y-[-2px]">
-              <div className="rounded-full bg-[#e8f1df] w-10 h-10 flex items-center justify-center mb-4">
-                <Upload className="h-5 w-5 text-green-700" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto">
+            <Card className="p-6 md:p-8 transition-all hover:translate-y-[-2px] hover:shadow-lg">
+              <div className="rounded-full bg-white w-12 h-12 md:w-14 md:h-14 flex items-center justify-center mb-4 md:mb-6 mx-auto">
+                <Upload className="h-6 w-6 md:h-7 md:w-7 text-green-700" />
               </div>
-              <h3 className="text-lg font-bold mb-2">Easy Transaction Input</h3>
-              <p className="text-sm text-muted-foreground">
-              Use natural language or voice commands to record expenses. Snap a photo of a receipt or send a chat; Kpege's smart AI processes it all and updates your records automatically.
+              <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Easy Transaction Input</h3>
+              <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+                Use natural language or voice commands to record expenses. Snap a photo of a receipt or send a chat; Kpege's smart AI processes it all and updates your records automatically.
               </p>
             </Card>
             
-            <Card className="p-6 transition-all hover:translate-y-[-2px]">
-              <div className="rounded-full bg-[#e8f1df] w-10 h-10 flex items-center justify-center mb-4">
-                <Send className="h-5 w-5 text-green-700" />
+            <Card className="p-6 md:p-8 transition-all hover:translate-y-[-2px] hover:shadow-lg">
+              <div className="rounded-full bg-white w-12 h-12 md:w-14 md:h-14 flex items-center justify-center mb-4 md:mb-6 mx-auto">
+                <Send className="h-6 w-6 md:h-7 md:w-7 text-green-700" />
               </div>
-              <h3 className="text-lg font-bold mb-2">AI-Powered Financial Insights</h3>
-              <p className="text-sm text-muted-foreground">
-              Kpege analyzes your income and spending habits to give you personalized insights. Get alerts, trends, and budgeting suggestions to help you stay in control.
+              <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">AI-Powered Financial Insights</h3>
+              <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+                Kpege analyzes your income and spending habits to give you personalized insights. Get alerts, trends, and budgeting suggestions to help you stay in control.
               </p>
             </Card>
             
-            <Card className="p-6 transition-all hover:translate-y-[-2px]">
-              <div className="rounded-full bg-[#e8f1df] w-10 h-10 flex items-center justify-center mb-4">
-                <ChevronDown className="h-5 w-5 text-green-700" />
+            <Card className="p-6 md:p-8 transition-all hover:translate-y-[-2px] hover:shadow-lg">
+              <div className="rounded-full bg-white w-12 h-12 md:w-14 md:h-14 flex items-center justify-center mb-4 md:mb-6 mx-auto">
+                <PiggyBank className="h-6 w-6 md:h-7 md:w-7 text-green-700" />
               </div>
-              <h3 className="text-lg font-bold mb-2">Unified Financial Dashboard</h3>
-              <p className="text-sm text-muted-foreground">
-              View your total financial position in one place. See all your accounts, balances, subscriptions, transactions and categories, updated easily and in real time.
+              <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Unified Financial Dashboard</h3>
+              <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+                View your total financial position in one place. See all your accounts, balances, subscriptions, transactions and categories, updated easily and in real time.
               </p>
             </Card>
           </div>
         </div>
         
-        <div className="flex justify-center mt-12">
+        <div className="flex justify-center mt-12 md:mt-16">
           <button 
             onClick={scrollToDemo}
-            className="text-sm text-green-700 flex items-center gap-1 hover:opacity-80"
+            className="text-sm md:text-base text-green-700 flex items-center gap-2 hover:opacity-80 transition-opacity font-medium"
           >
             <span>Try it yourself</span>
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-4 w-4 md:h-5 md:w-5" />
           </button>
         </div>
       </section>
       
       {/* Feature Trial Section */}
-      <section ref={demoSectionRef} className="py-20 bg-[#e8f1df]">
+      <section ref={demoSectionRef} className="py-16 md:py-20 bg-[#e8f1df]">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">Try it yourself</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <div className="text-center mb-12 md:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 md:mb-6">Try it yourself</h2>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
               Experience Kpege's powerful features without creating an account.
             </p>
           </div>
@@ -588,27 +588,27 @@ const LandingPage: React.FC = () => {
           {/* Currency Selector */}
           {showCurrencySelector && (
             <div className="max-w-2xl mx-auto mb-12">
-              <Card className="p-8">
-                <h3 className="text-2xl font-bold mb-6 text-center">Choose your Local Currency</h3>
-                <p className="text-muted-foreground text-center mb-8">
-                Kpege supports multiple currencies so you can manage money in your own context.
+              <Card className="p-6 md:p-8">
+                <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-center">Choose your Local Currency</h3>
+                <p className="text-sm sm:text-base text-muted-foreground text-center mb-6 md:mb-8 leading-relaxed">
+                  Kpege supports multiple currencies so you can manage money in your own context.
                 </p>
                 
-                <div className="relative w-full max-w-md mx-auto mb-8">
+                <div className="relative w-full max-w-md mx-auto mb-6 md:mb-8">
                   <div className="relative">
                     <div 
-                      className="flex items-center justify-between p-4 border rounded-lg cursor-pointer"
+                      className="flex items-center justify-between p-3 md:p-4 border rounded-lg cursor-pointer hover:border-green-300 transition-colors"
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                     >
-                      <div className="flex items-center">
+                      <div className="flex items-center min-w-0 flex-1">
                         {selectedCurrency && (
                           <>
-                            <span className="text-xl font-bold mr-2">{selectedCurrency.symbol}</span>
-                            <span>{selectedCurrency.name} ({selectedCurrency.code})</span>
+                            <span className="text-lg md:text-xl font-bold mr-2 flex-shrink-0">{selectedCurrency.symbol}</span>
+                            <span className="text-sm md:text-base truncate">{selectedCurrency.name} ({selectedCurrency.code})</span>
                           </>
                         )}
                       </div>
-                      <ChevronDown className="h-5 w-5" />
+                      <ChevronDown className="h-5 w-5 flex-shrink-0 ml-2" />
                     </div>
                     
                     {isDropdownOpen && (
@@ -619,7 +619,7 @@ const LandingPage: React.FC = () => {
                             <Input
                               type="text"
                               placeholder="Search by currency or country name..."
-                              className="pl-10"
+                              className="pl-10 text-sm"
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
                               autoFocus
@@ -640,11 +640,11 @@ const LandingPage: React.FC = () => {
                                 }`}
                                 onClick={() => selectCurrency(currency)}
                               >
-                                <div className="flex items-center">
-                                  <span className="text-lg font-bold mr-2">{currency.symbol}</span>
-                                  <div>
-                                    <div>{currency.name}</div>
-                                    <div className="text-xs text-muted-foreground">
+                                <div className="flex items-center min-w-0 flex-1">
+                                  <span className="text-base md:text-lg font-bold mr-2 flex-shrink-0">{currency.symbol}</span>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-sm md:text-base font-medium truncate">{currency.name}</div>
+                                    <div className="text-xs text-muted-foreground truncate">
                                       {currency.country}
                                       {currency.countries.length > 1 && (
                                         <button 
@@ -661,12 +661,12 @@ const LandingPage: React.FC = () => {
                                   </div>
                                 </div>
                                 {selectedCurrency.code === currency.code && (
-                                  <Check className="h-5 w-5 text-green-700" />
+                                  <Check className="h-5 w-5 text-green-700 flex-shrink-0" />
                                 )}
                               </div>
                             ))
                           ) : (
-                            <div className="p-4 text-center text-muted-foreground">
+                            <div className="p-4 text-center text-muted-foreground text-sm">
                               No currencies found
                             </div>
                           )}
@@ -676,12 +676,12 @@ const LandingPage: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="mt-8 text-center">
+                <div className="text-center">
                   <Button 
-                    className="bg-green-700 hover:bg-green-800 text-white px-8 py-6"
+                    className="w-full sm:w-auto bg-green-700 hover:bg-green-800 text-white px-6 md:px-8 py-3 md:py-4 text-sm md:text-base font-medium"
                     onClick={() => selectCurrency(selectedCurrency)}
                   >
-                    <Globe className="mr-2 h-5 w-5" />
+                    <Globe className="mr-2 h-4 w-4 md:h-5 md:w-5" />
                     Continue with {selectedCurrency.name}
                   </Button>
                 </div>
@@ -690,7 +690,7 @@ const LandingPage: React.FC = () => {
           )}
           
           {!showCurrencySelector && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
               {/* Transaction Parser Demo */}
               <ErrorBoundary 
                 fallbackTitle="Transaction Parser Demo Unavailable"
@@ -717,29 +717,29 @@ const LandingPage: React.FC = () => {
           
           {/* Currency Change Option */}
           {!showCurrencySelector && (
-            <div className="mt-8 text-center">
+            <div className="mt-6 md:mt-8 text-center">
               <Button 
                 variant="outline" 
                 onClick={() => setShowCurrencySelector(true)}
-                className="text-sm"
+                className="text-xs md:text-sm"
               >
-                <Globe className="mr-2 h-4 w-4" />
+                <Globe className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                 Change currency from {currentCurrency.name}
               </Button>
-              <div className="flex flex-col items-center mt-2">
+              <div className="flex flex-col items-center mt-3 md:mt-4">
                 <p className="text-xs text-muted-foreground">
                   Your currency preference is saved for future visits
                 </p>
                 <div className="flex items-center mt-2 space-x-2">
                   <button 
                     onClick={toggleLiveConversion}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full ${
+                    className={`relative inline-flex h-5 w-9 md:h-6 md:w-11 items-center rounded-full transition-colors ${
                       isLiveConversionEnabled ? 'bg-green-600' : 'bg-gray-200'
                     }`}
                   >
                     <span 
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                        isLiveConversionEnabled ? 'translate-x-6' : 'translate-x-1'
+                      className={`inline-block h-3 w-3 md:h-4 md:w-4 transform rounded-full bg-white transition ${
+                        isLiveConversionEnabled ? 'translate-x-5 md:translate-x-6' : 'translate-x-1'
                       }`} 
                     />
                   </button>
@@ -756,51 +756,51 @@ const LandingPage: React.FC = () => {
       </section>
       
       {/* Testimonials Section */}
-      <section className="py-20">
+      <section className="py-16 md:py-20">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">What Real Users Say About Kpege</h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Join many other users who've taken control of their finances with Kpege
+          <div className="text-center mb-12 md:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 md:mb-6">What Real Users Say About Kpege</h2>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Join many other users who've taken control of their finances with Kpege
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="p-8">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 rounded-full bg-green-200 mr-4"></div>
-                <div>
-                  <h4 className="font-bold">Sarah J.</h4>
-                  <p className="text-sm text-muted-foreground">Freelancer</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+            <Card className="p-6 md:p-8">
+              <div className="flex items-center mb-4 md:mb-6">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-green-200 mr-3 md:mr-4 flex-shrink-0"></div>
+                <div className="min-w-0">
+                  <h4 className="font-bold text-sm md:text-base">Sarah J.</h4>
+                  <p className="text-xs md:text-sm text-muted-foreground">Freelancer</p>
                 </div>
               </div>
-              <p className="text-muted-foreground">
+              <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
                 "Kpege has completely changed how I manage my business finances. I finally feel in control."
               </p>
             </Card>
             
-            <Card className="p-8">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 rounded-full bg-green-200 mr-4"></div>
-                <div>
-                  <h4 className="font-bold">Anjola T.</h4>
-                  <p className="text-sm text-muted-foreground">Small Business Owner</p>
+            <Card className="p-6 md:p-8">
+              <div className="flex items-center mb-4 md:mb-6">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-green-200 mr-3 md:mr-4 flex-shrink-0"></div>
+                <div className="min-w-0">
+                  <h4 className="font-bold text-sm md:text-base">Anjola T.</h4>
+                  <p className="text-xs md:text-sm text-muted-foreground">Small Business Owner</p>
                 </div>
               </div>
-              <p className="text-muted-foreground">
+              <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
                 "The insights have helped me cut unnecessary expenses and save over $200 a month."
               </p>
             </Card>
             
-            <Card className="p-8">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 rounded-full bg-green-200 mr-4"></div>
-                <div>
-                  <h4 className="font-bold">Lisa R.</h4>
-                  <p className="text-sm text-muted-foreground">InternationalStudent</p>
+            <Card className="p-6 md:p-8">
+              <div className="flex items-center mb-4 md:mb-6">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-green-200 mr-3 md:mr-4 flex-shrink-0"></div>
+                <div className="min-w-0">
+                  <h4 className="font-bold text-sm md:text-base">Lisa R.</h4>
+                  <p className="text-xs md:text-sm text-muted-foreground">International Student</p>
                 </div>
               </div>
-              <p className="text-muted-foreground">
+              <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
                 "As a student, I needed something simple to track my expenses on-the-go. Kpege is exactly that - it's perfect."
               </p>
             </Card>
@@ -809,25 +809,25 @@ const LandingPage: React.FC = () => {
       </section>
       
       {/* CTA Section */}
-      <section className="py-20 bg-green-700 text-white">
+      <section className="py-16 md:py-20 bg-green-700 text-white">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">Transform Your Relationship With Money Today</h2>
-          <p className="text-xl max-w-3xl mx-auto mb-8">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 md:mb-6 leading-tight">Transform Your Relationship With Money Today</h2>
+          <p className="text-base sm:text-lg md:text-xl max-w-3xl mx-auto mb-6 md:mb-8 leading-relaxed">
             Join Kpege today and experience the clarity and confidence that comes with knowing exactly where your money goes.
           </p>
           
           <div className="max-w-md mx-auto">
-            <div className="flex mb-4">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-0 mb-3 md:mb-4">
               <Input 
                 type="email" 
                 placeholder="Enter your email address" 
-                className="rounded-r-none bg-white text-black"
+                className="sm:rounded-r-none bg-white text-black text-sm md:text-base"
               />
-              <Button className="rounded-l-none bg-green-900 hover:bg-green-950">
+              <Button className="sm:rounded-l-none bg-green-900 hover:bg-green-950 text-sm md:text-base font-medium">
                 Get Started
               </Button>
             </div>
-            <p className="text-sm text-green-100">
+            <p className="text-xs md:text-sm text-green-100">
               Free for now. No credit card required.
             </p>
           </div>
@@ -835,56 +835,56 @@ const LandingPage: React.FC = () => {
       </section>
       
       {/* Footer */}
-      <footer className="py-10 bg-slate-900 text-slate-300">
+      <footer className="py-8 md:py-10 bg-slate-900 text-slate-300">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between">
-            <div className="mb-8 md:mb-0">
-              <img src="/kpege-logo-light.svg" alt="Kpege" className="h-8 mb-3" />
-              <p className="max-w-xs text-sm text-slate-400">
+            <div className="mb-6 md:mb-0">
+              <img src="/kpege-logo-light.svg" alt="Kpege" className="h-6 md:h-8 mb-2 md:mb-3" />
+              <p className="max-w-xs text-xs md:text-sm text-slate-400 leading-relaxed">
                 Making financial management simple and effortless.
               </p>
             </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 md:gap-8">
               <div>
-                <h4 className="font-bold mb-3 text-sm">Product</h4>
-                <ul className="space-y-1.5">
-                  <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToFeatures(); }} className="text-xs hover:text-white">Features</a></li>
-                  <li><a href="#" className="text-xs hover:text-white">Pricing</a></li>
-                  <li><a href="#" className="text-xs hover:text-white">Security</a></li>
+                <h4 className="font-bold mb-2 md:mb-3 text-xs md:text-sm">Product</h4>
+                <ul className="space-y-1 md:space-y-1.5">
+                  <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToFeatures(); }} className="text-xs hover:text-white transition-colors">Features</a></li>
+                  <li><a href="#" className="text-xs hover:text-white transition-colors">Pricing</a></li>
+                  <li><a href="#" className="text-xs hover:text-white transition-colors">Security</a></li>
                 </ul>
               </div>
               
               <div>
-                <h4 className="font-bold mb-3 text-sm">Company</h4>
-                <ul className="space-y-1.5">
-                  <li><a href="#" className="text-xs hover:text-white">About</a></li>
-                  <li><a href="#" className="text-xs hover:text-white">Blog</a></li>
-                  <li><a href="#" className="text-xs hover:text-white">Careers</a></li>
+                <h4 className="font-bold mb-2 md:mb-3 text-xs md:text-sm">Company</h4>
+                <ul className="space-y-1 md:space-y-1.5">
+                  <li><a href="#" className="text-xs hover:text-white transition-colors">About</a></li>
+                  <li><a href="#" className="text-xs hover:text-white transition-colors">Blog</a></li>
+                  <li><a href="#" className="text-xs hover:text-white transition-colors">Careers</a></li>
                 </ul>
               </div>
               
-              <div>
-                <h4 className="font-bold mb-3 text-sm">Resources</h4>
-                <ul className="space-y-1.5">
-                  <li><a href="#" className="text-xs hover:text-white">Help Center</a></li>
-                  <li><a href="#" className="text-xs hover:text-white">Contact</a></li>
-                  <li><a href="#" className="text-xs hover:text-white">Privacy</a></li>
+              <div className="col-span-2 md:col-span-1">
+                <h4 className="font-bold mb-2 md:mb-3 text-xs md:text-sm">Resources</h4>
+                <ul className="space-y-1 md:space-y-1.5">
+                  <li><a href="#" className="text-xs hover:text-white transition-colors">Help Center</a></li>
+                  <li><a href="#" className="text-xs hover:text-white transition-colors">Contact</a></li>
+                  <li><a href="#" className="text-xs hover:text-white transition-colors">Privacy</a></li>
                 </ul>
               </div>
             </div>
           </div>
           
-          <div className="mt-8 pt-6 flex flex-col md:flex-row justify-between items-center" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="mt-6 md:mt-8 pt-4 md:pt-6 flex flex-col md:flex-row justify-between items-center border-t border-slate-800">
             <p className="text-xs">© 2025 Kpege. All rights reserved.</p>
-            <div className="flex space-x-4 mt-4 md:mt-0">
-              <a href="https://x.com/usekpege" target="_blank" rel="noopener noreferrer" className="hover:text-white">
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+            <div className="flex space-x-4 mt-3 md:mt-0">
+              <a href="https://x.com/usekpege" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+                <svg className="h-4 w-4 md:h-5 md:w-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path>
                 </svg>
               </a>
-              <a href="https://www.instagram.com/usekpege" target="_blank" rel="noopener noreferrer" className="hover:text-white">
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+              <a href="https://www.instagram.com/usekpege" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+                <svg className="h-4 w-4 md:h-5 md:w-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
                 </svg>
               </a>
