@@ -1,141 +1,150 @@
-# Groq API Integration for Receipt Parsing and Transaction Categorization
+# Groq API Integration for FinTrack
 
-This document provides instructions on how to properly integrate the Groq API for enhanced receipt parsing and transaction categorization in production.
+This document explains how to set up and use the Groq API integration for OCR (Optical Character Recognition) and text categorization in the FinTrack application.
 
 ## Overview
 
-The current implementation simulates OCR and categorization features, but in production, you should use the Groq API key stored on Vercel to:
+The integration consists of two main components:
 
-1. Process receipts using OCR capabilities
-2. Categorize transactions using AI text analysis
+1. **OCR API** - Extracts text from images and PDFs of receipts and financial documents
+2. **Categorization API** - Analyzes text descriptions and categorizes financial transactions
 
-## Setup Requirements
+Both APIs use Groq's LLM capabilities to provide intelligent text processing and categorization.
 
-1. A Groq API key stored as `GROQ_OCR_KEY` in your Vercel environment variables
-2. Vercel serverless functions for API endpoints
-3. Client-side code that calls these endpoints
+## Setup
 
-## Implementation Steps
+### 1. Get a Groq API Key
 
-### 1. Deploy the API Endpoints
+1. Go to [Groq Console](https://console.groq.com/)
+2. Create an account or login
+3. Get your API key from the console dashboard
 
-The code already includes two API endpoint files that should be deployed to Vercel:
+### 2. Configure the API Key
 
-- `/api/ocr.js` - For OCR processing of receipts
-- `/api/categorize.js` - For categorizing transaction text
+#### For Local Development
 
-These files need to be updated to actually call the Groq API instead of returning simulated responses.
+Create a `.env` file in the project root and add your Groq API key:
 
-### 2. Update the OCR API Endpoint
-
-In the `/api/ocr.js` file, replace the simulation code with actual Groq API calls:
-
-```javascript
-// Get the file from the request (using formidable or similar)
-const form = new formidable.IncomingForm();
-form.parse(req, async (err, fields, files) => {
-  if (err) {
-    return res.status(500).json({ error: 'Error processing file upload' });
-  }
-  
-  const file = files.receipt;
-  if (!file) {
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
-  
-  // Read the file (if image) or extract text from PDF
-  const fileBuffer = fs.readFileSync(file.path);
-  
-  // For images, use OCR to extract text
-  // For PDFs, extract text directly
-  
-  // Call Groq API with the extracted text
-  const groqResponse = await fetch('https://api.groq.com/v1/text-analysis', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${groqApiKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      text: extractedText,
-      tasks: ['entity_extraction', 'categorization']
-    })
-  });
-  
-  const analysis = await groqResponse.json();
-  
-  // Process the analysis to extract amount, category, etc.
-  // Return structured data
-});
+```
+GROQ_OCR_KEY=your_groq_api_key_here
 ```
 
-### 3. Update the Categorization API Endpoint
+#### For Vercel Deployment
 
-In the `/api/categorize.js` file, replace the simulation code with actual Groq API calls:
+Add the environment variable in the Vercel dashboard:
+- Key: `GROQ_OCR_KEY`
+- Value: Your Groq API key
 
-```javascript
-// Get the transaction text from the request
-const { text } = req.body;
+### 3. Run the Application
 
-// Call Groq API for text analysis
-const groqResponse = await fetch('https://api.groq.com/v1/text-analysis', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${groqApiKey}`,
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    text: text,
-    tasks: ['categorization']
-  })
-});
+For local development with the Groq API proxy:
 
-const analysis = await groqResponse.json();
-
-// Map Groq categories to our application categories
-const categoryMapping = {
-  // Map Groq categories to app categories
-};
-
-// Extract the category and confidence
-const category = mapGroqCategory(analysis.categories[0].label);
-const confidence = analysis.categories[0].confidence;
-
-// Return the results
-return res.status(200).json({
-  success: true,
-  category,
-  confidence
-});
+```bash
+npm run dev:full
 ```
 
-## Client-Side Integration
+This will start:
+- The Vite development server (frontend)
+- The Supabase proxy server
+- The Groq API proxy server
 
-The client-side code in `LandingPage.tsx` is already set up to call these API endpoints, but with simulation for the demo. In production:
+## API Endpoints
 
-1. For receipt processing:
-   - Create a FormData object with the file
-   - POST to `/api/ocr`
-   - Process the response
+### OCR API
 
-2. For transaction categorization:
-   - POST the transaction text to `/api/categorize`
-   - Use the returned category
+**Endpoint:** `/api/ocr`
 
-## Testing
+**Method:** POST
 
-1. Ensure your Vercel environment has the `GROQ_OCR_KEY` variable set
-2. Deploy the API endpoints to Vercel
-3. Test with real receipts and transaction descriptions
+**Description:** Extracts text from images or PDFs and analyzes the content for financial information.
 
-## Monitoring and Limits
+**Request:**
+- Use `FormData` with a file field named `receipt`
 
-- Monitor your Groq API usage to avoid exceeding quotas
-- Consider implementing rate limiting for the API endpoints
-- Add error handling for cases where the Groq API is unavailable
+**Response:**
+```json
+{
+  "success": true,
+  "text": "Extracted text from the document",
+  "detectedAmount": 1000,
+  "detectedCurrency": "NGN",
+  "detectedCategory": "Dining",
+  "confidence": 0.8,
+  "details": {
+    "date": "2024-05-20",
+    "merchant": "Restaurant Name",
+    "beneficiary": "John Doe",
+    "reference": "Payment reference",
+    "bankName": "Bank name if applicable",
+    "items": []
+  }
+}
+```
 
-## Resources
+### Categorization API
 
-- [Groq API Documentation](https://www.groq.com/docs/)
-- [Vercel Environment Variables](https://vercel.com/docs/environment-variables)
-- [Serverless Functions on Vercel](https://vercel.com/docs/functions) 
+**Endpoint:** `/api/categorize`
+
+**Method:** POST
+
+**Description:** Analyzes transaction text and categorizes it based on content.
+
+**Request:**
+```json
+{
+  "text": "Spent 5000 on groceries yesterday"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "category": "Groceries",
+  "type": "expense",
+  "confidence": 0.9,
+  "possibleCategories": [
+    { "name": "Groceries", "score": 0.9 },
+    { "name": "Miscellaneous", "score": 0.1 }
+  ],
+  "extractedAmount": "5000",
+  "sourceAccount": "",
+  "destinationAccount": ""
+}
+```
+
+## Fallback Mechanisms
+
+Both APIs have fallback mechanisms in case the Groq API is unavailable:
+
+1. **OCR Fallback:** Uses Tesseract.js for local OCR processing
+2. **Categorization Fallback:** Uses a simple rule-based approach for categorization
+
+## Deployment Notes
+
+When deploying to production:
+
+1. Make sure the `GROQ_OCR_KEY` environment variable is set
+2. For Vercel deployment, the API endpoints should work automatically as serverless functions
+3. For other hosting, make sure the API endpoints are properly routed to the Express server
+
+## Troubleshooting
+
+If you encounter issues:
+
+1. Check the console logs for detailed error messages
+2. Verify that your Groq API key is correct and has sufficient credits
+3. For local development, make sure all proxy servers are running correctly
+
+## Limitations
+
+- PDF processing is currently limited and may not extract all text accurately
+- Large files may encounter timeouts or size limitations
+- The categorization accuracy depends on the quality of the extracted text and the model's understanding
+
+## Future Improvements
+
+- Add support for better PDF processing
+- Implement more robust error handling and retries
+- Enhance the categorization algorithm with user feedback
+- Add support for itemized receipt processing 

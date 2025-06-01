@@ -29,6 +29,16 @@ export default defineConfig(({ mode }) => {
             'apikey': env.VITE_SUPABASE_ANON_KEY || '',
           },
         },
+        // Handle proxy for Groq OCR API
+        '/api/ocr': {
+          target: 'http://localhost:3500',
+          changeOrigin: true,
+        },
+        // Handle proxy for Groq categorization API
+        '/api/categorize': {
+          target: 'http://localhost:3500',
+          changeOrigin: true,
+        },
       },
       cors: {
         origin: ['http://localhost:5173', 'https://www.kpege.com'],
