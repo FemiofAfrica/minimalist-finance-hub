@@ -5,6 +5,10 @@ import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { ChevronDown, Send, Upload, Mic, CreditCard, Tag, Calendar, PiggyBank, Check, Globe, Search } from 'lucide-react';
 import { useCurrency } from "@/contexts/CurrencyContext";
+import NavBar from "@/components/ui/NavBar";
+import TransactionParserDemo from "@/components/demo/TransactionParserDemo";
+import ReceiptScannerDemo from "@/components/demo/ReceiptScannerDemo";
+import ErrorBoundary from "@/components/demo/ErrorBoundary";
 
 // Currency configuration - expanded with more options
 const currencies = [
@@ -368,32 +372,8 @@ function parseTransaction(text: string, selectedCurrency: typeof currencies[0], 
 }
 
 const LandingPage: React.FC = () => {
-  // State for transaction parser demo
-  const [transactionInput, setTransactionInput] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [parsedTransaction, setParsedTransaction] = useState(null);
-  
-  // State for receipt scanner functionality
-  const [isDragging, setIsDragging] = useState(false);
-  const [receiptData, setReceiptData] = useState<{
-    total?: string;
-    category?: string;
-    source?: string;
-    isLoading?: boolean;
-    message?: string;
-    originalAmount?: number;
-    originalCurrency?: string;
-    showOriginalCurrency?: boolean;
-    details?: {
-      date: string;
-      beneficiary: string;
-      sender: string;
-      reference: string;
-      bankName: string;
-      amount: string;
-    } | null;
-  } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Add state for authentication status
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   // Access the currency context
   const { 
@@ -428,6 +408,25 @@ const LandingPage: React.FC = () => {
   
   // Ref for the demo section to allow scrolling to it
   const demoSectionRef = useRef<HTMLElement>(null);
+  const featuresRef = useRef<HTMLElement>(null);
+  
+  // Check if user is authenticated
+  useEffect(() => {
+    // This would typically check with your auth service
+    // For now, we'll just use a mock check
+    const checkAuth = async () => {
+      try {
+        // Mock authentication check - replace with your actual auth logic
+        const token = localStorage.getItem('kpege-auth-token');
+        setIsAuthenticated(!!token);
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        setIsAuthenticated(false);
+      }
+    };
+    
+    checkAuth();
+  }, []);
   
   // Effect to sync the selected currency with the currency context
   useEffect(() => {
@@ -442,6 +441,20 @@ const LandingPage: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('kpege-selected-currency', selectedCurrency.code);
   }, [selectedCurrency]);
+  
+  // Scroll to features section
+  const scrollToFeatures = () => {
+    if (featuresRef.current) {
+      featuresRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+  
+  // Scroll to demo section when Learn More is clicked
+  const scrollToDemo = () => {
+    if (demoSectionRef.current) {
+      demoSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
   
   // Filter currencies based on search query
   const filteredCurrencies = currencies.filter(currency => {
@@ -466,622 +479,119 @@ const LandingPage: React.FC = () => {
     if (showCurrencySelector) {
       setShowCurrencySelector(false);
     }
-    // Reset any existing demo data
-    setParsedTransaction(null);
-    setReceiptData(null);
-  };
-  
-  // Scroll to demo section when Learn More is clicked
-  const scrollToDemo = () => {
-    if (demoSectionRef.current) {
-      demoSectionRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-  
-  // Handle transaction input submission with real API integration
-  const handleTransactionSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!transactionInput.trim() || isProcessing) return;
-    
-    setIsProcessing(true);
-    
-    // Create a converter function that works with the parseTransaction function
-    const currencyConverter = (amount: number) => amount;
-    
-    // First parse basic transaction info like amount
-    const parsedResult = parseTransaction(transactionInput, selectedCurrency, currencyConverter);
-    
-    // Now call the categorization API to get better categorization
-    fetch('/api/categorize', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ text: transactionInput })
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`Categorization API error: ${response.status}`);
-      }
-      return response.json();
-    })
-    .then(data => {
-      console.log("Categorization API response:", data);
-      
-      if (!data.success) {
-        throw new Error("Categorization failed");
-      }
-      
-      // Merge the API categorization with our parsed result
-      const result = {
-        ...parsedResult,
-        category_name: data.category || parsedResult.category_name,
-        category_type: data.type || parsedResult.category_type
-      };
-      
-      // If source and destination accounts were detected for transfers
-      if (data.sourceAccount && data.destinationAccount && data.type === 'transfer') {
-        result.is_transfer = true;
-        result.source_account = data.sourceAccount;
-        result.destination_account = data.destinationAccount;
-      }
-      
-      // If amount was detected and our parsing didn't find one
-      if (data.extractedAmount && !parsedResult.amount) {
-        result.amount = parseFloat(data.extractedAmount);
-        result.originalAmount = parseFloat(data.extractedAmount);
-      }
-      
-      // Make sure the amount is properly formatted 
-      if (result.amount) {
-        // Round to 2 decimal places for display
-        result.amount = Math.round(result.amount * 100) / 100;
-      }
-      
-      // Set the final result
-      setParsedTransaction(result);
-    })
-    .catch(error => {
-      console.error("Categorization error:", error);
-      
-      // If API fails, use the basic parsed result
-      const result = parsedResult;
-      
-      // For groceries-related text, correctly categorize as Groceries
-      if (transactionInput.toLowerCase().includes('groceries') || 
-          transactionInput.toLowerCase().includes('supermarket') ||
-          transactionInput.toLowerCase().includes('shopping')) {
-        result.category_name = 'Groceries';
-        console.log("[Fallback] Setting category to 'Groceries' based on text content");
-      }
-      
-      setParsedTransaction(result);
-    })
-    .finally(() => {
-      setIsProcessing(false);
-    });
-  };
-  
-  // Process the receipt file (mock functionality)
-  const processReceiptFile = (file: File) => {
-    // Check if file is an image or PDF
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-      alert('Please upload an image or PDF file');
-      return;
-    }
-    
-    setIsProcessing(true);
-    setReceiptData(null); // Reset any previous data
-    
-    // Process differently based on file type
-    if (file.type === 'application/pdf') {
-      // For PDF files
-      processPdfReceipt(file);
-    } else {
-      // For image files
-      processImageReceipt(file);
-    }
-  };
-  
-  // Process image receipt with real OCR API call
-  const processImageReceipt = (file: File) => {
-    console.log("[Demo] Processing image receipt:", file.name, file.type, file.size);
-    
-    // Show loading state
-    setIsProcessing(true);
-    setReceiptData({ isLoading: true, message: "Processing with OCR..." });
-    
-    // Create FormData to send the file to our API
-    const formData = new FormData();
-    formData.append('receipt', file);
-    
-    // Make the actual API call to our OCR endpoint
-    fetch('/api/ocr', {
-      method: 'POST',
-      body: formData
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`OCR API error: ${response.status}`);
-      }
-      return response.json();
-    })
-    .then(data => {
-      console.log("OCR API response:", data);
-      
-      if (!data.success) {
-        throw new Error("OCR processing failed");
-      }
-      
-      // Extract information from the API response
-      const amount = data.detectedAmount || 0;
-      const category = data.detectedCategory || 'Miscellaneous';
-      const detectedCurrency = data.detectedCurrency || 'NGN';
-      
-      // Find the currency symbol for the detected currency
-      const currencyObj = currencies.find(c => c.code === detectedCurrency) || selectedCurrency;
-      
-      // Store original amount for reference
-      const originalAmount = amount;
-      
-      // Convert amount if live conversion is enabled and currencies differ
-      let displayAmount = originalAmount;
-      let showOriginalCurrency = false;
-      
-      if (isLiveConversionEnabled && detectedCurrency !== currentCurrency.code) {
-        // If user's currency isn't the detected currency, convert
-        // Convert to user's currency through USD
-        const amountInUSD = originalAmount / convertFromBase(1, detectedCurrency);
-        displayAmount = convertFromBase(amountInUSD, currentCurrency.code);
-        console.log(`Converting from ${detectedCurrency} to ${currentCurrency.code}: ${originalAmount} -> ${displayAmount}`);
-        showOriginalCurrency = true;
-        
-        // Round to 2 decimal places
-        displayAmount = Math.round(displayAmount * 100) / 100;
-      }
-      
-      // Format the amount for display
-      const formattedAmount = isLiveConversionEnabled && detectedCurrency !== currentCurrency.code
-        ? `${currentCurrency.symbol}${displayAmount.toFixed(2)}`
-        : `${currencyObj.symbol}${originalAmount.toFixed(2)}`;
-      
-      console.log(`Final display amount: ${formattedAmount}`);
-      
-      // Create receipt data from API response
-      const mockReceiptData = {
-        total: formattedAmount,
-        category,
-        source: 'Image with OCR',
-        originalAmount: originalAmount,
-        originalCurrency: detectedCurrency,
-        showOriginalCurrency,
-        details: data.details || null
-      };
-      
-      setReceiptData(mockReceiptData);
-    })
-    .catch(error => {
-      console.error("OCR processing error:", error);
-      
-      // Fall back to simulated processing if the API call fails
-      simulateReceiptProcessing(file);
-    })
-    .finally(() => {
-      setIsProcessing(false);
-    });
-  };
-  
-  // Fallback simulation function for when the API call fails
-  const simulateReceiptProcessing = (file: File) => {
-    // Check if this matches the Moniepoint receipt in the demo image
-    const isMoniePointReceipt = file.name.toLowerCase().includes('moniepoint') || 
-                              file.name.toLowerCase().includes('mummy') ||
-                              file.name.toLowerCase().includes('transfer') ||
-                              file.size > 100000; // The demo receipt is large
-    
-    if (isMoniePointReceipt) {
-      console.log(`[Fallback] Detected Moniepoint receipt from image content`);
-      
-      // Use the exact amount from the receipt image
-      const amount = 10000;
-      const detectedCurrency = 'NGN';
-      const currencyObj = currencies.find(c => c.code === detectedCurrency) || selectedCurrency;
-      const originalAmount = amount;
-      let displayAmount = originalAmount;
-      let showOriginalCurrency = false;
-      
-      if (isLiveConversionEnabled && detectedCurrency !== currentCurrency.code) {
-        if (currentCurrency.code !== 'NGN') {
-          const amountInUSD = originalAmount / convertFromBase(1, 'NGN');
-          displayAmount = convertFromBase(amountInUSD, currentCurrency.code);
-          showOriginalCurrency = true;
-        }
-        displayAmount = Math.round(displayAmount * 100) / 100;
-      }
-      
-      const formattedAmount = isLiveConversionEnabled && detectedCurrency !== currentCurrency.code
-        ? `${currentCurrency.symbol}${displayAmount.toFixed(2)}`
-        : `${currencyObj.symbol}${originalAmount.toFixed(2)}`;
-      
-      setReceiptData({
-        total: formattedAmount,
-        category: 'Transfer',
-        source: 'Image (Fallback)',
-        originalAmount: originalAmount,
-        originalCurrency: detectedCurrency,
-        showOriginalCurrency,
-        details: {
-          date: 'Tuesday, May 20th, 2025',
-          beneficiary: 'FAKAYEJO FRANCIS DAYO | 2691137268',
-          sender: 'ABIODUN OLALEKAN FAKAYEJO',
-          reference: 'mummy ore',
-          bankName: 'Ecobank Nigeria',
-          amount: originalAmount.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})
-        }
-      });
-      return;
-    }
-    
-    // For other receipts, pick a random type
-    const receiptTypes = ['restaurant', 'retail', 'transport', 'utility', 'entertainment'];
-    const simulatedType = receiptTypes[Math.floor(Math.random() * receiptTypes.length)];
-    console.log(`[Fallback] Simulating receipt type: ${simulatedType}`);
-    
-    // Simulate amount and category based on receipt type
-    let amount = 500;
-    let category = 'Miscellaneous';
-    const details = null;
-    
-    switch(simulatedType) {
-      case 'restaurant':
-        amount = 500 + Math.floor(Math.random() * 4500);
-        category = 'Dining';
-        break;
-      case 'retail':
-        amount = 1000 + Math.floor(Math.random() * 9000);
-        category = 'Shopping';
-        break;
-      case 'transport':
-        amount = 200 + Math.floor(Math.random() * 1800);
-        category = 'Transport';
-        break;
-      case 'utility':
-        amount = 2000 + Math.floor(Math.random() * 8000);
-        category = 'Utilities';
-        break;
-      case 'entertainment':
-        amount = 500 + Math.floor(Math.random() * 4500);
-        category = 'Entertainment';
-        break;
-    }
-    
-    const detectedCurrency = 'NGN';
-    const currencyObj = currencies.find(c => c.code === detectedCurrency) || selectedCurrency;
-    const originalAmount = amount;
-    
-    // Simple conversion if needed
-    let displayAmount = originalAmount;
-    let showOriginalCurrency = false;
-    
-    if (isLiveConversionEnabled && detectedCurrency !== currentCurrency.code) {
-      if (currentCurrency.code !== 'NGN') {
-        const amountInUSD = originalAmount / convertFromBase(1, 'NGN');
-        displayAmount = convertFromBase(amountInUSD, currentCurrency.code);
-        showOriginalCurrency = true;
-      }
-      displayAmount = Math.round(displayAmount * 100) / 100;
-    }
-    
-    const formattedAmount = isLiveConversionEnabled && detectedCurrency !== currentCurrency.code
-      ? `${currentCurrency.symbol}${displayAmount.toFixed(2)}`
-      : `${currencyObj.symbol}${originalAmount.toFixed(2)}`;
-    
-    setReceiptData({
-      total: formattedAmount,
-      category,
-      source: 'Image (Fallback)',
-      originalAmount,
-      originalCurrency: detectedCurrency,
-      showOriginalCurrency,
-      details
-    });
-  };
-  
-  // Process PDF receipt with real OCR API call
-  const processPdfReceipt = (file: File) => {
-    console.log("[Demo] Processing PDF receipt:", file.name, file.type, file.size);
-    
-    // Show loading state
-    setReceiptData({ isLoading: true, message: "Processing PDF with OCR..." });
-    
-    // Create FormData to send the file to our API
-    const formData = new FormData();
-    formData.append('receipt', file);
-    
-    // Make the actual API call to our OCR endpoint
-    fetch('/api/ocr', {
-      method: 'POST',
-      body: formData
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`OCR API error: ${response.status}`);
-      }
-      return response.json();
-    })
-    .then(data => {
-      console.log("OCR API response:", data);
-      
-      if (!data.success) {
-        throw new Error("OCR processing failed");
-      }
-      
-      // Extract information from the API response
-      const amount = data.detectedAmount || 0;
-      const category = data.detectedCategory || 'Miscellaneous';
-      const detectedCurrency = data.detectedCurrency || 'NGN';
-      
-      // Find the currency symbol for the detected currency
-      const currencyObj = currencies.find(c => c.code === detectedCurrency) || selectedCurrency;
-      
-      // Store original amount for reference
-      const originalAmount = amount;
-      
-      // Convert amount if live conversion is enabled and currencies differ
-      let displayAmount = originalAmount;
-      let showOriginalCurrency = false;
-      
-      if (isLiveConversionEnabled && detectedCurrency !== currentCurrency.code) {
-        // If user's currency isn't the detected currency, convert
-        // Convert to user's currency through USD
-        const amountInUSD = originalAmount / convertFromBase(1, detectedCurrency);
-        displayAmount = convertFromBase(amountInUSD, currentCurrency.code);
-        console.log(`Converting from ${detectedCurrency} to ${currentCurrency.code}: ${originalAmount} -> ${displayAmount}`);
-        showOriginalCurrency = true;
-        
-        // Round to 2 decimal places
-        displayAmount = Math.round(displayAmount * 100) / 100;
-      }
-      
-      // Format the amount for display
-      const formattedAmount = isLiveConversionEnabled && detectedCurrency !== currentCurrency.code
-        ? `${currentCurrency.symbol}${displayAmount.toFixed(2)}`
-        : `${currencyObj.symbol}${originalAmount.toFixed(2)}`;
-      
-      console.log(`Final display amount: ${formattedAmount}`);
-      
-      // Create receipt data from API response
-      const receiptData = {
-        total: formattedAmount,
-        category,
-        source: 'PDF with OCR',
-        originalAmount: originalAmount,
-        originalCurrency: detectedCurrency,
-        showOriginalCurrency,
-        details: data.details || null
-      };
-      
-      setReceiptData(receiptData);
-    })
-    .catch(error => {
-      console.error("OCR processing error:", error);
-      
-      // Fall back to simulated processing if the API call fails
-      simulatePdfProcessing(file);
-    })
-    .finally(() => {
-      setIsProcessing(false);
-    });
-  };
-  
-  // Fallback simulation function for when the PDF API call fails
-  const simulatePdfProcessing = (file: File) => {
-    // Simulate different receipt types
-    const receiptTypes = ['transfer', 'utility', 'restaurant', 'retail', 'transport'];
-    const simulatedType = receiptTypes[Math.floor(Math.random() * receiptTypes.length)];
-    console.log(`[Fallback] Simulating PDF receipt type: ${simulatedType}`);
-    
-    // Simulate amount and category based on receipt type
-    let amount = 500;
-    let category = 'Miscellaneous';
-    const details = {
-      date: 'May 20, 2025',
-      beneficiary: '',
-      sender: '',
-      reference: '',
-      bankName: '',
-      amount: ''
-    };
-    
-    switch(simulatedType) {
-      case 'transfer':
-        amount = 10000 + Math.floor(Math.random() * 5000);
-        category = 'Bank Transfer';
-        details.beneficiary = 'FAKAYEJO FRANCIS DAYO';
-        details.sender = 'ABIODUN OLALEKAN FAKAYEJO';
-        details.reference = 'Transfer payment';
-        details.bankName = 'Ecobank Nigeria';
-        break;
-      case 'utility':
-        amount = 2000 + Math.floor(Math.random() * 8000);
-        category = 'Utilities';
-        details.beneficiary = 'Power Distribution Company';
-        details.reference = 'May Electricity Bill';
-        break;
-      case 'restaurant':
-        amount = 500 + Math.floor(Math.random() * 4500);
-        category = 'Dining';
-        details.beneficiary = 'Restaurant';
-        details.reference = 'Dinner purchase';
-        break;
-      case 'retail':
-        amount = 1000 + Math.floor(Math.random() * 9000);
-        category = 'Shopping';
-        details.beneficiary = 'Retail Store';
-        details.reference = 'Shopping';
-        break;
-      case 'transport':
-        amount = 200 + Math.floor(Math.random() * 1800);
-        category = 'Transport';
-        details.beneficiary = 'Transportation Service';
-        details.reference = 'Trip fare';
-        break;
-    }
-    
-    details.amount = amount.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    
-    const detectedCurrency = 'NGN';
-    const currencyObj = currencies.find(c => c.code === detectedCurrency) || selectedCurrency;
-    const originalAmount = amount;
-    
-    // Simple conversion if needed
-    let displayAmount = originalAmount;
-    let showOriginalCurrency = false;
-    
-    if (isLiveConversionEnabled && detectedCurrency !== currentCurrency.code) {
-      if (currentCurrency.code !== 'NGN') {
-        const amountInUSD = originalAmount / convertFromBase(1, 'NGN');
-        displayAmount = convertFromBase(amountInUSD, currentCurrency.code);
-        showOriginalCurrency = true;
-      }
-      displayAmount = Math.round(displayAmount * 100) / 100;
-    }
-    
-    const formattedAmount = isLiveConversionEnabled && detectedCurrency !== currentCurrency.code
-      ? `${currentCurrency.symbol}${displayAmount.toFixed(2)}`
-      : `${currencyObj.symbol}${originalAmount.toFixed(2)}`;
-    
-    setReceiptData({
-      total: formattedAmount,
-      category,
-      source: 'PDF (Fallback)',
-      originalAmount,
-      originalCurrency: detectedCurrency,
-      showOriginalCurrency,
-      details
-    });
-  };
-  
-  // Handle file drop for receipt scanner
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-    
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      processReceiptFile(files[0]);
-    }
-  };
-  
-  // Handle file selection via browse button
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      processReceiptFile(files[0]);
-    }
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      {/* Hero Section */}
-      <section className="flex flex-col items-center justify-center px-4 py-16 md:py-24 text-center">
-      <div className="mb-8">
-          <img 
-            src="/main-kpege-logo.svg" 
-            alt="Kpege Dashboard Preview" 
-            className="h-20 md:h-24 mx-auto" 
-          />
-        </div>
-        
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold max-w-5xl mb-6">
-          <span className="text-green-700">Finance</span>, finally made simple
-        </h1>
-        
-        <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mb-10">
-          Experience peace of mind and clarity with every transaction. 
-          Take control of your money, effortlessly.
-        </p>
-        
-        <div className="flex flex-col sm:flex-row gap-4 mb-12">
-          <Link to="/login">
-            <Button size="lg" className="bg-green-700 hover:bg-green-800 text-white px-8 py-6 text-lg">
-              Start using Kpege
-            </Button>
-          </Link>
-          <Button 
-            variant="outline" 
-            size="lg" 
-            className="px-8 py-6 text-lg"
-            onClick={scrollToDemo}
-          >
-            Try a Demo First
-          </Button>
-        </div>
-        
+    <div className="flex flex-col min-h-screen bg-[#e8f1df]">
+      {/* Navigation Bar */}
+      <NavBar 
+        isAuthenticated={isAuthenticated}
+        onFeaturesClick={scrollToFeatures}
+        showFeatures={true}
+      />
 
+      {/* Hero Section */}
+      <section className="flex flex-col items-center justify-center min-h-screen px-4 text-center relative bg-[#e8f1df]">
+        <div className="container mx-auto">
+          <h1 className="text-2xl md:text-5xl lg:text-3xl font-bold max-w-3xl mx-auto mb-4">
+          Personal Finance Management Made Simple with <span className="text-green-700">Kpege</span>
+          </h1>
+          
+          <p className="text-sm md:text-lg text-muted-foreground max-w-2xl mx-auto mb-12">
+            Eliminate financial stress and gain complete visibility into your money habits. 
+            Track expenses, visualize trends, and achieve your financial goals effortlessly.
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+            <Link to="/login">
+              <Button size="lg" className="bg-green-700 hover:bg-green-800 text-white px-5 py-4 text-sm">
+                Control Your Money Now
+              </Button>
+            </Link>
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="px-5 py-4 text-sm hover:border-green-700 hover:text-green-700 transition-colors"
+              onClick={scrollToDemo}
+            >
+              See Kpege in Action
+            </Button>
+          </div>
+        </div>
       </section>
       
       {/* Features Section */}
-      <section className="py-20 bg-slate-50">
+      <section ref={featuresRef} className="flex flex-col items-center justify-center min-h-screen px-4 text-center relative bg-[#e8f1df]">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Why choose Kpege?</h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Built for clarity and peace of mind. No more financial anxiety.
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">Why choose Kpege?</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Kpege helps you manage money without stress.
+            No spreadsheets. No manual math. Just clarity and confidence.
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="p-8 hover:shadow-lg transition-shadow">
-              <div className="rounded-full bg-green-100 w-12 h-12 flex items-center justify-center mb-6">
-                <Upload className="h-6 w-6 text-green-700" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="p-6 transition-all hover:translate-y-[-2px]">
+              <div className="rounded-full bg-[#e8f1df] w-10 h-10 flex items-center justify-center mb-4">
+                <Upload className="h-5 w-5 text-green-700" />
               </div>
-              <h3 className="text-xl font-bold mb-3">Easy Import</h3>
-              <p className="text-muted-foreground">
-                Connect your accounts or upload statements. We'll handle the rest.
+              <h3 className="text-lg font-bold mb-2">Easy Transaction Input</h3>
+              <p className="text-sm text-muted-foreground">
+              Use natural language or voice commands to record expenses. Snap a photo of a receipt or send a chat; Kpege's smart AI processes it all and updates your records automatically.
               </p>
             </Card>
             
-            <Card className="p-8 hover:shadow-lg transition-shadow">
-              <div className="rounded-full bg-green-100 w-12 h-12 flex items-center justify-center mb-6">
-                <Send className="h-6 w-6 text-green-700" />
+            <Card className="p-6 transition-all hover:translate-y-[-2px]">
+              <div className="rounded-full bg-[#e8f1df] w-10 h-10 flex items-center justify-center mb-4">
+                <Send className="h-5 w-5 text-green-700" />
               </div>
-              <h3 className="text-xl font-bold mb-3">Smart Insights</h3>
-              <p className="text-muted-foreground">
-                Understand your spending patterns with AI-powered insights.
+              <h3 className="text-lg font-bold mb-2">AI-Powered Financial Insights</h3>
+              <p className="text-sm text-muted-foreground">
+              Kpege analyzes your income and spending habits to give you personalized insights. Get alerts, trends, and budgeting suggestions to help you stay in control.
               </p>
             </Card>
             
-            <Card className="p-8 hover:shadow-lg transition-shadow">
-              <div className="rounded-full bg-green-100 w-12 h-12 flex items-center justify-center mb-6">
-                <ChevronDown className="h-6 w-6 text-green-700" />
+            <Card className="p-6 transition-all hover:translate-y-[-2px]">
+              <div className="rounded-full bg-[#e8f1df] w-10 h-10 flex items-center justify-center mb-4">
+                <ChevronDown className="h-5 w-5 text-green-700" />
               </div>
-              <h3 className="text-xl font-bold mb-3">Financial Clarity</h3>
-              <p className="text-muted-foreground">
-                See your financial health at a glance with intuitive dashboards.
+              <h3 className="text-lg font-bold mb-2">Unified Financial Dashboard</h3>
+              <p className="text-sm text-muted-foreground">
+              View your total financial position in one place. See all your accounts, balances, subscriptions, transactions and categories, updated easily and in real time.
               </p>
             </Card>
           </div>
+        </div>
+        
+        <div className="flex justify-center mt-12">
+          <button 
+            onClick={scrollToDemo}
+            className="text-sm text-green-700 flex items-center gap-1 hover:opacity-80"
+          >
+            <span>Try it yourself</span>
+            <ChevronDown className="h-4 w-4" />
+          </button>
         </div>
       </section>
       
       {/* Feature Trial Section */}
-      <section ref={demoSectionRef} className="py-20">
+      <section ref={demoSectionRef} className="py-20 bg-[#e8f1df]">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Try it yourself</h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">Try it yourself</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Experience Kpege's powerful features without creating an account.
             </p>
           </div>
           
           {/* Currency Selector */}
           {showCurrencySelector && (
-            <div className="max-w-2xl mx-auto mb-16">
+            <div className="max-w-2xl mx-auto mb-12">
               <Card className="p-8">
-                <h3 className="text-2xl font-bold mb-6 text-center">Choose your currency</h3>
+                <h3 className="text-2xl font-bold mb-6 text-center">Choose your Local Currency</h3>
                 <p className="text-muted-foreground text-center mb-8">
-                  Select your local currency to see how Kpege works with your financial data.
+                Kpege supports multiple currencies so you can manage money in your own context.
                 </p>
                 
                 <div className="relative w-full max-w-md mx-auto mb-8">
@@ -1182,264 +692,26 @@ const LandingPage: React.FC = () => {
           {!showCurrencySelector && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
               {/* Transaction Parser Demo */}
-              <Card className="p-8 overflow-hidden">
-                <h3 className="text-2xl font-bold mb-4">Transaction Parser</h3>
-                <p className="text-muted-foreground mb-6">
-                  Describe your transaction in plain language and see how Kpege understands it.
-                </p>
-                
-                <div className="mb-6">
-                  <form onSubmit={handleTransactionSubmit} className="flex flex-col space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Input 
-                        value={transactionInput}
-                        onChange={(e) => setTransactionInput(e.target.value)}
-                        placeholder={`E.g., Spent 5000 ${selectedCurrency.code} on groceries yesterday`}
-                        disabled={isProcessing}
-                        className="flex-1"
-                      />
-                      <Button 
-                        type="submit"
-                        size="icon"
-                        disabled={!transactionInput.trim() || isProcessing}
-                        className="h-10 w-10 bg-green-700 hover:bg-green-800 text-white"
-                      >
-                        <Send className="h-5 w-5" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon"
-                        disabled={isProcessing}
-                        className="h-10 w-10"
-                        variant="outline"
-                      >
-                        <Mic className="h-5 w-5" />
-                      </Button>
-                    </div>
-                    
-                    {isProcessing && (
-                      <div className="text-sm text-muted-foreground">
-                        Processing your transaction...
-                      </div>
-                    )}
-                  </form>
-                </div>
-                
-                {parsedTransaction && (
-                  <div className="bg-slate-50 rounded-lg p-4">
-                    <h4 className="font-medium mb-4">Parsed Transaction</h4>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4 text-green-700" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">Description</p>
-                          <p className="font-medium">{parsedTransaction.description}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <PiggyBank className="h-4 w-4 text-green-700" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">Amount</p>
-                          <p className="font-medium">{selectedCurrency.symbol}{parsedTransaction.amount.toLocaleString()}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Tag className="h-4 w-4 text-green-700" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">Category</p>
-                          <p className="font-medium">{parsedTransaction.category_name}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-green-700" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">Date</p>
-                          <p className="font-medium">{parsedTransaction.date}</p>
-                        </div>
-                      </div>
-                      
-                      {parsedTransaction.is_transfer && (
-                        <>
-                          <div className="flex items-center gap-2">
-                            <CreditCard className="h-4 w-4 text-green-700" />
-                            <div>
-                              <p className="text-sm text-muted-foreground">From</p>
-                              <p className="font-medium">{parsedTransaction.source_account}</p>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <CreditCard className="h-4 w-4 text-green-700" />
-                            <div>
-                              <p className="text-sm text-muted-foreground">To</p>
-                              <p className="font-medium">{parsedTransaction.destination_account}</p>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    
-                    <div className="mt-4 flex justify-end">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => setParsedTransaction(null)}
-                      >
-                        Reset
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                
-                {!parsedTransaction && !isProcessing && (
-                  <div className="bg-slate-50 rounded-lg p-4 text-center">
-                    <p className="text-muted-foreground">Enter a transaction description to see the parsed result</p>
-                    <div className="mt-4 text-sm text-muted-foreground">
-                      <p>Try these examples:</p>
-                      <ul className="list-disc list-inside mt-2 space-y-1 text-left ml-4">
-                        <li>Spent 5000 on groceries yesterday</li>
-                        <li>Received 150000 salary today</li>
-                        <li>Paid 25000 for rent on Monday</li>
-                        <li>Transfer 10000 from savings to checking</li>
-                      </ul>
-                    </div>
-                  </div>
-                )}
-              </Card>
+              <ErrorBoundary 
+                fallbackTitle="Transaction Parser Demo Unavailable"
+                fallbackMessage="The transaction parser demo is temporarily experiencing issues. Please try again later."
+              >
+                <TransactionParserDemo selectedCurrency={selectedCurrency} />
+              </ErrorBoundary>
               
               {/* Receipt Scanner Demo */}
-              <Card className="p-8">
-                <h3 className="text-2xl font-bold mb-4">Receipt Scanner</h3>
-                <p className="text-muted-foreground mb-6">
-                  Upload a receipt to see how Kpege automatically extracts and categorizes your expenses.
-                </p>
-                
-                <div 
-                  className={`border-2 border-dashed rounded-lg p-8 text-center mb-6 ${
-                    isDragging ? 'border-green-700 bg-green-50' : 'border-slate-200'
-                  } ${receiptData && !receiptData.isLoading ? 'opacity-50' : ''}`}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setIsDragging(true);
-                  }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={handleDrop}
-                >
-                  <div className="flex flex-col items-center justify-center">
-                    <Upload className={`h-12 w-12 mb-4 ${isDragging ? 'text-green-700' : 'text-slate-300'}`} />
-                    <p className="text-muted-foreground mb-2">Drag & drop your receipt or</p>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileSelect}
-                      accept="image/*,application/pdf"
-                      className="hidden"
-                    />
-                    <Button 
-                      variant="outline" 
-                      className="mt-2"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isProcessing}
-                    >
-                      Browse Files
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Supports JPG, PNG, GIF, and PDF files
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-50 p-4 rounded-lg">
-                    <h4 className="font-medium mb-2">Total</h4>
-                    {isProcessing || (receiptData && receiptData.isLoading) ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="h-4 w-4 rounded-full bg-green-700 animate-pulse"></div>
-                        <p className="text-sm text-muted-foreground">Processing...</p>
-                      </div>
-                    ) : (
-                      <p className="text-lg font-bold">
-                        {receiptData ? receiptData.total : `${selectedCurrency.symbol}0.00`}
-                        {!receiptData && <span className="text-sm text-muted-foreground block">Upload a receipt to see</span>}
-                        
-                        {/* Show original currency if conversion happened */}
-                        {receiptData && 
-                          receiptData.originalCurrency && 
-                          receiptData.showOriginalCurrency && (
-                          <span className="text-xs text-muted-foreground block mt-1">
-                            Originally: {
-                              currencies.find(c => c.code === receiptData.originalCurrency)?.symbol || ''
-                            }{receiptData.originalAmount?.toFixed(2)} {receiptData.originalCurrency}
-                          </span>
-                        )}
-                      </p>
-                    )}
-                  </div>
-                  <div className="bg-slate-50 p-4 rounded-lg">
-                    <h4 className="font-medium mb-2">Category</h4>
-                    {isProcessing || (receiptData && receiptData.isLoading) ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="h-4 w-4 rounded-full bg-green-700 animate-pulse"></div>
-                        <p className="text-sm text-muted-foreground">Processing...</p>
-                      </div>
-                    ) : (
-                      <p className="text-lg font-bold">
-                        {receiptData ? receiptData.category : '-'}
-                        {!receiptData && <span className="text-sm text-muted-foreground block">Auto-categorization</span>}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                
-                {receiptData && receiptData.source && (
-                  <div className="mt-4 bg-slate-50 p-3 rounded-lg">
-                    <div className="text-center mb-2">
-                      <p className="text-sm text-muted-foreground">
-                        Processed from {receiptData.source} file
-                        {isLiveConversionEnabled && (
-                          <span className="block mt-1">
-                            <span className="inline-flex items-center text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                              <Globe className="h-3 w-3 mr-1" />
-                              Currency conversion active
-                            </span>
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    
-                    {/* Show additional details if available */}
-                    {receiptData.details && (
-                      <div className="mt-2 text-sm border-t pt-2">
-                        <h5 className="font-medium mb-1">Transaction Details</h5>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                          <div>
-                            <span className="text-muted-foreground">Date:</span> {receiptData.details.date}
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Type:</span> {receiptData.details.reference}
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Amount:</span> <span className="font-medium text-green-700">₦{receiptData.details.amount}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Bank:</span> {receiptData.details.bankName}
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">From:</span> {receiptData.details.sender}
-                          </div>
-                          <div className="col-span-2">
-                            <span className="text-muted-foreground">To:</span> {receiptData.details.beneficiary}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </Card>
+              <ErrorBoundary 
+                fallbackTitle="Receipt Scanner Demo Unavailable"
+                fallbackMessage="The receipt scanner demo is temporarily experiencing issues. Please try again later."
+              >
+                <ReceiptScannerDemo 
+                  selectedCurrency={currentCurrency}
+                  isLiveConversionEnabled={isLiveConversionEnabled}
+                  currentCurrency={currentCurrency}
+                  convertFromBase={convertFromBase}
+                  currencies={supportedCurrencies}
+                />
+              </ErrorBoundary>
             </div>
           )}
           
@@ -1452,7 +724,7 @@ const LandingPage: React.FC = () => {
                 className="text-sm"
               >
                 <Globe className="mr-2 h-4 w-4" />
-                Change currency from {selectedCurrency.name}
+                Change currency from {currentCurrency.name}
               </Button>
               <div className="flex flex-col items-center mt-2">
                 <p className="text-xs text-muted-foreground">
@@ -1487,9 +759,9 @@ const LandingPage: React.FC = () => {
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">What our users say</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">What Real Users Say About Kpege</h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Join thousands of people who have transformed their relationship with money.
+            Join many other users who've taken control of their finances with Kpege
             </p>
           </div>
           
@@ -1511,12 +783,12 @@ const LandingPage: React.FC = () => {
               <div className="flex items-center mb-4">
                 <div className="w-12 h-12 rounded-full bg-green-200 mr-4"></div>
                 <div>
-                  <h4 className="font-bold">Michael T.</h4>
+                  <h4 className="font-bold">Anjola T.</h4>
                   <p className="text-sm text-muted-foreground">Small Business Owner</p>
                 </div>
               </div>
               <p className="text-muted-foreground">
-                "The insights have helped me cut unnecessary expenses and save over $500 a month."
+                "The insights have helped me cut unnecessary expenses and save over $200 a month."
               </p>
             </Card>
             
@@ -1525,11 +797,11 @@ const LandingPage: React.FC = () => {
                 <div className="w-12 h-12 rounded-full bg-green-200 mr-4"></div>
                 <div>
                   <h4 className="font-bold">Lisa R.</h4>
-                  <p className="text-sm text-muted-foreground">Student</p>
+                  <p className="text-sm text-muted-foreground">InternationalStudent</p>
                 </div>
               </div>
               <p className="text-muted-foreground">
-                "As a student, I needed something simple yet powerful. Kpege is exactly that - it's perfect."
+                "As a student, I needed something simple to track my expenses on-the-go. Kpege is exactly that - it's perfect."
               </p>
             </Card>
           </div>
@@ -1539,7 +811,7 @@ const LandingPage: React.FC = () => {
       {/* CTA Section */}
       <section className="py-20 bg-green-700 text-white">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to transform your finances?</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-6">Transform Your Relationship With Money Today</h2>
           <p className="text-xl max-w-3xl mx-auto mb-8">
             Join Kpege today and experience the clarity and confidence that comes with knowing exactly where your money goes.
           </p>
@@ -1563,61 +835,56 @@ const LandingPage: React.FC = () => {
       </section>
       
       {/* Footer */}
-      <footer className="py-12 bg-slate-900 text-slate-300">
+      <footer className="py-10 bg-slate-900 text-slate-300">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between">
             <div className="mb-8 md:mb-0">
-              <img src="/kpege-logo-light.svg" alt="Kpege" className="h-10 mb-4" />
-              <p className="max-w-xs text-slate-400">
-                Making financial management calm and simple.
+              <img src="/kpege-logo-light.svg" alt="Kpege" className="h-8 mb-3" />
+              <p className="max-w-xs text-sm text-slate-400">
+                Making financial management simple and effortless.
               </p>
             </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
               <div>
-                <h4 className="font-bold mb-4">Product</h4>
-                <ul className="space-y-2">
-                  <li><a href="#" className="hover:text-white">Features</a></li>
-                  <li><a href="#" className="hover:text-white">Pricing</a></li>
-                  <li><a href="#" className="hover:text-white">Security</a></li>
+                <h4 className="font-bold mb-3 text-sm">Product</h4>
+                <ul className="space-y-1.5">
+                  <li><a href="#" onClick={(e) => { e.preventDefault(); scrollToFeatures(); }} className="text-xs hover:text-white">Features</a></li>
+                  <li><a href="#" className="text-xs hover:text-white">Pricing</a></li>
+                  <li><a href="#" className="text-xs hover:text-white">Security</a></li>
                 </ul>
               </div>
               
               <div>
-                <h4 className="font-bold mb-4">Company</h4>
-                <ul className="space-y-2">
-                  <li><a href="#" className="hover:text-white">About</a></li>
-                  <li><a href="#" className="hover:text-white">Blog</a></li>
-                  <li><a href="#" className="hover:text-white">Careers</a></li>
+                <h4 className="font-bold mb-3 text-sm">Company</h4>
+                <ul className="space-y-1.5">
+                  <li><a href="#" className="text-xs hover:text-white">About</a></li>
+                  <li><a href="#" className="text-xs hover:text-white">Blog</a></li>
+                  <li><a href="#" className="text-xs hover:text-white">Careers</a></li>
                 </ul>
               </div>
               
               <div>
-                <h4 className="font-bold mb-4">Resources</h4>
-                <ul className="space-y-2">
-                  <li><a href="#" className="hover:text-white">Help Center</a></li>
-                  <li><a href="#" className="hover:text-white">Contact</a></li>
-                  <li><a href="#" className="hover:text-white">Privacy</a></li>
+                <h4 className="font-bold mb-3 text-sm">Resources</h4>
+                <ul className="space-y-1.5">
+                  <li><a href="#" className="text-xs hover:text-white">Help Center</a></li>
+                  <li><a href="#" className="text-xs hover:text-white">Contact</a></li>
+                  <li><a href="#" className="text-xs hover:text-white">Privacy</a></li>
                 </ul>
               </div>
             </div>
           </div>
           
-          <div className="border-t border-slate-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p>© 2025 Kpege. All rights reserved.</p>
+          <div className="mt-8 pt-6 flex flex-col md:flex-row justify-between items-center" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <p className="text-xs">© 2025 Kpege. All rights reserved.</p>
             <div className="flex space-x-4 mt-4 md:mt-0">
-              <a href="#" className="hover:text-white">
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+              <a href="https://x.com/usekpege" target="_blank" rel="noopener noreferrer" className="hover:text-white">
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path>
                 </svg>
               </a>
-              <a href="#" className="hover:text-white">
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"></path>
-                </svg>
-              </a>
-              <a href="#" className="hover:text-white">
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+              <a href="https://www.instagram.com/usekpege" target="_blank" rel="noopener noreferrer" className="hover:text-white">
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
                 </svg>
               </a>
