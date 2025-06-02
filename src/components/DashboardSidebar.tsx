@@ -203,7 +203,7 @@ export function DashboardSidebar() {
         {navigation}
       </Sidebar>
       {/* Add CSS to adjust sidebar position */}
-      <style jsx="true" global="true">{`
+      <style>{`
         /* For Mobile Sidebar (SheetContent) */
         [data-sidebar="sidebar"][data-mobile="true"],
         /* For Desktop Sidebar (the fixed panel inside the data-state container) */
