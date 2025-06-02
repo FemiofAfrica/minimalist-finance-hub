@@ -120,11 +120,17 @@ export function DashboardSidebar() {
           <img
             src={theme === 'dark' ? '/kpege-logo-light.svg' : '/kpege-logo.svg'}
             alt="Kpege Logo"
-            className="h-12 w-auto bg-white dark:bg-transparent rounded-xl shadow-lg p-1 my-2"
+            className="h-10 w-auto bg-white dark:bg-transparent rounded-xl p-1 my-2"
             style={{ maxHeight: 48 }}
           />
         </Link>
       </div>
+      {isMobile && (
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-neutral-700">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Menu</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Select a page to navigate to.</p>
+        </div>
+      )}
       <div className="flex flex-1 flex-col overflow-hidden">
         <ScrollArea className="flex-1 px-6 pb-4">
           <nav className="flex flex-col gap-1">

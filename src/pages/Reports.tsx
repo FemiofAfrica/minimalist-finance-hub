@@ -5,6 +5,8 @@ import { Target, Calendar, TrendingUp } from "lucide-react";
 import MonthlyHistoryViewer from "@/components/dashboard/MonthlyHistoryViewer";
 import { hasMultipleMonthsOfData } from "@/services/monthlySnapshotService";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 const Reports = () => {
   const [hasMultipleMonths, setHasMultipleMonths] = useState<boolean | null>(null);
@@ -38,43 +40,49 @@ const Reports = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-8 container mx-auto px-4 pb-8 max-w-7xl">
+      <div className="container mx-auto px-4 py-6 md:py-8">
         {hasMultipleMonths ? (
-          <div className="space-y-8">
-            {/* Monthly History Section */}
-            <div className="space-y-4">
-              <p className="text-muted-foreground">
-                View your financial performance across different months with detailed breakdowns and trends.
-              </p>
-              <MonthlyHistoryViewer />
-            </div>
-
+          <div className="space-y-6 md:space-y-8">
+            <MonthlyHistoryViewer />
+            
             {/* Future Reports Section */}
-            <Card className="flex flex-col items-center justify-center p-12 text-center">
-              <TrendingUp className="w-16 h-16 text-primary mb-6" />
-              <h2 className="text-2xl font-semibold mb-4">More Reports Coming Soon!</h2>
-              <p className="text-muted-foreground max-w-md">
+            <Card className="p-6 md:p-8 text-center">
+              <TrendingUp className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 md:mb-6 text-muted-foreground" />
+              <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 md:mb-4">More Reports Coming Soon!</h3>
+              <p className="text-sm sm:text-base text-muted-foreground mb-4 md:mb-6 leading-relaxed max-w-2xl mx-auto">
                 We're working on additional comprehensive financial reports and analytics.
                 Stay tuned for more powerful insights into your financial journey.
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Have suggestions for reports you'd like to see?{' '}
+                <a 
+                  href="mailto:hello@kpege.com?subject=Report%20Suggestions" 
+                  className="text-green-600 hover:text-green-700 underline"
+                >
+                  Send them to hello@kpege.com
+                </a>
               </p>
             </Card>
           </div>
         ) : (
-          <Card className="flex flex-col items-center justify-center p-12 text-center min-h-[400px]">
-            <Target className="w-16 h-16 text-primary mb-6" />
-            <h2 className="text-2xl font-semibold mb-4">Build Your Financial History</h2>
-            <p className="text-muted-foreground max-w-md mb-6">
-              To unlock detailed reports and historical insights, you need to have transaction data 
-              spanning multiple months. Start adding transactions to your account, and come back 
-              next month to see your financial trends!
-            </p>
-            <div className="text-sm text-muted-foreground">
-              <p className="mb-2">Reports become available when you have:</p>
-              <ul className="text-left max-w-xs mx-auto space-y-1">
-                <li>• Transactions from at least 2 different months</li>
-                <li>• Consistent financial activity tracking</li>
-                <li>• Monthly balance history</li>
-              </ul>
+          <Card className="p-6 md:p-8 text-center">
+            <div className="max-w-md mx-auto">
+              <Calendar className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 md:mb-6 text-muted-foreground" />
+              <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 md:mb-4">No Historical Data Yet</h3>
+              <p className="text-sm sm:text-base text-muted-foreground mb-4 md:mb-6 leading-relaxed">
+                You need at least one completed month of transactions to view historical reports. 
+                Current month data is available on your Dashboard.
+              </p>
+              <div className="space-y-3">
+                <Link to="/dashboard">
+                  <Button className="w-full sm:w-auto text-sm md:text-base">
+                    View Current Month Data
+                  </Button>
+                </Link>
+                <div className="text-xs sm:text-sm text-muted-foreground">
+                  Come back after you've completed your first month!
+                </div>
+              </div>
             </div>
           </Card>
         )}

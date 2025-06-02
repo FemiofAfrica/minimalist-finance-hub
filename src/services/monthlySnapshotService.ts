@@ -510,4 +510,41 @@ export const hasMultipleMonthsOfData = async (): Promise<boolean> => {
     console.error('Error checking for multiple months of data:', error);
     return false;
   }
+};
+
+/**
+ * Get monthly snapshots for the last N months (excluding current month)
+ * This is used for historical reporting where we only want completed months
+ */
+export const getHistoricalMonthlySnapshots = async (limit: number = 12): Promise<MonthlySnapshot[]> => {
+  const exists = await checkTableExists();
+  if (!exists) {
+    console.log('Monthly snapshots table not available, returning empty array');
+    return [];
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  // Get current month and year to exclude from historical data
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
+
+  const { data, error } = await supabase
+    .from('monthly_snapshots')
+    .select('*')
+    .eq('user_id', user.id)
+    // Exclude current month using proper filter logic
+    .or(`year.lt.${currentYear},and(year.eq.${currentYear},month.lt.${currentMonth})`)
+    .order('year', { ascending: false })
+    .order('month', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching historical monthly snapshots:', error);
+    throw error;
+  }
+
+  return data || [];
 }; 

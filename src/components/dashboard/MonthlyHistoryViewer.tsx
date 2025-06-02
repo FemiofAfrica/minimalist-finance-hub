@@ -2,14 +2,32 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Calendar, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
-import { getMonthlySnapshots, MonthlySnapshot, initializeSnapshotsForExistingData } from '@/services/monthlySnapshotService';
+import { getHistoricalMonthlySnapshots, MonthlySnapshot, initializeSnapshotsForExistingData } from '@/services/monthlySnapshotService';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+type TimePeriod = '1' | '3' | '6' | '12' | '24';
+
+const PERIOD_OPTIONS = [
+  { value: '1', label: 'Last 1 Month', description: 'Previous completed month' },
+  { value: '3', label: 'Last 3 Months', description: 'Recent completed months' },
+  { value: '6', label: 'Last 6 Months', description: 'Half year completed data' },
+  { value: '12', label: 'Last 12 Months', description: 'Full year completed data' },
+  { value: '24', label: 'Last 24 Months', description: 'Two years completed data' },
+];
 
 const MonthlyHistoryViewer = () => {
   const [snapshots, setSnapshots] = useState<MonthlySnapshot[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('3');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { formatPossiblyConvertedCurrency, exchangeRates } = useCurrency();
@@ -33,9 +51,13 @@ const MonthlyHistoryViewer = () => {
       // First, initialize snapshots for existing data
       await initializeSnapshotsForExistingData();
       
-      // Then fetch the snapshots (get more than 3 to allow navigation)
-      const data = await getMonthlySnapshots(12);
+      // Then fetch the historical snapshots (excluding current month)
+      const periodLimit = parseInt(selectedPeriod);
+      const data = await getHistoricalMonthlySnapshots(periodLimit);
       setSnapshots(data);
+      
+      // Reset to first page when period changes
+      setCurrentIndex(0);
       
       if (showRefreshToast && data.length > 0) {
         toast({
@@ -59,10 +81,14 @@ const MonthlyHistoryViewer = () => {
 
   useEffect(() => {
     fetchSnapshots();
-  }, []);
+  }, [selectedPeriod]); // Re-fetch when period changes
 
   const handleRefresh = () => {
     fetchSnapshots(true);
+  };
+
+  const handlePeriodChange = (value: TimePeriod) => {
+    setSelectedPeriod(value);
   };
 
   const getMonthName = (month: number) => {
@@ -81,8 +107,19 @@ const MonthlyHistoryViewer = () => {
     return { value: Math.abs(change), isPositive: change > 0, isNeutral: change === 0 };
   };
 
+  // Calculate how many months to show at once based on selected period
+  const getMonthsToShow = () => {
+    const period = parseInt(selectedPeriod);
+    if (period === 1) return 1;
+    if (period <= 3) return Math.min(period, 3);
+    if (period <= 6) return 3; // Show 3 at a time for 6 months
+    return 3; // Always show 3 at a time for larger periods
+  };
+
+  const monthsToShow = getMonthsToShow();
+
   const goToPrevious = () => {
-    if (currentIndex < snapshots.length - 3) {
+    if (currentIndex < snapshots.length - monthsToShow) {
       setCurrentIndex(currentIndex + 1);
     }
   };
@@ -118,33 +155,54 @@ const MonthlyHistoryViewer = () => {
       <Card className="p-6">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
+            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl md:text-2xl font-bold">
+              <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
               Monthly History
             </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Updating...' : 'Refresh'}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
+                <SelectTrigger className="w-32 sm:w-36 md:w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PERIOD_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <div className="flex flex-col">
+                        <span className="text-sm md:text-base">{option.label}</span>
+                        <span className="text-xs text-muted-foreground">{option.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline text-xs sm:text-sm">{isRefreshing ? 'Updating...' : 'Refresh'}</span>
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8">
-            <div className="text-muted-foreground mb-4">
-              No historical data available yet. This could mean:
+          <div className="text-center py-6 md:py-8">
+            <div className="text-sm md:text-base text-muted-foreground mb-3 md:mb-4">
+              No completed monthly data available for the selected period yet. This could mean:
             </div>
-            <ul className="text-sm text-muted-foreground mb-6 text-left max-w-md mx-auto">
-              <li>• You haven't added transactions yet</li>
+            <ul className="text-xs sm:text-sm text-muted-foreground mb-4 md:mb-6 text-left max-w-md mx-auto space-y-1">
+              <li>• You haven't completed a full month of transactions yet</li>
+              <li>• No transactions exist for the selected completed months</li>
               <li>• Monthly snapshots need to be generated</li>
               <li>• Data is still being processed</li>
             </ul>
-            <Button onClick={handleRefresh} disabled={isRefreshing}>
+            <p className="text-xs sm:text-sm text-muted-foreground mb-3 md:mb-4">
+              <strong>Note:</strong> Historical data only shows completed months. Current month data is available on the Dashboard.
+            </p>
+            <Button onClick={handleRefresh} disabled={isRefreshing} className="text-sm md:text-base">
               {isRefreshing ? 'Processing...' : 'Generate Monthly History'}
             </Button>
           </div>
@@ -153,23 +211,35 @@ const MonthlyHistoryViewer = () => {
     );
   }
 
-  // Show exactly 3 months at a time
-  const visibleSnapshots = snapshots.slice(currentIndex, currentIndex + 3);
+  // Show exactly monthsToShow months at a time
+  const visibleSnapshots = snapshots.slice(currentIndex, currentIndex + monthsToShow);
   const hasNext = currentIndex > 0;
-  const hasPrevious = currentIndex < snapshots.length - 3;
+  const hasPrevious = currentIndex < snapshots.length - monthsToShow;
 
   return (
     <Card className="p-6">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
+          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl md:text-2xl font-bold">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
             Monthly History
-            <span className="text-sm font-normal text-muted-foreground">
-              (Last {Math.min(snapshots.length, 3)} months)
-            </span>
           </CardTitle>
           <div className="flex items-center gap-2">
+            <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
+              <SelectTrigger className="w-32 sm:w-36 md:w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PERIOD_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <div className="flex flex-col">
+                      <span className="text-sm md:text-base">{option.label}</span>
+                      <span className="text-xs text-muted-foreground">{option.description}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button
               variant="outline"
               size="sm"
@@ -177,10 +247,10 @@ const MonthlyHistoryViewer = () => {
               disabled={isRefreshing}
               className="flex items-center gap-2"
             >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Updating...' : 'Refresh'}
+              <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline text-xs sm:text-sm">{isRefreshing ? 'Updating...' : 'Refresh'}</span>
             </Button>
-            {snapshots.length > 3 && (
+            {snapshots.length > monthsToShow && (
               <>
                 <Button
                   variant="outline"
@@ -188,7 +258,7 @@ const MonthlyHistoryViewer = () => {
                   onClick={goToPrevious}
                   disabled={!hasPrevious}
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4" />
                 </Button>
                 <Button
                   variant="outline"
@@ -196,7 +266,7 @@ const MonthlyHistoryViewer = () => {
                   onClick={goToNext}
                   disabled={!hasNext}
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
                 </Button>
               </>
             )}
@@ -204,7 +274,7 @@ const MonthlyHistoryViewer = () => {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={`grid grid-cols-1 ${monthsToShow === 1 ? 'md:grid-cols-1' : monthsToShow === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-4`}>
           {visibleSnapshots.map((snapshot, index) => {
             const actualIndex = currentIndex + index;
             const previousSnapshot = snapshots[actualIndex + 1];
@@ -225,35 +295,21 @@ const MonthlyHistoryViewer = () => {
               ? calculateChange(snapshot.total_expenses, previousSnapshot.total_expenses)
               : { value: 0, isPositive: false, isNeutral: true };
 
-            const isCurrentMonth = () => {
-              const now = new Date();
-              return snapshot.year === now.getFullYear() && snapshot.month === (now.getMonth() + 1);
-            };
-
             return (
               <Card 
                 key={snapshot.snapshot_id} 
-                className={`border-2 hover:shadow-md transition-shadow ${
-                  isCurrentMonth() ? 'ring-2 ring-blue-500 ring-opacity-50' : ''
-                }`}
+                className="border-2 hover:shadow-md transition-shadow"
               >
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center justify-between">
-                    <span>{getMonthName(snapshot.month)} {snapshot.year}</span>
-                    {isCurrentMonth() && (
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                        Current
-                      </span>
-                    )}
+                <CardHeader className="pb-2 md:pb-3">
+                  <CardTitle className="text-base sm:text-lg md:text-xl font-bold">
+                    {getMonthName(snapshot.month)} {snapshot.year}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 md:space-y-4">
                   {/* Closing Balance */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        {isCurrentMonth() ? 'Current Balance' : 'Final Balance'}
-                      </span>
+                      <span className="text-xs sm:text-sm text-muted-foreground">Final Balance</span>
                       <div className={`flex items-center gap-1 text-xs ${
                         balanceChange.isNeutral 
                           ? 'text-gray-500' 
@@ -264,14 +320,14 @@ const MonthlyHistoryViewer = () => {
                         {balanceChange.isNeutral ? (
                           <span>-</span>
                         ) : balanceChange.isPositive ? (
-                          <TrendingUp className="w-3 h-3" />
+                          <TrendingUp className="w-2 h-2 sm:w-3 sm:h-3" />
                         ) : (
-                          <TrendingDown className="w-3 h-3" />
+                          <TrendingDown className="w-2 h-2 sm:w-3 sm:h-3" />
                         )}
-                        {balanceChange.value}%
+                        <span className="text-xs">{balanceChange.value}%</span>
                       </div>
                     </div>
-                    <div className="text-lg font-semibold">
+                    <div className="text-sm sm:text-base md:text-lg font-semibold">
                       {closingBalanceUsd !== null 
                         ? formatPossiblyConvertedCurrency(closingBalanceUsd)
                         : `₦${snapshot.closing_balance.toLocaleString()}`
@@ -282,7 +338,7 @@ const MonthlyHistoryViewer = () => {
                   {/* Income */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Income</span>
+                      <span className="text-xs sm:text-sm text-muted-foreground">Income</span>
                       <div className={`flex items-center gap-1 text-xs ${
                         incomeChange.isNeutral 
                           ? 'text-gray-500' 
@@ -293,14 +349,14 @@ const MonthlyHistoryViewer = () => {
                         {incomeChange.isNeutral ? (
                           <span>-</span>
                         ) : incomeChange.isPositive ? (
-                          <TrendingUp className="w-3 h-3" />
+                          <TrendingUp className="w-2 h-2 sm:w-3 sm:h-3" />
                         ) : (
-                          <TrendingDown className="w-3 h-3" />
+                          <TrendingDown className="w-2 h-2 sm:w-3 sm:h-3" />
                         )}
-                        {incomeChange.value}%
+                        <span className="text-xs">{incomeChange.value}%</span>
                       </div>
                     </div>
-                    <div className="text-emerald-600 font-medium">
+                    <div className="text-sm sm:text-base font-medium text-emerald-600">
                       {totalIncomeUsd !== null 
                         ? formatPossiblyConvertedCurrency(totalIncomeUsd)
                         : `₦${snapshot.total_income.toLocaleString()}`
@@ -311,7 +367,7 @@ const MonthlyHistoryViewer = () => {
                   {/* Expenses */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Expenses</span>
+                      <span className="text-xs sm:text-sm text-muted-foreground">Expenses</span>
                       <div className={`flex items-center gap-1 text-xs ${
                         expenseChange.isNeutral 
                           ? 'text-gray-500' 
@@ -322,14 +378,14 @@ const MonthlyHistoryViewer = () => {
                         {expenseChange.isNeutral ? (
                           <span>-</span>
                         ) : expenseChange.isPositive ? (
-                          <TrendingUp className="w-3 h-3" />
+                          <TrendingUp className="w-2 h-2 sm:w-3 sm:h-3" />
                         ) : (
-                          <TrendingDown className="w-3 h-3" />
+                          <TrendingDown className="w-2 h-2 sm:w-3 sm:h-3" />
                         )}
-                        {expenseChange.value}%
+                        <span className="text-xs">{expenseChange.value}%</span>
                       </div>
                     </div>
-                    <div className="text-red-600 font-medium">
+                    <div className="text-sm sm:text-base font-medium text-red-600">
                       {totalExpensesUsd !== null 
                         ? formatPossiblyConvertedCurrency(totalExpensesUsd)
                         : `₦${snapshot.total_expenses.toLocaleString()}`
@@ -339,8 +395,8 @@ const MonthlyHistoryViewer = () => {
 
                   {/* Transaction Count */}
                   <div className="space-y-1">
-                    <span className="text-sm text-muted-foreground">Transactions</span>
-                    <div className="text-lg font-medium">{snapshot.transaction_count}</div>
+                    <span className="text-xs sm:text-sm text-muted-foreground">Transactions</span>
+                    <div className="text-sm sm:text-base md:text-lg font-medium">{snapshot.transaction_count}</div>
                   </div>
                 </CardContent>
               </Card>
@@ -348,46 +404,57 @@ const MonthlyHistoryViewer = () => {
           })}
         </div>
         
-        {snapshots.length > 3 && (
+        {snapshots.length > monthsToShow && (
           <div className="text-center mt-4 text-sm text-muted-foreground">
-            Showing {Math.min(3, snapshots.length)} of {snapshots.length} months
-            {currentIndex > 0 && ` (${currentIndex + 1}-${Math.min(currentIndex + 3, snapshots.length)})`}
+            Showing {Math.min(monthsToShow, snapshots.length)} of {snapshots.length} completed months
+            {currentIndex > 0 && ` (${currentIndex + 1}-${Math.min(currentIndex + monthsToShow, snapshots.length)})`}
           </div>
         )}
         
-        {/* Summary stats */}
-        <div className="mt-6 pt-4 border-t border-border">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div>
-              <div className="text-sm text-muted-foreground">Total Months</div>
-              <div className="text-lg font-semibold">{snapshots.length}</div>
+        {/* Summary Section */}
+        {snapshots.length > 1 && (
+          <div className="mt-6 md:mt-8 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 p-4 md:p-6 bg-muted/50 rounded-lg">
+            <div className="text-center">
+              <div className="text-xs sm:text-sm text-muted-foreground">Completed Months</div>
+              <div className="text-lg sm:text-xl md:text-2xl font-bold">{snapshots.length}</div>
             </div>
-            <div>
-              <div className="text-sm text-muted-foreground">Avg Income</div>
-              <div className="text-lg font-semibold text-emerald-600">
-                {snapshots.length > 0 
-                  ? `₦${Math.round(snapshots.reduce((sum, s) => sum + s.total_income, 0) / snapshots.length).toLocaleString()}`
-                  : '₦0'
-                }
+            
+            <div className="text-center">
+              <div className="text-xs sm:text-sm text-muted-foreground">Avg Income</div>
+              <div className="text-base sm:text-lg md:text-xl font-bold text-emerald-600">
+                {(() => {
+                  const avgIncome = snapshots.length > 0 
+                    ? snapshots.reduce((sum, s) => sum + s.total_income, 0) / snapshots.length
+                    : 0;
+                  const avgIncomeUsd = convertNgnToUsd(avgIncome);
+                  return avgIncomeUsd !== null 
+                    ? formatPossiblyConvertedCurrency(avgIncomeUsd)
+                    : `₦${Math.round(avgIncome).toLocaleString()}`;
+                })()}
               </div>
             </div>
-            <div>
-              <div className="text-sm text-muted-foreground">Avg Expenses</div>
-              <div className="text-lg font-semibold text-red-600">
-                {snapshots.length > 0 
-                  ? `₦${Math.round(snapshots.reduce((sum, s) => sum + s.total_expenses, 0) / snapshots.length).toLocaleString()}`
-                  : '₦0'
-                }
+            
+            <div className="text-center">
+              <div className="text-xs sm:text-sm text-muted-foreground">Avg Expenses</div>
+              <div className="text-base sm:text-lg md:text-xl font-bold text-red-600">
+                {(() => {
+                  const avgExpenses = snapshots.length > 0 
+                    ? snapshots.reduce((sum, s) => sum + s.total_expenses, 0) / snapshots.length
+                    : 0;
+                  const avgExpensesUsd = convertNgnToUsd(avgExpenses);
+                  return avgExpensesUsd !== null 
+                    ? formatPossiblyConvertedCurrency(avgExpensesUsd)
+                    : `₦${Math.round(avgExpenses).toLocaleString()}`;
+                })()}
               </div>
             </div>
-            <div>
-              <div className="text-sm text-muted-foreground">Total Transactions</div>
-              <div className="text-lg font-semibold">
-                {snapshots.reduce((sum, s) => sum + s.transaction_count, 0)}
-              </div>
+            
+            <div className="text-center">
+              <div className="text-xs sm:text-sm text-muted-foreground">Total Transactions</div>
+              <div className="text-lg sm:text-xl md:text-2xl font-bold">{snapshots.reduce((sum, s) => sum + s.transaction_count, 0)}</div>
             </div>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );
