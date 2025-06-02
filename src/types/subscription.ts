@@ -30,32 +30,32 @@ export function mapAppFrequencyToDBFrequency(appFrequency: SubscriptionFrequency
 
   switch (upperAppFrequency) {
     case 'MONTHLY':
-      dbFrequency = 'monthly'; // DB expects lowercase
+      dbFrequency = 'MONTHLY'; // Try uppercase since lowercase is being rejected
       break;
     case 'ANNUALLY':
-      dbFrequency = 'ANNUALLY'; // Database expects this in uppercase
+      dbFrequency = 'ANNUALLY'; // This worked yesterday
       break;
     case 'QUARTERLY':
-      dbFrequency = 'quarterly'; // DB expects lowercase
+      dbFrequency = 'QUARTERLY'; // Try uppercase
       break;
     case 'WEEKLY':
-      dbFrequency = 'weekly'; // DB expects lowercase
+      dbFrequency = 'WEEKLY'; // Try uppercase
       break;
     case 'CUSTOM':
       // Assuming CUSTOM app frequency should map to a default like MONTHLY for the DB
-      console.log("Mapping 'CUSTOM' app frequency to 'monthly' for DB.");
-      dbFrequency = 'monthly'; 
+      console.log("Mapping 'CUSTOM' app frequency to 'MONTHLY' for DB.");
+      dbFrequency = 'MONTHLY'; 
       break;
     default:
       // This case handles if appFrequency is not one of the known SubscriptionFrequency types.
       // It could also be a defensive measure if a raw DB value was somehow passed in.
       const potentialDirectDBValue = String(appFrequency);
-      if (['monthly', 'quarterly', 'weekly', 'ANNUALLY'].includes(potentialDirectDBValue)) {
+      if (['MONTHLY', 'QUARTERLY', 'WEEKLY', 'ANNUALLY'].includes(potentialDirectDBValue)) {
           console.warn(`mapAppFrequencyToDBFrequency - App frequency '${appFrequency}' appears to be a direct DB value. Passing it through.`);
           dbFrequency = potentialDirectDBValue;
       } else {
-          console.warn(`mapAppFrequencyToDBFrequency - Unexpected app frequency: '${appFrequency}'. Defaulting to 'monthly' for DB as a fallback.`);
-          dbFrequency = 'monthly'; // Fallback to a common default
+          console.warn(`mapAppFrequencyToDBFrequency - Unexpected app frequency: '${appFrequency}'. Defaulting to 'MONTHLY' for DB as a fallback.`);
+          dbFrequency = 'MONTHLY'; // Fallback to a common default
       }
   }
   console.log(`mapAppFrequencyToDBFrequency - Mapped DB frequency: ${dbFrequency}`);

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Kpege Magic Link</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background-color: #e8f1df;
+            color: #000000;
+            line-height: 1.6;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #e8f1df;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #15803d;
+        }
+        .header {
+            background: linear-gradient(135deg, #15803d, #166534);
+            padding: 40px 20px;
+            text-align: center;
+            color: #ffffff;
+        }
+        .logo-container {
+            margin-bottom: 20px;
+        }
+        .logo {
+            max-width: 200px;
+            height: auto;
+        }
+        .tagline {
+            font-size: 18px;
+            margin: 0;
+            color: #ffffff;
+            font-weight: 300;
+        }
+        .content {
+            padding: 30px;
+        }
+        .magic-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #000000;
+            text-align: center;
+        }
+        .magic-message {
+            font-size: 16px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: #000000;
+        }
+        .cta-button {
+            display: block;
+            width: 280px;
+            margin: 0 auto 30px;
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #15803d, #166534);
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .features {
+            background-color: #e8f1df;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+            border: 1px solid #15803d;
+        }
+        .features h3 {
+            color: #000000;
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        .feature-icon {
+            width: 24px;
+            height: 24px;
+            background-color: #15803d;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .feature-icon::after {
+            content: "✓";
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .feature-text {
+            color: #000000;
+            flex: 1;
+        }
+        .security-note {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            border-left: 4px solid #f39c12;
+        }
+        .security-note p {
+            margin: 0;
+            color: #000000;
+            font-size: 14px;
+        }
+        .footer {
+            padding: 20px;
+            text-align: center;
+            background-color: #e8f1df;
+            border-top: 1px solid #15803d;
+        }
+        .footer-links {
+            margin-bottom: 20px;
+        }
+        .footer-links a {
+            color: #15803d;
+            text-decoration: none;
+            margin: 0 15px;
+            font-size: 14px;
+        }
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+        .social-links a {
+            color: #15803d;
+            text-decoration: none;
+            margin: 0 10px;
+            font-size: 14px;
+        }
+        .fallback-link {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #000000;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo-container">
+                <svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+                    <rect width="200" height="60" fill="#15803d" rx="5"/>
+                    <text x="100" y="35" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="24" font-weight="bold">Kpege</text>
+                </svg>
+            </div>
+            <p class="tagline">Personal Finance Management Made Simple</p>
+        </div>
+
+        <div class="content">
+            <h1 class="magic-title">Your Instant Access Link ⚡</h1>
+            
+            <p class="magic-message">
+                Click the button below to securely sign in to your Kpege account. No password needed!
+            </p>
+
+            <a href="{{.ConfirmationURL}}" class="cta-button">Sign In to Kpege</a>
+
+            <div class="features">
+                <h3>What's Waiting for You:</h3>
+                
+                <div class="feature-item">
+                    <div class="feature-icon"></div>
+                    <div class="feature-text">Your personalized financial dashboard with real-time insights</div>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon"></div>
+                    <div class="feature-text">Quick expense tracking with natural language input</div>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon"></div>
+                    <div class="feature-text">Smart categorization of your transactions and receipts</div>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon"></div>
+                    <div class="feature-text">AI-powered recommendations to help you save more</div>
+                </div>
+            </div>
+
+            <div class="security-note">
+                <p><strong>Security Note:</strong> This magic link will expire in 15 minutes for your protection. It can only be used once and is tied to your specific browser session.</p>
+            </div>
+
+            <div class="fallback-link">
+                <strong>Having trouble with the button?</strong><br>
+                Copy and paste this link into your browser:<br>
+                {{.ConfirmationURL}}
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-links">
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+                <a href="#">Help Center</a>
+            </div>
+            
+            <div class="social-links">
+                <a href="#">Twitter</a>
+                <a href="#">Instagram</a>
+            </div>
+            
+            <p style="margin: 15px 0 0 0; font-size: 12px; color: #000000;">
+                Need help? Reply to this email or visit our <a href="#" style="color: #15803d;">help center</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html> 

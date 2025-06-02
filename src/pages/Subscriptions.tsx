@@ -912,10 +912,13 @@ const SubscriptionsPage: React.FC = () => {
                   <div className="col-span-3">
                     <div className="flex space-x-2">
                       <Select
-                        value={formData.category_id || "uncategorized"}
+                        value={formData.category_id === "new" ? "new" : formData.category_id || "uncategorized"}
                         onValueChange={(value) => {
                           if (value === "new") {
-                            // This will trigger the UI for adding a new category
+                            setFormData(prev => ({
+                              ...prev,
+                              category_id: "new"
+                            }));
                             return;
                           }
                           if (value === "uncategorized") {
@@ -1161,10 +1164,13 @@ const SubscriptionsPage: React.FC = () => {
                   <div className="col-span-3">
                     <div className="flex space-x-2">
                       <Select
-                        value={formData.category_id || "uncategorized"}
+                        value={formData.category_id === "new" ? "new" : formData.category_id || "uncategorized"}
                         onValueChange={(value) => {
                           if (value === "new") {
-                            // This will trigger the UI for adding a new category
+                            setFormData(prev => ({
+                              ...prev,
+                              category_id: "new"
+                            }));
                             return;
                           }
                           if (value === "uncategorized") {

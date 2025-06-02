@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Identity - Kpege</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background-color: #e8f1df;
+            color: #000000;
+            line-height: 1.6;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #e8f1df;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #15803d;
+        }
+        .header {
+            background: linear-gradient(135deg, #15803d, #166534);
+            padding: 40px 20px;
+            text-align: center;
+            color: #ffffff;
+        }
+        .logo-container {
+            margin-bottom: 20px;
+        }
+        .logo {
+            max-width: 200px;
+            height: auto;
+        }
+        .tagline {
+            font-size: 18px;
+            margin: 0;
+            color: #ffffff;
+            font-weight: 300;
+        }
+        .content {
+            padding: 30px;
+        }
+        .verify-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #000000;
+            text-align: center;
+        }
+        .verify-message {
+            font-size: 16px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: #000000;
+        }
+        .verification-code {
+            background-color: #f8f9fa;
+            border: 2px solid #15803d;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: center;
+        }
+        .verification-code h3 {
+            color: #000000;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .code-display {
+            font-size: 32px;
+            font-weight: bold;
+            font-family: monospace;
+            color: #15803d;
+            letter-spacing: 4px;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+        .code-instructions {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #000000;
+        }
+        .security-alert {
+            background-color: #fee2e2;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            border-left: 4px solid #ef4444;
+        }
+        .security-alert p {
+            margin: 0;
+            color: #000000;
+            font-size: 14px;
+        }
+        .action-context {
+            background-color: #e8f1df;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+            border: 1px solid #15803d;
+        }
+        .action-context h3 {
+            color: #000000;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .context-item {
+            margin-bottom: 8px;
+            color: #000000;
+            font-size: 14px;
+        }
+        .footer {
+            padding: 20px;
+            text-align: center;
+            background-color: #e8f1df;
+            border-top: 1px solid #15803d;
+        }
+        .footer-links {
+            margin-bottom: 20px;
+        }
+        .footer-links a {
+            color: #15803d;
+            text-decoration: none;
+            margin: 0 15px;
+            font-size: 14px;
+        }
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+        .social-links a {
+            color: #15803d;
+            text-decoration: none;
+            margin: 0 10px;
+            font-size: 14px;
+        }
+        .emergency-contact {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #000000;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo-container">
+                <svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+                    <rect width="200" height="60" fill="#15803d" rx="5"/>
+                    <text x="100" y="35" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="24" font-weight="bold">Kpege</text>
+                </svg>
+            </div>
+            <p class="tagline">Personal Finance Management Made Simple</p>
+        </div>
+
+        <div class="content">
+            <h1 class="verify-title">Verify Your Identity 🔐</h1>
+            
+            <p class="verify-message">
+                For your security, we need to verify your identity. Please use the verification code below to complete your request.
+            </p>
+
+            <div class="verification-code">
+                <h3>Your Verification Code:</h3>
+                <div class="code-display">{{.Token}}</div>
+                <p class="code-instructions">
+                    Enter this code in the verification prompt to proceed safely.
+                </p>
+            </div>
+
+            <div class="action-context">
+                <h3>Why We're Asking for Verification:</h3>
+                <div class="context-item">• You're accessing sensitive account settings</div>
+                <div class="context-item">• A security-related change was requested</div>
+                <div class="context-item">• This helps protect your financial data</div>
+                <div class="context-item">• It's part of our commitment to your account security</div>
+            </div>
+
+            <div class="security-alert">
+                <p><strong>Security Notice:</strong> This verification code will expire in 10 minutes. Never share this code with anyone. If you didn't request this verification, please contact our security team immediately.</p>
+            </div>
+
+            <div class="emergency-contact">
+                <strong>Need immediate help?</strong><br>
+                If you're having trouble or didn't request this verification, please contact our security team right away. Your account security is our top priority.
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-links">
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+                <a href="#">Help Center</a>
+            </div>
+            
+            <div class="social-links">
+                <a href="#">Twitter</a>
+                <a href="#">Instagram</a>
+            </div>
+            
+            <p style="margin: 15px 0 0 0; font-size: 12px; color: #000000;">
+                Need help? Reply to this email or visit our <a href="#" style="color: #15803d;">help center</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html> 

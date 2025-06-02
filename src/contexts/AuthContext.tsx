@@ -153,6 +153,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Email is required.');
       }
       
+      // For debugging in development, try direct approach first
+      if (import.meta.env.DEV) {
+        console.log('Development mode: trying direct password reset...');
+        
+        try {
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/recover`, {
+            method: 'POST',
+            headers: {
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: email,
+              options: {
+                redirectTo: `${window.location.origin}/reset-password`,
+              }
+            }),
+          });
+          
+          if (response.ok) {
+            console.log('✅ Direct password reset successful');
+            return;
+          } else {
+            console.log('Direct approach failed, trying Supabase client...');
+            const errorText = await response.text();
+            console.log('Direct approach error:', errorText);
+          }
+        } catch (directError) {
+          console.log('Direct approach failed with error:', directError);
+          console.log('Falling back to Supabase client...');
+        }
+      }
+      
+      // Original Supabase client approach
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });

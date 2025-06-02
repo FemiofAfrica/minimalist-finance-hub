@@ -161,8 +161,8 @@ export const createSubscription = async (subscription: Omit<Subscription, 'subsc
     console.log("Attempting to debug subscription_frequency_check constraint");
 
     // Check that the mapped frequency is one of the accepted DB enum values
-    const validDBFrequencies = ['monthly', 'quarterly', 'weekly', 'ANNUALLY']; // These are the direct values expected by DB
-    // Note: 'CUSTOM' from app maps to 'monthly' for DB via mapAppFrequencyToDBFrequency
+    const validDBFrequencies = ['MONTHLY', 'QUARTERLY', 'WEEKLY', 'ANNUALLY']; // Try uppercase values
+    // Note: 'CUSTOM' from app maps to 'MONTHLY' for DB via mapAppFrequencyToDBFrequency
 
     if (!validDBFrequencies.includes(mappedFrequency)) {
       // This error should ideally not be hit if mapAppFrequencyToDBFrequency is comprehensive
@@ -250,28 +250,52 @@ export const createSubscription = async (subscription: Omit<Subscription, 'subsc
     (async () => {
       try {
         const userId = user.id;
-        // 1. Fetch the account named 'Default Account'
+        // 1. First try to fetch the account named 'Default Account'
+        let accountToUse = null;
         const { data: defaultAccount, error: defaultAccountError } = await supabase
           .from('accounts')
-          .select('account_id, currency') // Select currency too
+          .select('account_id, currency, name')
           .eq('user_id', userId)
-          .eq('name', 'Default Account') // Find account by name
+          .eq('name', 'Default Account')
           .limit(1)
           .maybeSingle();
 
         if (defaultAccountError) {
           console.error("Error fetching default account:", defaultAccountError);
-          return; // Don't proceed if fetching failed
         }
 
         if (defaultAccount && defaultAccount.account_id) {
-          console.log(`Found default account ${defaultAccount.account_id} for auto-creating transaction.`);
+          console.log(`Found default account "${defaultAccount.name}" (${defaultAccount.account_id}) for auto-creating transaction.`);
+          accountToUse = defaultAccount;
+        } else {
+          // Fallback: Try to get any available account
+          console.log("No 'Default Account' found, looking for any available account...");
+          const { data: anyAccount, error: anyAccountError } = await supabase
+            .from('accounts')
+            .select('account_id, currency, name')
+            .eq('user_id', userId)
+            .eq('is_active', true)
+            .limit(1)
+            .maybeSingle();
+
+          if (anyAccountError) {
+            console.error("Error fetching any account:", anyAccountError);
+            return;
+          }
+
+          if (anyAccount && anyAccount.account_id) {
+            console.log(`Using fallback account "${anyAccount.name}" (${anyAccount.account_id}) for auto-creating transaction.`);
+            accountToUse = anyAccount;
+          }
+        }
+
+        if (accountToUse && accountToUse.account_id) {
           // 2. Prepare transaction data
           const transactionInput = {
             user_id: userId,
-            account_id: defaultAccount.account_id,
+            account_id: accountToUse.account_id,
             amount: data.amount, // Amount from the subscription
-            currency: defaultAccount.currency || 'NGN', // Use account currency or default
+            currency: accountToUse.currency || 'NGN', // Use account currency or default
             type: (data.category_type?.toLowerCase() === 'income' ? 'income' : 'expense') as 'income' | 'expense', // Explicitly type as TransactionType
             date: data.next_billing_date, // Use the first billing date as the transaction date
             description: data.name, // Use subscription name as description
@@ -286,7 +310,7 @@ export const createSubscription = async (subscription: Omit<Subscription, 'subsc
           console.log("Successfully auto-created initial transaction.");
 
         } else {
-          console.log("No default account found, skipping auto-creation of initial transaction.");
+          console.log("No accounts found for this user, skipping auto-creation of initial transaction.");
         }
       } catch (autoCreateError) {
         console.error("Error during auto-creation of initial transaction:", autoCreateError);
