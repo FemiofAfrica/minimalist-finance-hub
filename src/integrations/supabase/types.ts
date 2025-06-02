@@ -164,6 +164,48 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_snapshots: {
+        Row: {
+          snapshot_id: string
+          user_id: string
+          year: number
+          month: number
+          opening_balance: number
+          closing_balance: number
+          total_income: number
+          total_expenses: number
+          transaction_count: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          snapshot_id?: string
+          user_id: string
+          year: number
+          month: number
+          opening_balance?: number
+          closing_balance?: number
+          total_income?: number
+          total_expenses?: number
+          transaction_count?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          snapshot_id?: string
+          user_id?: string
+          year?: number
+          month?: number
+          opening_balance?: number
+          closing_balance?: number
+          total_income?: number
+          total_expenses?: number
+          transaction_count?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string | null
@@ -274,68 +316,57 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          account_id: string | null
           amount: number
-          auto_renew: boolean
-          category_id: string | null
-          category_name: string | null
-          category_type: string | null
-          created_at: string
+          created_at: string | null
+          currency: string
           description: string | null
-          frequency: string
-          is_active: boolean
-          name: string
+          frequency: Database["public"]["Enums"]["subscription_frequency"]
+          is_active: boolean | null
+          last_processed_at: string | null
           next_billing_date: string
+          notes: string | null
           provider_id: string | null
-          reminder_days: number
+          provider_name: string | null
           subscription_id: string
-          updated_at: string
-          user_id: string | null
+          updated_at: string | null
+          user_id: string
         }
         Insert: {
+          account_id?: string | null
           amount: number
-          auto_renew?: boolean
-          category_id?: string | null
-          category_name?: string | null
-          category_type?: string | null
-          created_at?: string
+          created_at?: string | null
+          currency: string
           description?: string | null
-          frequency: string
-          is_active?: boolean
-          name: string
+          frequency: Database["public"]["Enums"]["subscription_frequency"]
+          is_active?: boolean | null
+          last_processed_at?: string | null
           next_billing_date: string
+          notes?: string | null
           provider_id?: string | null
-          reminder_days?: number
+          provider_name?: string | null
           subscription_id?: string
-          updated_at?: string
-          user_id?: string | null
+          updated_at?: string | null
+          user_id: string
         }
         Update: {
+          account_id?: string | null
           amount?: number
-          auto_renew?: boolean
-          category_id?: string | null
-          category_name?: string | null
-          category_type?: string | null
-          created_at?: string
+          created_at?: string | null
+          currency?: string
           description?: string | null
-          frequency?: string
-          is_active?: boolean
-          name?: string
+          frequency?: Database["public"]["Enums"]["subscription_frequency"]
+          is_active?: boolean | null
+          last_processed_at?: string | null
           next_billing_date?: string
+          notes?: string | null
           provider_id?: string | null
-          reminder_days?: number
+          provider_name?: string | null
           subscription_id?: string
-          updated_at?: string
-          user_id?: string | null
+          updated_at?: string | null
+          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "subscriptions_provider_id_fkey"
-            columns: ["provider_id"]
-            isOneToOne: false
-            referencedRelation: "subscription_providers"
-            referencedColumns: ["provider_id"]
-          },
-        ]
+        Relationships: []
       }
       transactions: {
         Row: {
@@ -463,7 +494,6 @@ export type Database = {
       transaction_details: {
         Row: {
           account_id: string | null
-          account_name: string | null
           amount: number | null
           category_id: string | null
           category_name: string | null
@@ -600,16 +630,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      calculate_monthly_snapshot: {
+        Args: {
+          p_user_id: string
+          p_year: number
+          p_month: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       account_type: "checking" | "savings" | "credit" | "investment"
       subscription_frequency: "monthly" | "yearly" | "quarterly" | "weekly"
-      subscription_status:
-        | "active"
-        | "inactive"
-        | "trial"
-        | "expired"
-        | "cancelled"
+      subscription_status: "active" | "cancelled" | "expired" | "pending"
       transaction_type: "income" | "expense" | "transfer"
     }
     CompositeTypes: {

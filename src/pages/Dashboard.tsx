@@ -11,6 +11,7 @@ import TransactionInput from '@/components/dashboard/TransactionInput';
 import TransactionsTable from '@/components/TransactionsTable';
 import IncomePieChart from '@/components/IncomePieChart';
 import ExpensesPieChart from '@/components/ExpensesPieChart';
+import { getCurrentMonthData, initializeSnapshotsForExistingData } from '@/services/monthlySnapshotService';
 
 const Dashboard = () => {
   const [totalBalance, setTotalBalance] = useState(0);
@@ -22,10 +23,59 @@ const Dashboard = () => {
   const [expenseChange, setExpenseChange] = useState(0);
   const [transactionCountChange, setTransactionCountChange] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
+
+  const initializeSnapshots = useCallback(async () => {
+    if (isInitialized) return;
+    
+    try {
+      console.log('Initializing monthly snapshots for existing data...');
+      await initializeSnapshotsForExistingData();
+      setIsInitialized(true);
+      console.log('Monthly snapshots initialized successfully');
+    } catch (error) {
+      console.error('Error initializing snapshots:', error);
+      // Don't show error to user as this is background initialization
+    }
+  }, [isInitialized]);
 
   const fetchDashboardData = useCallback(async () => {
     setIsLoading(true);
+    try {
+      // Initialize snapshots for existing data first (only once)
+      await initializeSnapshots();
+      
+      // Get current month data with proper balance carryover
+      const monthData = await getCurrentMonthData();
+      
+      setTotalBalance(monthData.balance);
+      setTotalIncome(monthData.income);
+      setTotalExpense(monthData.expense);
+      setMonthlyTransactionCount(monthData.transactionCount);
+      
+      setBalanceChange(monthData.balanceChange);
+      setIncomeChange(monthData.incomeChange);
+      setExpenseChange(monthData.expenseChange);
+      setTransactionCountChange(monthData.transactionCountChange);
+      
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load dashboard data',
+        variant: 'destructive',
+      });
+      
+      // Fallback to the old method if new service fails
+      await fetchDashboardDataFallback();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast, initializeSnapshots]);
+
+  // Fallback method using the old calculation approach
+  const fetchDashboardDataFallback = useCallback(async () => {
     try {
       // Fetch transactions for calculations
       const { data: transactions, error } = await supabase
@@ -79,7 +129,7 @@ const Dashboard = () => {
         });
       }
 
-      // Calculate balance
+      // Calculate balance (this is the old method without carryover)
       const balance = income - expense;
       const prevBalance = prevMonthIncome - prevMonthExpense;
 
@@ -99,16 +149,10 @@ const Dashboard = () => {
       setExpenseChange(calcPercentChange(expense, prevMonthExpense));
       setTransactionCountChange(calcPercentChange(currentMonthCount, prevMonthCount));
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load dashboard data',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
+      console.error('Error in fallback dashboard data fetch:', error);
+      throw error;
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     fetchDashboardData();
@@ -134,6 +178,15 @@ const Dashboard = () => {
     <DashboardLayout>
       <div className="container mx-auto px-4 pb-8 max-w-7xl">
         <div className="grid grid-cols-1 gap-6 mb-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Financial Overview</h3>
+            <Link 
+              to="/reports"
+              className="text-sm text-emerald-600 hover:text-emerald-700 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
+            >
+              View Historical Data
+            </Link>
+          </div>
           <StatCardsSection
             totalBalance={totalBalance}
             totalIncome={totalIncome}
