@@ -229,7 +229,7 @@ const TransferDialog = ({ isOpen, onClose, initialSourceAccountId }: TransferDia
         
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="sourceAccount" className="text-right">
+            <Label htmlFor="sourceAccount" className="text-center">
               From Account
             </Label>
             <Select 
@@ -247,7 +247,7 @@ const TransferDialog = ({ isOpen, onClose, initialSourceAccountId }: TransferDia
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="destinationAccount" className="text-right">
+            <Label htmlFor="destinationAccount" className="text-center">
               To Account
             </Label>
             <Select 
@@ -265,7 +265,7 @@ const TransferDialog = ({ isOpen, onClose, initialSourceAccountId }: TransferDia
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="amount" className="text-right">
+            <Label htmlFor="amount" className="text-center">
               Amount
             </Label>
             <Input
@@ -281,7 +281,7 @@ const TransferDialog = ({ isOpen, onClose, initialSourceAccountId }: TransferDia
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="date" className="text-right">
+            <Label htmlFor="date" className="text-center">
               Date
             </Label>
             <div className="col-span-3">
@@ -311,7 +311,7 @@ const TransferDialog = ({ isOpen, onClose, initialSourceAccountId }: TransferDia
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="description" className="text-right">
+            <Label htmlFor="description" className="text-center">
               Description
             </Label>
             <Input
@@ -324,7 +324,7 @@ const TransferDialog = ({ isOpen, onClose, initialSourceAccountId }: TransferDia
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="notes" className="text-right">
+            <Label htmlFor="notes" className="text-center">
               Notes
             </Label>
             <Input

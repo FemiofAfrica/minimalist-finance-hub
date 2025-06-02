@@ -616,12 +616,9 @@ const SubscriptionsPage: React.FC = () => {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="container mx-auto p-4 md:p-6">
-          <div className="flex-1 p-8">
-            <h1 className="text-2xl font-bold mb-6">Subscriptions</h1>
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-            </div>
+        <div className="container mx-auto px-4 py-6 md:py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
           </div>
         </div>
       </DashboardLayout>
@@ -630,74 +627,74 @@ const SubscriptionsPage: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto p-4 md:p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Subscriptions</h1>
-          <Button onClick={handleAddSubscription} className="flex items-center">
+      <div className="container mx-auto px-4 py-6 md:py-8">
+        <div className="flex justify-between items-center mb-6 md:mb-8">
+          <h3 className="text-lg font-semibold">Your Subscriptions</h3>
+          <Button onClick={handleAddSubscription} className="flex items-center text-sm md:text-base">
             <PlusCircle className="mr-2 h-4 w-4" /> Add Subscription
           </Button>
         </div>
         
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 md:mb-6 text-sm md:text-base">
             {error}
           </div>
         )}
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total Monthly Cost</CardTitle>
+            <CardHeader className="pb-2 md:pb-3">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Monthly Cost</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatAmount(calculateMonthlyTotal())}</div>
+              <div className="text-lg sm:text-xl md:text-2xl font-bold">{formatAmount(calculateMonthlyTotal())}</div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Active Subscriptions</CardTitle>
+            <CardHeader className="pb-2 md:pb-3">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Active Subscriptions</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-lg sm:text-xl md:text-2xl font-bold">
                 {subscriptions.filter(sub => sub.is_active).length}
               </div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Due Soon</CardTitle>
+            <CardHeader className="pb-2 md:pb-3">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Due Soon</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-lg sm:text-xl md:text-2xl font-bold">
                 {dueSoonCount}
               </div>
             </CardContent>
           </Card>
         </div>
         
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mb-6">
+        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mb-6 md:mb-8 flex justify-center">
           <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="active">Active</TabsTrigger>
-            <TabsTrigger value="inactive">Inactive</TabsTrigger>
+            <TabsTrigger value="all" className="text-sm md:text-base">All</TabsTrigger>
+            <TabsTrigger value="active" className="text-sm md:text-base">Active</TabsTrigger>
+            <TabsTrigger value="inactive" className="text-sm md:text-base">Inactive</TabsTrigger>
           </TabsList>
         </Tabs>
         
         {Object.keys(subscriptionsByCategory).length === 0 ? (
           <div className="text-center py-12">
-            <h3 className="text-lg font-medium text-gray-500">No subscriptions found</h3>
-            <p className="mt-2 text-gray-400">Add your first subscription to start tracking</p>
-            <Button onClick={handleAddSubscription} className="mt-4">
+            <h3 className="text-base sm:text-lg md:text-xl font-medium text-gray-500 mb-2 md:mb-3">No subscriptions found</h3>
+            <p className="text-sm sm:text-base text-gray-400 mb-4 md:mb-6">Add your first subscription to start tracking</p>
+            <Button onClick={handleAddSubscription} className="text-sm md:text-base">
               <PlusCircle className="mr-2 h-4 w-4" /> Add Subscription
             </Button>
           </div>
         ) : (
           Object.entries(subscriptionsByCategory).map(([category, subs]) => (
-            <div key={category} className="mb-8">
-              <h2 className="text-xl font-semibold mb-4">{category}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div key={category} className="mb-6 md:mb-8">
+              <h2 className="text-base sm:text-lg md:text-xl font-semibold mb-3 md:mb-4 text-center">{category}</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 {subs.map(subscription => {
                   const formatFrequency = (freq: string) => freq.charAt(0) + freq.slice(1).toLowerCase();
                   
@@ -803,7 +800,7 @@ const SubscriptionsPage: React.FC = () => {
             }}>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
+                  <Label htmlFor="name" className="text-center">
                     Name
                   </Label>
                   <div className="col-span-3">
@@ -831,7 +828,7 @@ const SubscriptionsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="description" className="text-right">
+                  <Label htmlFor="description" className="text-center">
                     Description
                   </Label>
                   <Textarea
@@ -844,7 +841,7 @@ const SubscriptionsPage: React.FC = () => {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="amount" className="text-right">
+                  <Label htmlFor="amount" className="text-center">
                     Amount
                   </Label>
                   <div className="col-span-3">
@@ -862,7 +859,7 @@ const SubscriptionsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="frequency" className="text-right">
+                  <Label htmlFor="frequency" className="text-center">
                     Frequency
                   </Label>
                   <Select
@@ -881,14 +878,14 @@ const SubscriptionsPage: React.FC = () => {
                   </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="next_billing_date" className="text-right">
+                  <Label htmlFor="next_billing_date" className="text-center">
                     Next Billing
                   </Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant={"outline"}
-                        className="col-span-3 justify-start text-left font-normal"
+                        className="col-span-3 justify-center text-center font-normal"
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {formData.next_billing_date ? (
@@ -909,7 +906,7 @@ const SubscriptionsPage: React.FC = () => {
                   </Popover>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="category" className="text-right">
+                  <Label htmlFor="category" className="text-center">
                     Category
                   </Label>
                   <div className="col-span-3">
@@ -979,7 +976,7 @@ const SubscriptionsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="text-right">
+                  <div className="text-center">
                     <Label htmlFor="is_active">Active</Label>
                   </div>
                   <div className="flex items-center space-x-2 col-span-3">
@@ -996,7 +993,7 @@ const SubscriptionsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="text-right">
+                  <div className="text-center">
                     <Label htmlFor="auto_renew">Auto-renew</Label>
                   </div>
                   <div className="flex items-center space-x-2 col-span-3">
@@ -1013,7 +1010,7 @@ const SubscriptionsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="reminder_days" className="text-right">
+                  <Label htmlFor="reminder_days" className="text-center">
                     Remind me
                   </Label>
                   <div className="col-span-3 flex items-center gap-2">
@@ -1052,7 +1049,7 @@ const SubscriptionsPage: React.FC = () => {
             }}>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
+                  <Label htmlFor="name" className="text-center">
                     Name
                   </Label>
                   <div className="col-span-3">
@@ -1080,7 +1077,7 @@ const SubscriptionsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="description" className="text-right">
+                  <Label htmlFor="description" className="text-center">
                     Description
                   </Label>
                   <Textarea
@@ -1093,7 +1090,7 @@ const SubscriptionsPage: React.FC = () => {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="amount" className="text-right">
+                  <Label htmlFor="amount" className="text-center">
                     Amount
                   </Label>
                   <div className="col-span-3">
@@ -1111,7 +1108,7 @@ const SubscriptionsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="frequency" className="text-right">
+                  <Label htmlFor="frequency" className="text-center">
                     Frequency
                   </Label>
                   <Select
@@ -1130,14 +1127,14 @@ const SubscriptionsPage: React.FC = () => {
                   </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="next_billing_date" className="text-right">
+                  <Label htmlFor="next_billing_date" className="text-center">
                     Next Billing
                   </Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant={"outline"}
-                        className="col-span-3 justify-start text-left font-normal"
+                        className="col-span-3 justify-center text-center font-normal"
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {formData.next_billing_date ? (
@@ -1158,7 +1155,7 @@ const SubscriptionsPage: React.FC = () => {
                   </Popover>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="category" className="text-right">
+                  <Label htmlFor="category" className="text-center">
                     Category
                   </Label>
                   <div className="col-span-3">
@@ -1228,7 +1225,7 @@ const SubscriptionsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="text-right">
+                  <div className="text-center">
                     <Label htmlFor="is_active">Active</Label>
                   </div>
                   <div className="flex items-center space-x-2 col-span-3">
@@ -1245,7 +1242,7 @@ const SubscriptionsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <div className="text-right">
+                  <div className="text-center">
                     <Label htmlFor="auto_renew">Auto-renew</Label>
                   </div>
                   <div className="flex items-center space-x-2 col-span-3">
@@ -1262,7 +1259,7 @@ const SubscriptionsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="reminder_days" className="text-right">
+                  <Label htmlFor="reminder_days" className="text-center">
                     Remind me
                   </Label>
                   <div className="col-span-3 flex items-center gap-2">

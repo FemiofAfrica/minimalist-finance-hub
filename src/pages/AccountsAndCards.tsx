@@ -72,29 +72,22 @@ const AccountsAndCards = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-8 container mx-auto px-4 pb-8 max-w-7xl">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold">Accounts & Cards</h1>
-          <p className="text-muted-foreground">
-            Manage your bank accounts and cards to better track your finances.
-          </p>
-        </div>
-        
+      <div className="container mx-auto px-4 py-6 md:py-8 max-w-7xl">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="accounts" className="flex items-center gap-2">
+          <TabsList className="grid w-full max-w-md grid-cols-2 mb-6 md:mb-8">
+            <TabsTrigger value="accounts" className="flex items-center gap-2 text-sm md:text-base">
               <Building className="h-4 w-4" />
               Accounts
             </TabsTrigger>
-            <TabsTrigger value="cards" className="flex items-center gap-2">
+            <TabsTrigger value="cards" className="flex items-center gap-2 text-sm md:text-base">
               <CreditCard className="h-4 w-4" />
               Cards
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="accounts" className="mt-6">
+          <TabsContent value="accounts" className="mt-0">
             <AccountsList />
           </TabsContent>
-          <TabsContent value="cards" className="mt-6">
+          <TabsContent value="cards" className="mt-0">
             {/* Key prop forces the component to re-render when accountId changes */}
             <CardsList 
               key={`cards-list-${currentAccountId || 'all'}`} 

@@ -208,7 +208,7 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
         
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
+            <Label htmlFor="name" className="text-center">
               Account Name
             </Label>
             <Input
@@ -221,7 +221,7 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="type" className="text-right">
+            <Label htmlFor="type" className="text-center">
               Account Type
             </Label>
             <Select 
@@ -242,9 +242,8 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="institution" className="text-right flex items-center justify-end gap-1">
-              <Building className="h-4 w-4" />
-              Bank
+            <Label htmlFor="institution" className="text-center">
+              Institution
             </Label>
             <div className="col-span-3">
               <BankSelector
@@ -256,7 +255,7 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="account_number" className="text-right">
+            <Label htmlFor="account_number" className="text-center">
               Account Number
             </Label>
             <Input
@@ -269,7 +268,7 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="currency" className="text-right">
+            <Label htmlFor="currency" className="text-center">
               Currency
             </Label>
             <Select 
@@ -289,7 +288,7 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="balance" className="text-right">
+            <Label htmlFor="balance" className="text-center">
               Balance
             </Label>
             <Input
@@ -303,7 +302,7 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
           </div>
 
           <div className="grid grid-cols-4 items-center gap-4">
-            <div className="text-right">
+            <div className="text-center">
               <Label htmlFor="is_default" className="mr-2">Default Account</Label>
             </div>
             <div className="col-span-3 flex items-center space-x-2">
@@ -319,7 +318,7 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
           </div>
 
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="custom_tags" className="text-right">
+            <Label htmlFor="custom_tags" className="text-center">
               Tags
             </Label>
             <div className="col-span-3 space-y-2">

@@ -387,7 +387,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
+              <Label htmlFor="description" className="text-center">
                 Description
               </Label>
               <Input
@@ -403,7 +403,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="amount" className="text-right">
+              <Label htmlFor="amount" className="text-center">
                 Amount
               </Label>
               <Input
@@ -415,7 +415,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="type" className="text-right">
+              <Label htmlFor="type" className="text-center">
                 Type
               </Label>
               <Select
@@ -438,7 +438,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
+              <Label htmlFor="name" className="text-center">
                 Category
               </Label>
               <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
@@ -555,7 +555,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
               </Popover>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="date" className="text-right">
+              <Label htmlFor="date" className="text-center">
                 Date
               </Label>
               <Input
@@ -572,7 +572,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="notes" className="text-right">
+              <Label htmlFor="notes" className="text-center">
                 Notes
               </Label>
               <Input
@@ -588,7 +588,7 @@ const TransactionRow = ({ transaction, onTransactionUpdate }: TransactionRowProp
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="account_id" className="text-right">
+              <Label htmlFor="account_id" className="text-center">
                 Account
               </Label>
               <Select

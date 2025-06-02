@@ -133,7 +133,7 @@ export function DefaultAccountSetup() {
         
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
+            <Label htmlFor="name" className="text-center">
               Account Name
             </Label>
             <Input
@@ -146,7 +146,7 @@ export function DefaultAccountSetup() {
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="type" className="text-right">
+            <Label htmlFor="type" className="text-center">
               Account Type
             </Label>
             <Select 
@@ -167,7 +167,7 @@ export function DefaultAccountSetup() {
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="institution" className="text-right">
+            <Label htmlFor="institution" className="text-center">
               Institution
             </Label>
             <div className="col-span-3">
@@ -180,7 +180,7 @@ export function DefaultAccountSetup() {
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="balance" className="text-right">
+            <Label htmlFor="balance" className="text-center">
               Balance
             </Label>
             <Input

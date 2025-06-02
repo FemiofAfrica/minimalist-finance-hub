@@ -368,7 +368,7 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
       
       <div className="grid gap-4">
         <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="name" className="text-right">
+          <Label htmlFor="name" className="text-center">
             Card Name
           </Label>
           <Input
@@ -381,7 +381,7 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
         </div>
         
         <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="type" className="text-right">
+          <Label htmlFor="type" className="text-center">
             Card Type
           </Label>
           <Select 
@@ -401,7 +401,7 @@ const CardDialog = ({ isOpen, onClose, card, accountId }: CardDialogProps) => {
         </div>
         
         <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="last_four" className="text-right">
+          <Label htmlFor="last_four" className="text-center">
             Last 4 Digits
           </Label>
           <Input

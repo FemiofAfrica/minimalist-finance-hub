@@ -335,12 +335,7 @@ export default function Settings() {
   
   return (
     <DashboardLayout>
-      <div className="container max-w-5xl mx-auto py-8 px-4">
-        <div className="flex flex-col items-center mb-10 text-center">
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground mt-2 text-lg">Manage your account settings and preferences</p>
-        </div>
-        
+      <div className="container max-w-5xl mx-auto px-4 py-6 md:py-8">
         <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
         <Tabs defaultValue="profile" className="w-full">
             <div className="border-b">
@@ -350,19 +345,19 @@ export default function Settings() {
                   <TabsList className={`grid ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'} bg-transparent rounded-none p-0`}>
                     <TabsTrigger 
                       value="profile" 
-                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-14 rounded-none border-b-2 border-transparent font-medium text-base transition-all px-8 mx-4"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-12 md:h-14 rounded-none border-b-2 border-transparent font-medium text-sm md:text-base transition-all px-4 md:px-8 mx-2 md:mx-4"
                     >
                       Profile
                     </TabsTrigger>
                     <TabsTrigger 
                       value="preferences" 
-                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-14 rounded-none border-b-2 border-transparent font-medium text-base transition-all px-8 mx-4"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-12 md:h-14 rounded-none border-b-2 border-transparent font-medium text-sm md:text-base transition-all px-4 md:px-8 mx-2 md:mx-4"
                     >
                       Preferences
                     </TabsTrigger>
                     <TabsTrigger 
                       value="security" 
-                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-14 rounded-none border-b-2 border-transparent font-medium text-base transition-all px-8 mx-4"
+                      className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-12 md:h-14 rounded-none border-b-2 border-transparent font-medium text-sm md:text-base transition-all px-4 md:px-8 mx-2 md:mx-4"
                     >
                       Security
                     </TabsTrigger>
@@ -370,7 +365,7 @@ export default function Settings() {
                     {true && (
                       <TabsTrigger 
                         value="admin" 
-                        className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-14 rounded-none border-b-2 border-transparent font-medium text-base transition-all px-8 mx-4"
+                        className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-12 md:h-14 rounded-none border-b-2 border-transparent font-medium text-sm md:text-base transition-all px-4 md:px-8 mx-2 md:mx-4"
                       >
                         Admin
                       </TabsTrigger>
@@ -381,54 +376,54 @@ export default function Settings() {
             </div>
           
             {/* Profile Tab */}
-            <TabsContent value="profile" className="p-8">
+            <TabsContent value="profile" className="p-4 md:p-8">
               <div className="max-w-3xl mx-auto">
-                <h2 className="text-2xl font-semibold mb-8 text-center">Personal Details</h2>
-                <div className="grid gap-y-6 mb-10">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-6 md:mb-8 text-center">Personal Details</h2>
+                <div className="grid gap-y-4 md:gap-y-6 mb-8 md:mb-10">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
-                    <Label htmlFor="firstName" className="font-medium text-base sm:w-1/3 sm:text-right">First Name</Label>
+                    <Label htmlFor="firstName" className="font-medium text-sm md:text-base sm:w-1/3 text-center">First Name</Label>
                     <Input 
                       id="firstName" 
                       value={firstName} 
                       onChange={(e) => setFirstName(e.target.value)} 
                       placeholder="Enter your first name"
-                      className="bg-background sm:w-2/3 text-base"
+                      className="bg-background sm:w-2/3 text-sm md:text-base"
                     />
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
-                    <Label htmlFor="lastName" className="font-medium text-base sm:w-1/3 sm:text-right">Last Name</Label>
+                    <Label htmlFor="lastName" className="font-medium text-sm md:text-base sm:w-1/3 text-center">Last Name</Label>
                     <Input 
                       id="lastName" 
                       value={lastName} 
                       onChange={(e) => setLastName(e.target.value)} 
                       placeholder="Enter your last name"
-                      className="bg-background sm:w-2/3 text-base"
+                      className="bg-background sm:w-2/3 text-sm md:text-base"
                     />
                   </div>
                 </div>
                 
-                <h2 className="text-2xl font-semibold mb-8 text-center">Account Information</h2>
-                <div className="grid gap-y-6 mb-10">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-6 md:mb-8 text-center">Account Information</h2>
+                <div className="grid gap-y-4 md:gap-y-6 mb-8 md:mb-10">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
-                    <Label htmlFor="email" className="font-medium text-base sm:w-1/3 sm:text-right">Email Address</Label>
+                    <Label htmlFor="email" className="font-medium text-sm md:text-base sm:w-1/3 text-center">Email Address</Label>
                     <div className="sm:w-2/3">
                   <Input 
                     id="email" 
                     value={email} 
                     disabled 
                     placeholder="Your email address"
-                        className="bg-muted/50 w-full text-base"
+                        className="bg-muted/50 w-full text-sm md:text-base"
                   />
-                      <p className="text-sm text-muted-foreground text-left mt-1">Your email address cannot be changed</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground text-center mt-1">Your email address cannot be changed</p>
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex justify-center border-t pt-6 mt-8">
+                <div className="flex justify-center border-t pt-4 md:pt-6 mt-6 md:mt-8">
                 <Button 
                   onClick={handleProfileUpdate} 
                   disabled={loading}
-                    className="px-8 py-2 h-11 text-base"
+                    className="px-6 md:px-8 py-2 h-10 md:h-11 text-sm md:text-base"
                 >
                     {loading ? 'Saving...' : 'Update Profile'}
                 </Button>
@@ -437,16 +432,16 @@ export default function Settings() {
           </TabsContent>
           
             {/* Preferences Tab */}
-            <TabsContent value="preferences" className="p-8">
+            <TabsContent value="preferences" className="p-4 md:p-8">
               <div className="max-w-3xl mx-auto">
-                <h2 className="text-2xl font-semibold mb-8 text-center">Currency Settings</h2>
-                <div className="mb-10">
-                  <div className="grid gap-y-6">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-6 md:mb-8 text-center">Currency Settings</h2>
+                <div className="mb-8 md:mb-10">
+                  <div className="grid gap-y-4 md:gap-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
-                      <Label htmlFor="currency" className="font-medium text-base sm:w-1/3 sm:text-right">Display Currency</Label>
+                      <Label htmlFor="currency" className="font-medium text-sm md:text-base sm:w-1/3 text-center">Display Currency</Label>
                       <div className="sm:w-2/3">
                         <Select value={currency} onValueChange={setCurrency}>
-                          <SelectTrigger id="currency" className="bg-background w-full text-base">
+                          <SelectTrigger id="currency" className="bg-background w-full text-sm md:text-base">
                       <SelectValue placeholder="Select currency" />
                     </SelectTrigger>
                     <SelectContent>
@@ -457,16 +452,16 @@ export default function Settings() {
                       ))}
                     </SelectContent>
                   </Select>
-                        <p className="text-sm text-muted-foreground text-left mt-1">Choose your preferred currency for displaying amounts</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground text-center mt-1">Choose your preferred currency for displaying amounts</p>
                       </div>
                     </div>
                   </div>
                 </div>
                 
-                <h2 className="text-2xl font-semibold mb-8 text-center">Appearance & Features</h2>
-                <div className="space-y-6 mb-10">
-                  <div className="flex items-center justify-between p-4 bg-muted/5 rounded-lg border">
-                    <Label htmlFor="darkMode" className="font-medium text-base">Dark Mode</Label>
+                <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-6 md:mb-8 text-center">Appearance & Features</h2>
+                <div className="space-y-4 md:space-y-6 mb-8 md:mb-10">
+                  <div className="flex items-center justify-between p-3 md:p-4 bg-muted/5 rounded-lg border">
+                    <Label htmlFor="darkMode" className="font-medium text-sm md:text-base">Dark Mode</Label>
                   <Switch 
                     id="darkMode" 
                     checked={darkMode}
@@ -474,10 +469,10 @@ export default function Settings() {
                   />
                 </div>
                 
-                  <div className="flex items-center justify-between p-4 bg-muted/5 rounded-lg border">
+                  <div className="flex items-center justify-between p-3 md:p-4 bg-muted/5 rounded-lg border">
                     <div>
-                      <Label htmlFor="liveConversion" className="font-medium text-base text-left block">Live Currency Conversion</Label>
-                      <p className="text-sm text-muted-foreground mt-1">Convert amounts automatically to your selected currency</p>
+                      <Label htmlFor="liveConversion" className="font-medium text-sm md:text-base block">Live Currency Conversion</Label>
+                      <p className="text-xs sm:text-sm text-muted-foreground mt-1">Convert amounts automatically to your selected currency</p>
                   </div>
                   <Switch 
                     id="liveConversion" 
@@ -487,11 +482,11 @@ export default function Settings() {
                   </div>
                 </div>
                 
-                <div className="flex justify-center border-t pt-6 mt-8">
+                <div className="flex justify-center border-t pt-4 md:pt-6 mt-6 md:mt-8">
                 <Button 
                   onClick={handlePreferencesUpdate} 
                   disabled={loading}
-                    className="px-8 py-2 h-11 text-base"
+                    className="px-6 md:px-8 py-2 h-10 md:h-11 text-sm md:text-base"
                 >
                     {loading ? 'Saving...' : 'Save Preferences'}
                 </Button>
@@ -500,43 +495,43 @@ export default function Settings() {
           </TabsContent>
           
             {/* Security Tab */}
-            <TabsContent value="security" className="p-8">
+            <TabsContent value="security" className="p-4 md:p-8">
               <div className="max-w-3xl mx-auto">
-                <h2 className="text-2xl font-semibold mb-8 text-center">Change Password</h2>
-                <div className="grid gap-y-6 mb-10">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-6 md:mb-8 text-center">Change Password</h2>
+                <div className="grid gap-y-4 md:gap-y-6 mb-8 md:mb-10">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
-                    <Label htmlFor="currentPassword" className="font-medium text-base sm:w-1/3 sm:text-right">Current Password</Label>
+                    <Label htmlFor="currentPassword" className="font-medium text-sm md:text-base sm:w-1/3 text-center">Current Password</Label>
                     <Input 
                       id="currentPassword" 
                       type="password" 
                       placeholder="Enter your current password"
-                      className="bg-background sm:w-2/3 text-base"
+                      className="bg-background sm:w-2/3 text-sm md:text-base"
                     />
                   </div>
                   
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
-                    <Label htmlFor="newPassword" className="font-medium text-base sm:w-1/3 sm:text-right">New Password</Label>
+                    <Label htmlFor="newPassword" className="font-medium text-sm md:text-base sm:w-1/3 text-center">New Password</Label>
                     <Input 
                       id="newPassword" 
                       type="password" 
                       placeholder="Enter your new password"
-                      className="bg-background sm:w-2/3 text-base"
+                      className="bg-background sm:w-2/3 text-sm md:text-base"
                     />
                   </div>
                   
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
-                    <Label htmlFor="confirmPassword" className="font-medium text-base sm:w-1/3 sm:text-right">Confirm New Password</Label>
+                    <Label htmlFor="confirmPassword" className="font-medium text-sm md:text-base sm:w-1/3 text-center">Confirm New Password</Label>
                     <Input 
                       id="confirmPassword" 
                       type="password" 
                       placeholder="Confirm your new password"
-                      className="bg-background sm:w-2/3 text-base"
+                      className="bg-background sm:w-2/3 text-sm md:text-base"
                     />
                   </div>
                 </div>
                 
-                <div className="flex justify-center border-t pt-6 mt-8">
-                  <Button className="px-8 py-2 h-11 text-base">
+                <div className="flex justify-center border-t pt-4 md:pt-6 mt-6 md:mt-8">
+                  <Button className="px-6 md:px-8 py-2 h-10 md:h-11 text-sm md:text-base">
                     Change Password
                   </Button>
                 </div>
@@ -545,46 +540,43 @@ export default function Settings() {
             
             {/* Admin Tab */}
             {isAdmin && (
-              <TabsContent value="admin" className="p-8">
+              <TabsContent value="admin" className="p-4 md:p-8">
                 <div className="max-w-3xl mx-auto">
-                  <h2 className="text-2xl font-semibold mb-8 text-center">Admin Controls</h2>
+                  <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-6 md:mb-8 text-center">Admin Controls</h2>
                   
                   <Card className="shadow-sm border mb-10">
-                    <CardHeader>
-                      <CardDescription>
-                        Manage application-wide settings and send notifications.
-                      </CardDescription>
-                    </CardHeader>
                     <CardContent className="space-y-6">
                       {/* Global Notifications Section (existing) */}
-                      <div>
+                      <div className="text-center">
                         <h3 className="text-lg font-medium mb-2">Global Notifications</h3>
                         <p className="text-sm text-muted-foreground mb-4">
                           Send a notification to all users. Use with caution.
                         </p>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="notificationTitle">Title</Label>
+                      <div className="space-y-2 text-center">
+                        <Label htmlFor="notificationTitle" className="block">Title</Label>
                         <Input 
                           id="notificationTitle" 
                           value={notificationTitle}
                           onChange={(e) => setNotificationTitle(e.target.value)}
                           placeholder="E.g., New Feature Alert!"
+                          className="text-center"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="notificationMessage">Message</Label>
+                      <div className="space-y-2 text-center">
+                        <Label htmlFor="notificationMessage" className="block">Message</Label>
                         <Textarea
                           id="notificationMessage"
                           value={notificationMessage}
                           onChange={(e) => setNotificationMessage(e.target.value)}
                           placeholder="Describe the notification in detail..."
                           rows={3}
+                          className="text-center"
                         />
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="notificationType">Type</Label>
+                        <div className="space-y-2 text-center">
+                          <Label htmlFor="notificationType" className="block">Type</Label>
                           <Select value={notificationType} onValueChange={(value) => setNotificationType(value as NotificationType)}>
                             <SelectTrigger>
                               <SelectValue placeholder="Select type" />
@@ -597,19 +589,20 @@ export default function Settings() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="notificationLink">Optional Link (URL)</Label>
+                        <div className="space-y-2 text-center">
+                          <Label htmlFor="notificationLink" className="block">Optional Link (URL)</Label>
                           <Input 
                             id="notificationLink" 
                             type="url"
                             value={notificationLink}
                             onChange={(e) => setNotificationLink(e.target.value)}
                             placeholder="https://yourapp.com/features/new"
+                            className="text-center"
                           />
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="expiryDays">Expires In (days)</Label>
+                      <div className="space-y-2 text-center">
+                        <Label htmlFor="expiryDays" className="block">Expires In (days)</Label>
                         <Input 
                           id="expiryDays" 
                           type="number"
@@ -617,18 +610,21 @@ export default function Settings() {
                           onChange={(e) => setExpiryDays(Number(e.target.value))}
                           min="1"
                           placeholder="Default: 7 days"
+                          className="text-center"
                         />
                       </div>
-                      <Button onClick={handleSendToAll} disabled={isSending || !notificationTitle || !notificationMessage}>
-                        {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Send to All Users
-                      </Button>
+                      <div className="text-center">
+                        <Button onClick={handleSendToAll} disabled={isSending || !notificationTitle || !notificationMessage}>
+                          {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          Send to All Users
+                        </Button>
+                      </div>
                       {/* End of Global Notifications Section */}
 
                       <Separator className="my-6" /> {/* Separator between sections */}
 
                       {/* Support Banner Configuration Section (New) */}
-                      <div>
+                      <div className="text-center">
                         <h3 className="text-lg font-medium mb-2">Support Banner Configuration</h3>
                         <p className="text-sm text-muted-foreground mb-1">
                           Update the text displayed in the global support banner.
@@ -645,23 +641,23 @@ export default function Settings() {
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          <div>
-                            <Label htmlFor="supportBannerText">Banner Text</Label>
+                          <div className="text-center">
+                            <Label htmlFor="supportBannerText" className="block">Banner Text</Label>
                             <Textarea
                               id="supportBannerText"
                               value={supportBannerText}
                               onChange={(e) => setSupportBannerText(e.target.value)}
                               placeholder="Enter the support banner text here..."
                               rows={3}
-                              className="mt-1"
+                              className="mt-1 text-center"
                             />
                             <p className="text-xs text-muted-foreground mt-1">
                               This text will be displayed in the scrolling banner at the top of the application.
                             </p>
                           </div>
                           
-                          <div>
-                            <Label>Banner Preview</Label>
+                          <div className="text-center">
+                            <Label className="block">Banner Preview</Label>
                             <div className="mt-1 border rounded-md p-2 relative">
                               <SupportBanner 
                                 initialText={supportBannerText || "Preview: Enter text above to see it here."}
@@ -676,10 +672,12 @@ export default function Settings() {
                             )}
                           </div>
 
-                          <Button onClick={handleSaveBannerText} disabled={isSavingBannerText || isLoadingBannerText}>
-                            {isSavingBannerText ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Save Banner Text
-                          </Button>
+                          <div className="text-center">
+                            <Button onClick={handleSaveBannerText} disabled={isSavingBannerText || isLoadingBannerText}>
+                              {isSavingBannerText ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                              Save Banner Text
+                            </Button>
+                          </div>
                         </div>
                       )}
                       {/* End of Support Banner Configuration Section */}

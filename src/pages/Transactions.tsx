@@ -125,55 +125,54 @@ const Transactions = () => {
   
   return (
     <DashboardLayout>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Transactions</h1>
-        <p className="text-muted-foreground">Manage and review all your financial transactions.</p>
-      </div>
-      
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3 mb-8">
-        <Card>
-          <CardHeader className="pb-2 text-center">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Income</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center">
-              <ArrowUpRight className="w-5 h-5 mr-2 text-emerald-500" />
-              <div className="text-2xl font-bold">{formatNaira(totalIncome)}</div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2 text-center">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Expenses</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center">
-              <ArrowDownRight className="w-5 h-5 mr-2 text-red-500" />
-              <div className="text-2xl font-bold">{formatNaira(totalExpense)}</div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2 text-center">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Net Balance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center">
-              <DollarSign className="w-5 h-5 mr-2 text-primary" />
-              <div className="text-2xl font-bold">{formatNaira(totalIncome - totalExpense)}</div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">All Transactions</h2>
-          <OCRTransactionDialog onTransactionCreated={handleTransactionCreated} />
+      <div className="container mx-auto px-4 py-6 md:py-8">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 mb-6 md:mb-8">
+          <Card>
+            <CardHeader className="pb-2 md:pb-3 text-center">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Income</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center">
+                <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-emerald-500" />
+                <div className="text-lg sm:text-xl md:text-2xl font-bold">{formatNaira(totalIncome)}</div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2 md:pb-3 text-center">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Expenses</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center">
+                <ArrowDownRight className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-red-500" />
+                <div className="text-lg sm:text-xl md:text-2xl font-bold">{formatNaira(totalExpense)}</div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2 md:pb-3 text-center">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Net Balance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center">
+                <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-primary" />
+                <div className="text-lg sm:text-xl md:text-2xl font-bold">{formatNaira(totalIncome - totalExpense)}</div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-        <PaginatedTransactionsTable />
+        
+        <div className="space-y-4 md:space-y-6">
+          <div className="text-center mb-6 md:mb-8">
+            <h3 className="text-lg font-semibold">All Transactions</h3>
+          </div>
+          <div className="flex justify-end mb-4">
+            <OCRTransactionDialog onTransactionCreated={handleTransactionCreated} />
+          </div>
+          <PaginatedTransactionsTable />
+        </div>
       </div>
     </DashboardLayout>
   );

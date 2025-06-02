@@ -47,11 +47,9 @@ const Reports = () => {
             
             {/* Future Reports Section */}
             <Card className="p-6 md:p-8 text-center">
-              <TrendingUp className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 md:mb-6 text-muted-foreground" />
-              <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 md:mb-4">More Reports Coming Soon!</h3>
-              <p className="text-sm sm:text-base text-muted-foreground mb-4 md:mb-6 leading-relaxed max-w-2xl mx-auto">
+              <h3 className="text-lg font-semibold mb-2 md:mb-4">More Reports Coming Soon!</h3>
+              <p className="text-sm md:text-base text-muted-foreground mb-4 md:mb-6">
                 We're working on additional comprehensive financial reports and analytics.
-                Stay tuned for more powerful insights into your financial journey.
               </p>
               <p className="text-xs sm:text-sm text-muted-foreground">
                 Have suggestions for reports you'd like to see?{' '}
@@ -68,8 +66,8 @@ const Reports = () => {
           <Card className="p-6 md:p-8 text-center">
             <div className="max-w-md mx-auto">
               <Calendar className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 md:mb-6 text-muted-foreground" />
-              <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 md:mb-4">No Historical Data Yet</h3>
-              <p className="text-sm sm:text-base text-muted-foreground mb-4 md:mb-6 leading-relaxed">
+              <h3 className="text-lg font-semibold mb-2 md:mb-4">No Historical Data Yet</h3>
+              <p className="text-sm md:text-base text-muted-foreground mb-4 md:mb-6">
                 You need at least one completed month of transactions to view historical reports. 
                 Current month data is available on your Dashboard.
               </p>

@@ -279,7 +279,7 @@ const Login = () => {
               {isSignUp ? (
                 <>
                   <div>
-                    <Label htmlFor="firstName" className="text-base font-medium text-black text-left w-full">First Name</Label>
+                    <Label htmlFor="firstName" className="text-base font-medium text-black text-center w-full">First Name</Label>
                     <Input
                       id="firstName"
                       type="text"
@@ -291,7 +291,7 @@ const Login = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="lastName" className="text-base font-medium text-black text-left w-full">Last Name</Label>
+                    <Label htmlFor="lastName" className="text-base font-medium text-black text-center w-full">Last Name</Label>
                     <Input
                       id="lastName"
                       type="text"
@@ -303,7 +303,7 @@ const Login = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="email" className="text-base font-medium text-black text-left w-full">Email</Label>
+                    <Label htmlFor="email" className="text-base font-medium text-black text-center w-full">Email</Label>
                     <Input
                       id="email"
                       type="email"
@@ -315,7 +315,7 @@ const Login = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="password" className="text-base font-medium text-black text-left w-full">Password</Label>
+                    <Label htmlFor="password" className="text-base font-medium text-black text-center w-full">Password</Label>
                     <div className="relative">
                       <Input
                         id="password"
@@ -346,7 +346,7 @@ const Login = () => {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="confirmPassword" className="text-base font-medium text-black text-left w-full">Confirm Password</Label>
+                    <Label htmlFor="confirmPassword" className="text-base font-medium text-black text-center w-full">Confirm Password</Label>
                     <div className="relative">
                       <Input
                         id="confirmPassword"
@@ -374,7 +374,7 @@ const Login = () => {
               ) : (
                 <>
                   <div>
-                    <Label htmlFor="email" className="text-base font-medium text-black text-left w-full">Email</Label>
+                    <Label htmlFor="email" className="text-base font-medium text-black text-center w-full">Email</Label>
                     <Input
                       id="email"
                       type="email"
@@ -386,7 +386,7 @@ const Login = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="password" className="text-base font-medium text-black text-left w-full">Password</Label>
+                    <Label htmlFor="password" className="text-base font-medium text-black text-center w-full">Password</Label>
                     <div className="relative">
                       <Input
                         id="password"
