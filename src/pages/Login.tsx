@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from '@/integrations/supabase/client';
 import PublicLayout from '@/components/PublicLayout';
 import { Eye, EyeOff } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -42,6 +43,8 @@ const Login = () => {
   const [isCodeResetView, setIsCodeResetView] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  // Captcha token state
+  const [captchaToken, setCaptchaToken] = useState<string | undefined>(undefined);
   // Password visibility toggles
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -99,6 +102,17 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate captcha token
+    if (!captchaToken) {
+      toast({
+        title: "Captcha required",
+        description: "Please complete the captcha verification to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       setIsProcessing(true);
       if (isSignUp) {
@@ -107,7 +121,7 @@ const Login = () => {
           throw new Error("Passwords don't match");
         }
         
-        await signUp(email, password, { firstName, lastName });
+        await signUp(email, password, { firstName, lastName }, captchaToken);
         
         // Track signup event
         FinanceEvents.trackSignUp({
@@ -120,7 +134,7 @@ const Login = () => {
           description: "Please check your email to verify your account.",
         });
       } else {
-        await signIn(email, password);
+        await signIn(email, password, captchaToken);
         navigate('/dashboard');
         toast({
           title: "Welcome back!",
@@ -129,6 +143,9 @@ const Login = () => {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An error occurred";
+      
+      // Reset captcha token on error so user needs to complete it again
+      setCaptchaToken(undefined);
       
       // Check if error is about existing user
       if (errorMessage.includes("already registered") || errorMessage.includes("already exists") || errorMessage.includes("try logging in")) {
@@ -426,10 +443,26 @@ const Login = () => {
               </div>
             )}
 
+            {/* Cloudflare Turnstile Captcha */}
+            <div className="flex justify-center mb-4">
+              <Turnstile
+                siteKey={import.meta.env.TURNSTILE_SITE_KEY}
+                onSuccess={(token) => {
+                  setCaptchaToken(token);
+                }}
+                onError={() => {
+                  setCaptchaToken(undefined);
+                }}
+                onExpire={() => {
+                  setCaptchaToken(undefined);
+                }}
+              />
+            </div>
+
             <Button 
               type="submit" 
               className="px-8 py-2 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent rounded-md mx-auto block text-base min-w-[120px] w-full sm:w-auto"
-              disabled={isProcessing || (isSignUp && (!passwordsMatch || confirmPassword.length === 0))}
+              disabled={isProcessing || !captchaToken || (isSignUp && (!passwordsMatch || confirmPassword.length === 0))}
             >
               {isProcessing ? 'Processing...' : isSignUp ? 'Sign Up' : 'Sign In'}
             </Button>
@@ -437,7 +470,11 @@ const Login = () => {
             <div className="text-center space-y-2">
               <button
                 type="button"
-                onClick={() => setIsSignUp(!isSignUp)}
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  // Reset captcha when switching modes
+                  setCaptchaToken(undefined);
+                }}
                 className="text-sm text-[#217a39] hover:text-black transition-colors"
               >
                 {isSignUp

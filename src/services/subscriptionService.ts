@@ -290,22 +290,34 @@ export const createSubscription = async (subscription: Omit<Subscription, 'subsc
         }
 
         if (accountToUse && accountToUse.account_id) {
-          // 2. Prepare transaction data
+          // Check if the billing date is in the future
+          const billingDate = new Date(data.next_billing_date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+          billingDate.setHours(0, 0, 0, 0);
+          
+          if (billingDate > today) {
+            console.log(`Billing date ${data.next_billing_date} is in the future. Skipping auto-creation of transaction.`);
+            console.log("Future transactions require explicit user confirmation.");
+            return; // Don't create transaction for future dates
+          }
+          
+          // 2. Prepare transaction data (only for past/current dates)
           const transactionInput = {
             user_id: userId,
             account_id: accountToUse.account_id,
             amount: data.amount, // Amount from the subscription
             currency: accountToUse.currency || 'NGN', // Use account currency or default
             type: (data.category_type?.toLowerCase() === 'income' ? 'income' : 'expense') as 'income' | 'expense', // Explicitly type as TransactionType
-            date: data.next_billing_date, // Use the first billing date as the transaction date
+            date: data.next_billing_date, // Use the subscription's billing date as the transaction date
             description: data.name, // Use subscription name as description
             category_id: data.category_id,
-            notes: "Automatically created for new subscription.",
+            notes: `Automatically created for subscription on ${data.next_billing_date}.`,
             subscription_id: data.subscription_id // Link it immediately
           };
 
           // 3. Create the transaction
-          console.log("Attempting to auto-create transaction:", transactionInput);
+          console.log("Attempting to auto-create transaction for past/current date:", transactionInput);
           await createTransaction(transactionInput); // Call the imported function
           console.log("Successfully auto-created initial transaction.");
 

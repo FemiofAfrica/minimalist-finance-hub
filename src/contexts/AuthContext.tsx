@@ -6,8 +6,8 @@ type AuthContextType = {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, metadata?: { firstName?: string; lastName?: string }) => Promise<void>;
+  signIn: (email: string, password: string, captchaToken?: string) => Promise<void>;
+  signUp: (email: string, password: string, metadata?: { firstName?: string; lastName?: string }, captchaToken?: string) => Promise<void>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithTwitter: () => Promise<void>;
@@ -39,12 +39,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const signIn = async (email: string, password: string, captchaToken?: string) => {
+    const authOptions: any = { email, password };
+    
+    // Add captcha token if provided
+    if (captchaToken) {
+      authOptions.options = { captchaToken };
+    }
+    
+    const { error } = await supabase.auth.signInWithPassword(authOptions);
     if (error) throw error;
   };
 
-  const signUp = async (email: string, password: string, metadata?: { firstName?: string; lastName?: string }) => {
+  const signUp = async (email: string, password: string, metadata?: { firstName?: string; lastName?: string }, captchaToken?: string) => {
     try {
       // Validate input data
       if (!email || !password) {
@@ -65,14 +72,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         created_at: new Date().toISOString()
       };
 
-      const { data, error } = await supabase.auth.signUp({
+      const authOptions: any = {
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/dashboard`,
           data: userMetadata
         }
-      });
+      };
+
+      // Add captcha token if provided
+      if (captchaToken) {
+        authOptions.options.captchaToken = captchaToken;
+      }
+
+      const { data, error } = await supabase.auth.signUp(authOptions);
 
       if (error) {
         console.error('Signup error:', error);
@@ -153,40 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Email is required.');
       }
       
-      // For debugging in development, try direct approach first
-      if (import.meta.env.DEV) {
-        console.log('Development mode: trying direct password reset...');
-        
-        try {
-          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/recover`, {
-            method: 'POST',
-            headers: {
-              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: email,
-              options: {
-                redirectTo: `${window.location.origin}/reset-password`,
-              }
-            }),
-          });
-          
-          if (response.ok) {
-            console.log('✅ Direct password reset successful');
-            return;
-          } else {
-            console.log('Direct approach failed, trying Supabase client...');
-            const errorText = await response.text();
-            console.log('Direct approach error:', errorText);
-          }
-        } catch (directError) {
-          console.log('Direct approach failed with error:', directError);
-          console.log('Falling back to Supabase client...');
-        }
-      }
-      
-      // Original Supabase client approach
+      // Use the standard Supabase client method - this is fast and reliable
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });

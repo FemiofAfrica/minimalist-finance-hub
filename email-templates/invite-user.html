@@ -3,261 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>You're Invited to Join Kpege</title>
+    <title>You're Invited to Kpege</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Open+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
             padding: 20px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            background-color: #e8f1df;
-            color: #000000;
+            font-family: 'Open Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background-color: #ffffff;
+            color: #333;
             line-height: 1.6;
         }
-        .email-container {
-            max-width: 600px;
+        .container {
+            max-width: 500px;
             margin: 0 auto;
-            background-color: #e8f1df;
+            background: #e8f1df;
             border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid #15803d;
-        }
-        .header {
-            background: linear-gradient(135deg, #15803d, #166534);
-            padding: 40px 20px;
-            text-align: center;
-            color: #ffffff;
-        }
-        .logo-container {
-            margin-bottom: 20px;
+            padding: 40px;
+            border: 1px solid #e0e0e0;
         }
         .logo {
-            max-width: 200px;
-            height: auto;
+            text-align: center;
+            margin-bottom: 30px;
         }
-        .tagline {
-            font-size: 18px;
-            margin: 0;
-            color: #ffffff;
-            font-weight: 300;
+        .logo-badge {
+            display: inline-block;
+            color: black;
+            padding: 24px 24px;
+            border-radius: 8px;
+            font-family: 'Montserrat', Arial, sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            text-decoration: none;
+            letter-spacing: 0.5px;
         }
         .content {
-            padding: 30px;
-        }
-        .invite-title {
-            font-size: 24px;
-            margin-bottom: 20px;
-            color: #000000;
             text-align: center;
         }
-        .invite-message {
-            font-size: 16px;
-            margin-bottom: 30px;
-            text-align: center;
-            color: #000000;
+        .content h2 {
+            font-family: 'Montserrat', Arial, sans-serif;
         }
-        .cta-button {
-            display: block;
-            width: 280px;
-            margin: 0 auto 30px;
-            padding: 16px 32px;
-            background: linear-gradient(135deg, #15803d, #166534);
-            color: #ffffff;
+        .button {
+            display: inline-block;
+            background: #15803d;
+            color: white !important;
+            padding: 12px 30px;
             text-decoration: none;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: 600;
-            font-size: 16px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .benefits {
-            background-color: #e8f1df;
-            border-radius: 8px;
-            padding: 25px;
-            margin: 20px 0;
-            border: 1px solid #15803d;
-        }
-        .benefits h3 {
-            color: #000000;
-            margin-top: 0;
-            margin-bottom: 20px;
-            font-size: 20px;
-        }
-        .benefit-item {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 15px;
-        }
-        .benefit-icon {
-            width: 24px;
-            height: 24px;
-            background-color: #15803d;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-            flex-shrink: 0;
-            margin-top: 2px;
-        }
-        .benefit-icon::after {
-            content: "✓";
-            color: #ffffff;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        .benefit-text {
-            color: #000000;
-            flex: 1;
-        }
-        .testimonial {
-            background-color: #f8fffe;
-            border-left: 4px solid #15803d;
-            padding: 20px;
-            margin: 25px 0;
-            border-radius: 0 8px 8px 0;
-        }
-        .testimonial-text {
-            font-style: italic;
-            color: #000000;
-            margin-bottom: 15px;
-            font-size: 16px;
-        }
-        .testimonial-author {
-            color: #000000;
-            font-weight: 600;
-            font-size: 14px;
-        }
-        .privacy-note {
-            background-color: #f0f9f0;
-            border: 1px solid #d4edda;
             border-radius: 6px;
-            padding: 15px;
             margin: 20px 0;
-            border-left: 4px solid #28a745;
-        }
-        .privacy-note p {
-            margin: 0;
-            color: #000000;
-            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Open Sans', Arial, sans-serif;
         }
         .footer {
-            padding: 20px;
+            margin-top: 30px;
             text-align: center;
-            background-color: #e8f1df;
-            border-top: 1px solid #15803d;
-        }
-        .footer-links {
-            margin-bottom: 20px;
-        }
-        .footer-links a {
-            color: #15803d;
-            text-decoration: none;
-            margin: 0 15px;
             font-size: 14px;
-        }
-        .footer-links a:hover {
-            text-decoration: underline;
-        }
-        .social-links a {
-            color: #15803d;
-            text-decoration: none;
-            margin: 0 10px;
-            font-size: 14px;
-        }
-        .fallback-link {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #fff;
-            border-radius: 6px;
-            font-size: 14px;
-            color: #000000;
-            word-break: break-all;
+            color: #666;
         }
     </style>
 </head>
 <body>
-    <div class="email-container">
-        <div class="header">
-            <div class="logo-container">
-                <svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
-                    <rect width="200" height="60" fill="#15803d" rx="5"/>
-                    <text x="100" y="35" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="24" font-weight="bold">Kpege</text>
-                </svg>
-            </div>
-            <p class="tagline">Personal Finance Management Made Simple</p>
+    <div class="container">
+        <div class="logo">
+            <div class="logo-badge">KPEGE</div>
         </div>
-
+        
         <div class="content">
-            <h1 class="invite-title">You're Invited to Join Kpege! 🎉</h1>
+            <h2>You're Invited!</h2>
+            <p>You've been invited to join Kpege. Click the button below to accept the invitation and create your account:</p>
             
-            <p class="invite-message">
-                {{.Email}} has invited you to experience the future of personal finance management. Join thousands of users who have transformed their financial lives with Kpege.
-            </p>
-
-            <a href="{{.ConfirmationURL}}" class="cta-button">Accept Invitation</a>
-
-            <div class="benefits">
-                <h3>Why Join Kpege?</h3>
-                
-                <div class="benefit-item">
-                    <div class="benefit-icon"></div>
-                    <div class="benefit-text">Track expenses effortlessly with natural language - just say "spent $50 on groceries"</div>
-                </div>
-                
-                <div class="benefit-item">
-                    <div class="benefit-icon"></div>
-                    <div class="benefit-text">Scan receipts instantly and let AI categorize your purchases automatically</div>
-                </div>
-                
-                <div class="benefit-item">
-                    <div class="benefit-icon"></div>
-                    <div class="benefit-text">Get personalized insights to help you save money and reach your financial goals</div>
-                </div>
-                
-                <div class="benefit-item">
-                    <div class="benefit-icon"></div>
-                    <div class="benefit-text">See all your accounts, subscriptions, and spending in one beautiful dashboard</div>
-                </div>
-                
-                <div class="benefit-item">
-                    <div class="benefit-icon"></div>
-                    <div class="benefit-text">Bank-level security with end-to-end encryption for your financial data</div>
-                </div>
-            </div>
-
-            <div class="testimonial">
-                <p class="testimonial-text">
-                    "Kpege has completely changed how I think about money. The natural language input makes tracking expenses so easy, and the insights have helped me save over $200 a month!"
-                </p>
-                <p class="testimonial-author">— Sarah M., Kpege User</p>
-            </div>
-
-            <div class="privacy-note">
-                <p><strong>Privacy First:</strong> Your financial data is encrypted and never shared with third parties. You have complete control over your information, and you can delete your account at any time.</p>
-            </div>
-
-            <div class="fallback-link">
-                <strong>Having trouble with the button?</strong><br>
-                Copy and paste this link into your browser:<br>
-                {{.ConfirmationURL}}
-            </div>
+            <a href="{{.ConfirmationURL}}" class="button">Accept Invitation</a>
+            
+            <p>This invitation will expire in 72 hours.</p>
         </div>
-
+        
         <div class="footer">
-            <div class="footer-links">
-                <a href="#">Privacy Policy</a>
-                <a href="#">Terms of Service</a>
-                <a href="#">Help Center</a>
-            </div>
-            
-            <div class="social-links">
-                <a href="#">Twitter</a>
-                <a href="#">Instagram</a>
-            </div>
-            
-            <p style="margin: 15px 0 0 0; font-size: 12px; color: #000000;">
-                Need help? Reply to this email or visit our <a href="#" style="color: #15803d;">help center</a>
-            </p>
+            <p>© 2024 Kpege. All rights reserved.</p>
         </div>
     </div>
 </body>

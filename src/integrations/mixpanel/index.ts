@@ -7,8 +7,8 @@ const isDev = import.meta.env.DEV; // True if development build
 const isTest = import.meta.env.MODE === 'test'; // Customize based on your setup
 
 // Project tokens - read from environment variables with fallbacks
-const MIXPANEL_PROD_TOKEN = import.meta.env.VITE_MIXPANEL_PROD_TOKEN || '61412526d8c55df7859826e20ebb8d1f';
-const MIXPANEL_DEV_TOKEN = import.meta.env.VITE_MIXPANEL_DEV_TOKEN || '61412526d8c55df7859826e20ebb8d1f';
+const MIXPANEL_PROD_TOKEN = import.meta.env.MIXPANEL_PROD_TOKEN;
+const MIXPANEL_DEV_TOKEN = import.meta.env.MIXPANEL_DEV_TOKEN;
 
 // Flag to track if analytics is likely blocked
 let analyticsBlocked = false;

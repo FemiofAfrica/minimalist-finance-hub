@@ -24,6 +24,7 @@ import { TransactionAutocomplete } from '@/components/ui/transaction-autocomplet
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { checkSubscriptionRenewals } from '@/services/notificationService';
 import { FinanceEvents } from '@/integrations/mixpanel/events';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Define the original base currency of the incoming data
 const APP_BASE_CURRENCY = "NGN";
@@ -36,9 +37,12 @@ const SubscriptionsPage: React.FC = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState<boolean>(false);
   const [isConfirmPaymentDialogOpen, setIsConfirmPaymentDialogOpen] = useState<boolean>(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState<boolean>(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
+  const [isFutureDateWarningOpen, setIsFutureDateWarningOpen] = useState<boolean>(false);
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
   const [activeTab, setActiveTab] = useState<string>('all');
   const { toast } = useToast();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [dueSoonCount, setDueSoonCount] = useState<number>(0);
   const [renewingSubscriptionId, setRenewingSubscriptionId] = useState<string | null>(null);
@@ -103,44 +107,34 @@ const SubscriptionsPage: React.FC = () => {
     return billingDate;
   };
 
-  const handleSaveSubscription = async () => {
+  const proceedWithSubscriptionSave = async () => {
     try {
+      setError(null);
+      
       if (!formData.name) {
-        toast({
-          title: "Error",
-          description: "Subscription name is required",
-          variant: "destructive",
-        });
+        setError('Subscription name is required');
         return;
       }
       
       if (formData.amount <= 0) {
-        toast({
-          title: "Error",
-          description: "Amount must be greater than zero",
-          variant: "destructive",
-        });
+        setError('Amount must be greater than 0');
         return;
       }
       
-      const adjustedBillingDate = adjustBillingDateIfNeeded(
-        formData.next_billing_date,
-        formData.frequency
-      );
-      
-      // Log the frequency value for debugging
+      if (!formData.category_id || formData.category_id === "new") {
+        setError('Please select a valid category');
+        return;
+      }
+
       console.log("Form frequency before sending:", formData.frequency);
       
-      // Make sure frequency is a proper enum value
-      const frequency = formData.frequency as SubscriptionFrequency;
-      console.log("Typed frequency to send:", frequency);
-      
-      const newSubscription = await createSubscription({
+      const subscriptionToSave: Omit<Subscription, 'subscription_id' | 'created_at' | 'updated_at'> = {
+        user_id: user?.id || '',
         name: formData.name,
         description: formData.description,
         amount: formData.amount,
-        frequency: frequency,
-        next_billing_date: adjustedBillingDate,
+        frequency: formData.frequency as SubscriptionFrequency,
+        next_billing_date: adjustBillingDateIfNeeded(formData.next_billing_date, formData.frequency),
         category_id: formData.category_id,
         category_name: formData.category_name,
         category_type: formData.category_type,
@@ -148,29 +142,36 @@ const SubscriptionsPage: React.FC = () => {
         auto_renew: formData.auto_renew,
         reminder_days: formData.reminder_days,
         provider_id: formData.provider_id
-      });
+      };
+
+      console.log("Typed frequency to send:", subscriptionToSave.frequency);
+
+      const newSubscription = await createSubscription(subscriptionToSave);
       
       // Track subscription added event
       FinanceEvents.trackAddSubscription({
-        subscriptionName: formData.name,
-        amount: formData.amount,
-        billingCycle: formData.frequency.toLowerCase() as any,
-        category: formData.category_name
+        subscriptionName: subscriptionToSave.name,
+        amount: subscriptionToSave.amount,
+        billingCycle: subscriptionToSave.frequency.toLowerCase() as any,
+        category: subscriptionToSave.category_name
       });
       
       setSubscriptions([...subscriptions, newSubscription]);
       
       setIsAddDialogOpen(false);
+      resetForm();
+      
       toast({
-        title: "Success",
-        description: "Subscription added successfully",
+        title: 'Subscription added',
+        description: 'Your subscription has been successfully added.',
       });
     } catch (err) {
-      console.error("Error saving subscription:", err);
+      console.error('Error saving subscription:', err);
+      setError('Failed to save subscription. Please try again.');
       toast({
-        title: "Error",
-        description: "Failed to save subscription",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to save subscription.',
+        variant: 'destructive',
       });
     }
   };
@@ -288,7 +289,7 @@ const SubscriptionsPage: React.FC = () => {
     }
   };
 
-  const handleAddSubscription = () => {
+  const resetForm = () => {
     setFormData({
       name: '',
       description: '',
@@ -304,6 +305,10 @@ const SubscriptionsPage: React.FC = () => {
       provider_id: null
     });
     setNewCategoryName('');
+  };
+
+  const handleAddSubscription = () => {
+    resetForm();
     setIsAddDialogOpen(true);
   };
 
@@ -326,10 +331,18 @@ const SubscriptionsPage: React.FC = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleDeleteSubscription = async (subscriptionId: string) => {
+  const handleDeleteSubscription = (subscription: Subscription) => {
+    setSelectedSubscription(subscription);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteSubscription = async () => {
+    if (!selectedSubscription) return;
+    
     try {
-      await deleteSubscription(subscriptionId);
-      setSubscriptions(subscriptions.filter(sub => sub.subscription_id !== subscriptionId));
+      await deleteSubscription(selectedSubscription.subscription_id);
+      setSubscriptions(subscriptions.filter(sub => sub.subscription_id !== selectedSubscription.subscription_id));
+      setIsDeleteDialogOpen(false);
       toast({
         title: 'Subscription deleted',
         description: 'The subscription has been successfully removed.',
@@ -613,12 +626,41 @@ const SubscriptionsPage: React.FC = () => {
     }
   };
 
+  const handleFormSubmit = async () => {
+    try {
+      setError(null);
+      
+      // Check if the billing date is in the future
+      const billingDate = new Date(formData.next_billing_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      billingDate.setHours(0, 0, 0, 0);
+      
+      if (billingDate > today) {
+        // Show warning for future dates
+        setIsFutureDateWarningOpen(true);
+        return;
+      }
+      
+      // Proceed with saving if date is today or past
+      await proceedWithSubscriptionSave();
+    } catch (err) {
+      console.error('Error saving subscription:', err);
+      setError('Failed to save subscription. Please try again.');
+      toast({
+        title: 'Error',
+        description: 'Failed to save subscription.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
         <div className="container mx-auto px-4 py-6 md:py-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
           </div>
         </div>
       </DashboardLayout>
@@ -712,7 +754,7 @@ const SubscriptionsPage: React.FC = () => {
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditSubscription(subscription)} title="Edit">
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteSubscription(subscription.subscription_id)} title="Delete">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteSubscription(subscription)} title="Delete">
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
@@ -796,7 +838,7 @@ const SubscriptionsPage: React.FC = () => {
             </DialogHeader>
             <form onSubmit={(e) => {
               e.preventDefault();
-              handleSaveSubscription();
+              handleFormSubmit();
             }}>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -960,12 +1002,12 @@ const SubscriptionsPage: React.FC = () => {
                     
                     {formData.category_id === "new" && (
                       <div className="mt-2 flex space-x-2">
-                        <Input
+                  <Input
                           value={newCategoryName}
                           onChange={(e) => setNewCategoryName(e.target.value)}
                           placeholder="Enter new category name"
                           className="flex-1"
-                        />
+                  />
                         <Button 
                           type="button" 
                           size="sm" 
@@ -1212,12 +1254,12 @@ const SubscriptionsPage: React.FC = () => {
                     
                     {formData.category_id === "new" && (
                       <div className="mt-2 flex space-x-2">
-                        <Input
+                  <Input
                           value={newCategoryName}
                           onChange={(e) => setNewCategoryName(e.target.value)}
                           placeholder="Enter new category name"
                           className="flex-1"
-                        />
+                  />
                         <Button 
                           type="button" 
                           size="sm" 
@@ -1322,6 +1364,86 @@ const SubscriptionsPage: React.FC = () => {
               </Button>
               <Button onClick={processPaymentConfirmation}>
                 Confirm Payment
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        <Dialog open={isFutureDateWarningOpen} onOpenChange={setIsFutureDateWarningOpen}>
+          <DialogContent className="sm:max-w-[550px]">
+            <DialogHeader>
+              <DialogTitle>Future Billing Date Warning</DialogTitle>
+              <DialogDescription>
+                The billing date you selected is in the future. No transaction will be automatically created until that date.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <div className="flex justify-between mb-2">
+                <span className="font-medium">Subscription:</span>
+                <span>{formData.name}</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="font-medium">Amount:</span>
+                <span>{formatAmount(formData.amount)}</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="font-medium">Next billing:</span>
+                <span>{formatDate(formData.next_billing_date)}</span>
+              </div>
+              <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded mt-4">
+                <strong>Note:</strong> Since this is a future date, no transaction will be created now. 
+                You'll need to manually create transactions for future payments when they become due.
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsFutureDateWarningOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={async () => {
+                setIsFutureDateWarningOpen(false);
+                await proceedWithSubscriptionSave();
+              }}>
+                Continue Anyway
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent className="sm:max-w-[550px]">
+            <DialogHeader>
+              <DialogTitle>Delete Subscription</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to permanently delete this subscription? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              {selectedSubscription && (
+                <>
+                  <div className="flex justify-between mb-2">
+                    <span className="font-medium">Subscription:</span>
+                    <span>{selectedSubscription.name}</span>
+                  </div>
+                  <div className="flex justify-between mb-2">
+                    <span className="font-medium">Amount:</span>
+                    <span>{formatAmount(selectedSubscription.amount)}</span>
+                  </div>
+                  <div className="flex justify-between mb-2">
+                    <span className="font-medium">Frequency:</span>
+                    <span>{selectedSubscription.frequency.charAt(0) + selectedSubscription.frequency.slice(1).toLowerCase()}</span>
+                  </div>
+                  <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded mt-4">
+                    <strong>Warning:</strong> This will permanently delete the subscription and cannot be undone.
+                  </div>
+                </>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={confirmDeleteSubscription}>
+                Delete Permanently
               </Button>
             </DialogFooter>
           </DialogContent>

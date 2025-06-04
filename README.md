@@ -68,9 +68,119 @@ Simply open [Lovable](https://lovable.dev/projects/9e7980c0-6c09-4a72-9fca-0a7fe
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
 
-# Kpege - Follow your money
+# Kpege - Personal Finance Tracker
 
-Welcome to Kpege, an AI-powered, minimalist finance tracking application. This app aims to simplify personal finance management through an intuitive interface and intelligent features.
+A modern, AI-powered personal finance management application built with React, TypeScript, and Supabase.
+
+## Features
+
+- 💰 **Expense Tracking**: Track your daily expenses with AI-powered categorization
+- 📊 **Financial Analytics**: Visualize your spending patterns with interactive charts
+- 🔔 **Subscription Management**: Monitor and manage your recurring subscriptions
+- 🤖 **AI-Powered OCR**: Extract transaction data from receipts using advanced OCR
+- 📱 **Responsive Design**: Works seamlessly on desktop and mobile devices
+- 🔒 **Secure Authentication**: Protected with Cloudflare Turnstile captcha
+- 🌍 **Multi-Currency Support**: Track expenses in multiple currencies
+
+## Environment Setup
+
+### Required Environment Variables
+
+Create a `.env` file in the root directory with the following variables:
+
+```bash
+# Supabase Configuration (Required)
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Cloudflare Turnstile (Required for Auth)
+TURNSTILE_SITE_KEY=your_turnstile_site_key
+
+# OCR Services (Optional)
+VITE_OCR_SPACE_API_KEY=your_ocr_space_api_key
+GROQ_API_KEY=your_groq_api_key
+
+# Analytics (Optional)
+MIXPANEL_PROD_TOKEN=your_mixpanel_production_token
+MIXPANEL_DEV_TOKEN=your_mixpanel_development_token
+```
+
+### Setup Instructions
+
+1. **Supabase Setup**:
+   - Create a new project at [supabase.com](https://supabase.com)
+   - Copy your project URL and anon key from the dashboard
+   - Enable Turnstile in Authentication > Settings
+
+2. **Cloudflare Turnstile Setup**:
+   - Go to [Cloudflare Dashboard](https://dash.cloudflare.com/)
+   - Navigate to Turnstile and create a new site
+   - Add your domain(s) to the allowlist
+   - Copy the site key (this is public and safe to use client-side)
+
+3. **Optional Services**:
+   - **OCR Space**: Get free API key at [ocr.space](https://ocr.space/ocrapi)
+   - **Groq**: Get API key at [groq.com](https://groq.com)
+   - **Mixpanel**: Set up analytics at [mixpanel.com](https://mixpanel.com)
+
+## Quick Start
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd minimalist-finance-hub-1
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your actual values
+
+# Start development server
+npm run dev
+```
+
+## Deployment
+
+### Vercel Deployment
+
+1. Connect your repository to Vercel
+2. Set environment variables in Vercel dashboard:
+   ```bash
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   TURNSTILE_SITE_KEY=your_production_turnstile_site_key
+   MIXPANEL_PROD_TOKEN=your_mixpanel_production_token
+   ```
+3. Deploy!
+
+### Important Security Notes
+
+- `TURNSTILE_SITE_KEY` is public and runs client-side (this is normal for Turnstile)
+- Never expose your Supabase service role key or Turnstile secret key
+- Use separate Turnstile site keys for development and production
+
+## Technology Stack
+
+- **Frontend**: React 18, TypeScript, Tailwind CSS
+- **Backend**: Supabase (PostgreSQL, Auth, Edge Functions)
+- **Security**: Cloudflare Turnstile
+- **OCR**: Tesseract.js, OCR.space, Groq Vision
+- **Charts**: Recharts
+- **Deployment**: Vercel
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.
 
 ## Default Account Implementation
 
