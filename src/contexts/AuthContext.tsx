@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { verifyTurnstileToken, getTurnstileErrorMessage } from '@/utils/turnstileVerification';
 
 type AuthContextType = {
   user: User | null;
@@ -40,14 +41,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string, captchaToken?: string) => {
-    const authOptions: any = { email, password };
-    
-    // Add captcha token if provided
+    // If captcha token provided, verify it independently first
     if (captchaToken) {
-      authOptions.options = { captchaToken };
+      try {
+        console.log('[Auth] Verifying Turnstile token before sign in...');
+        await verifyTurnstileToken(captchaToken);
+        console.log('[Auth] Turnstile verification successful, proceeding with sign in');
+      } catch (error) {
+        console.error('[Auth] Turnstile verification failed:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Captcha verification failed';
+        throw new Error(errorMessage);
+      }
     }
+
+    // Proceed with Supabase auth WITHOUT passing captcha token
+    const { error } = await supabase.auth.signInWithPassword({ 
+      email, 
+      password 
+    });
     
-    const { error } = await supabase.auth.signInWithPassword(authOptions);
     if (error) throw error;
   };
 
@@ -62,6 +74,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Password must be at least 6 characters long.');
       }
 
+      // If captcha token provided, verify it independently first
+      if (captchaToken) {
+        try {
+          console.log('[Auth] Verifying Turnstile token before sign up...');
+          await verifyTurnstileToken(captchaToken);
+          console.log('[Auth] Turnstile verification successful, proceeding with sign up');
+        } catch (error) {
+          console.error('[Auth] Turnstile verification failed:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Captcha verification failed';
+          throw new Error(errorMessage);
+        }
+      }
+
       // Format user metadata
       const userMetadata = {
         first_name: metadata?.firstName?.trim() || '',
@@ -72,21 +97,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         created_at: new Date().toISOString()
       };
 
-      const authOptions: any = {
+      // Proceed with Supabase auth WITHOUT passing captcha token
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/dashboard`,
           data: userMetadata
         }
-      };
-
-      // Add captcha token if provided
-      if (captchaToken) {
-        authOptions.options.captchaToken = captchaToken;
-      }
-
-      const { data, error } = await supabase.auth.signUp(authOptions);
+      });
 
       if (error) {
         console.error('Signup error:', error);
@@ -169,47 +188,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       console.log('[Auth] Sending password reset email to:', email);
       
-      // Check if we're in development environment
-      const isDevelopment = import.meta.env.DEV && window.location.hostname === 'localhost';
+      // If captcha token provided, verify it independently first
+      if (captchaToken) {
+        try {
+          console.log('[Auth] Verifying Turnstile token before password reset...');
+          await verifyTurnstileToken(captchaToken);
+          console.log('[Auth] Turnstile verification successful, proceeding with password reset');
+        } catch (error) {
+          console.error('[Auth] Turnstile verification failed:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Captcha verification failed';
+          throw new Error(errorMessage);
+        }
+      }
       
       // Simple redirect URL
       const redirectTo = `${window.location.origin}/reset-password`;
       
-      // Create reset options
-      const resetOptions: any = {
-        redirectTo,
-      };
-      
-      // In production or when captcha token is available, include it
-      // In development on localhost, skip captcha entirely if Turnstile is broken
-      if (!isDevelopment && captchaToken) {
-        resetOptions.captchaToken = captchaToken;
-        console.log('[Auth] Adding captcha token for production');
-      } else if (isDevelopment) {
-        console.log('[Auth] Development mode: skipping captcha token');
-        // Don't add captcha token at all in development
-      } else {
-        console.log('[Auth] No captcha token provided');
-      }
-      
-      // Send reset email
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, resetOptions);
+      // Send reset email WITHOUT captcha token to avoid Supabase issues
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo
+      });
       
       if (error) {
         console.error('[Auth] Reset password error:', error);
-        
-        // If it's a captcha error in development, provide helpful guidance
-        if (isDevelopment && error.message.includes('captcha')) {
-          throw new Error('Development issue: Please disable captcha protection in your Supabase project settings, or use a production environment.');
-        }
         
         // Provide user-friendly error messages
         if (error.message.includes('Email rate limit exceeded') || error.status === 429) {
           throw new Error('Too many password reset attempts. Please wait a few minutes before trying again.');
         } else if (error.status === 504 || error.status === 502 || error.status === 503) {
           throw new Error('Service temporarily unavailable. Please try again in a moment.');
-        } else if (error.message.includes('captcha')) {
-          throw new Error('Security verification failed. Please try again or contact support if the issue persists.');
         } else if (error.message.includes('not found') || error.message.includes('invalid')) {
           throw new Error('Email address not found. Please check your email and try again.');
         } else {
