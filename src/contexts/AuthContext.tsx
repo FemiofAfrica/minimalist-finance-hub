@@ -11,7 +11,7 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithTwitter: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
+  resetPassword: (email: string, captchaToken?: string) => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<void>;
 };
 
@@ -161,18 +161,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
   };
 
-  const resetPassword = async (email: string) => {
+  const resetPassword = async (email: string, captchaToken?: string) => {
     try {
       if (!email) {
         throw new Error('Email is required.');
       }
       
-      // Use the standard Supabase client method - this is fast and reliable
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
+      console.log('[Auth] Reset password attempt with captcha:', !!captchaToken);
       
-      if (error) throw error;
+      const resetOptions: any = {
+        redirectTo: `${window.location.origin}/reset-password`,
+      };
+      
+      // Add captcha token if provided
+      if (captchaToken) {
+        resetOptions.captchaToken = captchaToken;
+      }
+      
+      // Use the standard Supabase client method - this is fast and reliable
+      const { error } = await supabase.auth.resetPasswordForEmail(email, resetOptions);
+      
+      if (error) {
+        console.error('[Auth] Reset password error:', error);
+        throw error;
+      }
+      
+      console.log('[Auth] Reset password email sent successfully');
     } catch (error) {
       console.error('Password reset error:', error);
       throw error;

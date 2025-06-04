@@ -179,16 +179,33 @@ const Login = () => {
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setResetError(null);
+    
+    // Validate captcha token
+    if (!captchaToken) {
+      setResetError("Please complete the captcha verification to continue.");
+      toast({
+        title: "Captcha required",
+        description: "Please complete the captcha verification to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       setIsProcessing(true);
-      await resetPassword(resetEmail);
+      console.log('[Login] Attempting password reset with captcha token');
+      await resetPassword(resetEmail, captchaToken);
       toast({
         title: "Password reset email sent",
         description: "Please check your email for password reset instructions.",
       });
       setIsResetDialogOpen(false);
+      // Reset captcha token after successful use
+      setCaptchaToken(undefined);
     } catch (error) {
       setResetError(error instanceof Error ? error.message : "Failed to send reset email");
+      // Reset captcha token on error so user needs to complete it again
+      setCaptchaToken(undefined);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to send reset email",
@@ -451,13 +468,15 @@ const Login = () => {
               <Turnstile
                 siteKey={import.meta.env.TURNSTILE_SITE_KEY}
                 onSuccess={(token) => {
-                  console.log('[Turnstile] Success - token received');
+                  console.log('[Turnstile] Success - token received:', token ? 'YES' : 'NO');
+                  console.log('[Turnstile] Token length:', token?.length || 0);
                   setCaptchaToken(token);
+                  console.log('[Turnstile] Button should now be enabled');
                 }}
                 onError={(error) => {
                   console.warn('[Turnstile] Error:', error);
                   setCaptchaToken(undefined);
-                  // Show user-friendly error if needed
+                  // Show user-friendly error in development
                   if (isDev) {
                     toast({
                       title: "Captcha Error",
@@ -476,6 +495,13 @@ const Login = () => {
                 }}
               />
             </div>
+
+            {isDev && (
+              <div className="text-xs text-gray-500 text-center mb-2">
+                Debug: Captcha token {captchaToken ? '✓ Valid' : '✗ Missing'} | 
+                Button {(isProcessing || !captchaToken || (isSignUp && (!passwordsMatch || confirmPassword.length === 0))) ? 'Disabled' : 'Enabled'}
+              </div>
+            )}
 
             <Button 
               type="submit" 
