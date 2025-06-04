@@ -167,26 +167,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Email is required.');
       }
       
-      console.log('[Auth] Reset password attempt with captcha:', !!captchaToken);
+      console.log('[Auth] Sending password reset email to:', email);
       
+      // Check if we're in development environment
+      const isDevelopment = import.meta.env.DEV && window.location.hostname === 'localhost';
+      
+      // Simple redirect URL
+      const redirectTo = `${window.location.origin}/reset-password`;
+      
+      // Create reset options
       const resetOptions: any = {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo,
       };
       
-      // Add captcha token if provided
-      if (captchaToken) {
+      // In production or when captcha token is available, include it
+      // In development on localhost, skip captcha entirely if Turnstile is broken
+      if (!isDevelopment && captchaToken) {
         resetOptions.captchaToken = captchaToken;
+        console.log('[Auth] Adding captcha token for production');
+      } else if (isDevelopment) {
+        console.log('[Auth] Development mode: skipping captcha token');
+        // Don't add captcha token at all in development
+      } else {
+        console.log('[Auth] No captcha token provided');
       }
       
-      // Use the standard Supabase client method - this is fast and reliable
-      const { error } = await supabase.auth.resetPasswordForEmail(email, resetOptions);
+      // Send reset email
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, resetOptions);
       
       if (error) {
         console.error('[Auth] Reset password error:', error);
-        throw error;
+        
+        // If it's a captcha error in development, provide helpful guidance
+        if (isDevelopment && error.message.includes('captcha')) {
+          throw new Error('Development issue: Please disable captcha protection in your Supabase project settings, or use a production environment.');
+        }
+        
+        // Provide user-friendly error messages
+        if (error.message.includes('Email rate limit exceeded') || error.status === 429) {
+          throw new Error('Too many password reset attempts. Please wait a few minutes before trying again.');
+        } else if (error.status === 504 || error.status === 502 || error.status === 503) {
+          throw new Error('Service temporarily unavailable. Please try again in a moment.');
+        } else if (error.message.includes('captcha')) {
+          throw new Error('Security verification failed. Please try again or contact support if the issue persists.');
+        } else if (error.message.includes('not found') || error.message.includes('invalid')) {
+          throw new Error('Email address not found. Please check your email and try again.');
+        } else {
+          throw new Error('Unable to send reset email. Please try again or contact support.');
+        }
       }
       
-      console.log('[Auth] Reset password email sent successfully');
+      console.log('[Auth] Reset email sent successfully');
+      return { success: true, message: 'Password reset email sent successfully.' };
+      
     } catch (error) {
       console.error('Password reset error:', error);
       throw error;

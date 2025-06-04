@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,23 +15,115 @@ const ResetPassword = () => {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [validResetLink, setValidResetLink] = useState<boolean | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>('');
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const isDev = import.meta.env.DEV;
 
   useEffect(() => {
-    // Check if the URL contains a valid hash fragment
-    const hash = window.location.hash;
-    const type = new URLSearchParams(hash.substring(1)).get('type');
-    
-    if (type !== 'recovery') {
-      toast({
-        title: "Invalid reset link",
-        description: "This page should only be accessed from a valid password reset link.",
-        variant: "destructive",
-      });
-      navigate('/login');
-    }
-  }, [navigate, toast]);
+    // Enhanced URL parsing for reset tokens
+    const parseResetUrl = () => {
+      const urlParams = new URLSearchParams(location.search);
+      const hash = window.location.hash;
+      
+      // Debug information
+      const debugData = {
+        fullUrl: window.location.href,
+        pathname: location.pathname,
+        search: location.search,
+        hash: hash,
+        urlParams: Object.fromEntries(urlParams),
+        hashParams: {}
+      };
+
+      // Parse hash fragment (modern Supabase format)
+      if (hash) {
+        const hashParams = new URLSearchParams(hash.substring(1));
+        debugData.hashParams = Object.fromEntries(hashParams);
+        
+        const type = hashParams.get('type');
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        
+        if (isDev) {
+          console.log('[ResetPassword] Hash analysis:', {
+            type,
+            hasAccessToken: !!accessToken,
+            hasRefreshToken: !!refreshToken,
+            allHashParams: debugData.hashParams
+          });
+        }
+        
+        // Check for recovery type OR valid tokens
+        if (type === 'recovery' || (accessToken && refreshToken)) {
+          setValidResetLink(true);
+          
+          // Handle mock tokens for development testing
+          if (isDev && (accessToken?.includes('mock_token') || refreshToken?.includes('mock_refresh'))) {
+            console.log('[ResetPassword] Mock token detected - development testing mode');
+            setValidResetLink(true);
+            return;
+          }
+          
+          // If we have tokens, set the session
+          if (accessToken && refreshToken) {
+            supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            }).then(({ data, error }) => {
+              if (error) {
+                console.error('[ResetPassword] Error setting session:', error);
+                setError('Invalid reset link. Please request a new password reset.');
+                setValidResetLink(false);
+              } else {
+                console.log('[ResetPassword] Session set successfully');
+              }
+            });
+          }
+          
+          return;
+        }
+      }
+      
+      // Parse URL parameters (legacy format or alternative)
+      const token = urlParams.get('token') || urlParams.get('access_token');
+      const type = urlParams.get('type');
+      
+      if (type === 'recovery' || token) {
+        setValidResetLink(true);
+        return;
+      }
+      
+      // Check if we have any authentication-related parameters
+      const hasAuthParams = urlParams.has('token') || 
+                           urlParams.has('access_token') || 
+                           urlParams.has('refresh_token') ||
+                           hash.includes('access_token') ||
+                           hash.includes('recovery');
+      
+      if (isDev) {
+        setDebugInfo(JSON.stringify(debugData, null, 2));
+        console.log('[ResetPassword] URL analysis:', debugData);
+        console.log('[ResetPassword] Has auth params:', hasAuthParams);
+      }
+      
+      if (!hasAuthParams) {
+        setValidResetLink(false);
+        setError('Invalid reset link. This page should only be accessed from a valid password reset email link.');
+        
+        setTimeout(() => {
+          navigate('/login');
+        }, 3000);
+      } else {
+        // Assume it's valid if we have some auth params but couldn't parse them
+        setValidResetLink(true);
+      }
+    };
+
+    parseResetUrl();
+  }, [location, navigate, isDev, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,32 +142,122 @@ const ResetPassword = () => {
     try {
       setLoading(true);
       
+      // Check if we're in mock mode for development testing
+      const hash = window.location.hash;
+      const hashParams = new URLSearchParams(hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const isMockMode = isDev && accessToken?.includes('mock_token');
+      
+      if (isMockMode) {
+        console.log('[ResetPassword] Mock mode: simulating password update');
+        
+        // Simulate a delay for realism
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        toast({
+          title: "Password updated (Mock)",
+          description: "In development mode, this would update your real password. Mock password reset completed successfully.",
+        });
+        
+        // Simulate redirect
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+        
+        return;
+      }
+      
+      // Get current session to ensure we're authenticated
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('[ResetPassword] Session error:', sessionError);
+        throw new Error('Authentication error. Please try clicking the reset link again.');
+      }
+      
+      if (!session) {
+        console.error('[ResetPassword] No active session found');
+        throw new Error('No active session. Please click the reset link in your email again.');
+      }
+      
+      console.log('[ResetPassword] Updating password with valid session');
+      
       const { error } = await supabase.auth.updateUser({
         password
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('[ResetPassword] Password update error:', error);
+        throw error;
+      }
 
       toast({
         title: "Password updated",
         description: "Your password has been reset successfully. Please log in with your new password.",
       });
 
-      // Redirect to login page
+      // Clear the session and redirect to login
+      await supabase.auth.signOut();
+      
       setTimeout(() => {
         navigate('/login');
       }, 2000);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to reset password");
+      const errorMessage = error instanceof Error ? error.message : "Failed to reset password";
+      console.error('[ResetPassword] Error:', errorMessage);
+      setError(errorMessage);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to reset password",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
+
+  // Show loading while validating the link
+  if (validResetLink === null) {
+    return (
+      <PublicLayout>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[#e8f1df]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#217a39] mx-auto"></div>
+            <p className="mt-4 text-black">Validating reset link...</p>
+          </div>
+        </div>
+      </PublicLayout>
+    );
+  }
+
+  // Show error if link is invalid
+  if (validResetLink === false) {
+    return (
+      <PublicLayout>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[#e8f1df]">
+          <div className="w-full max-w-md space-y-6 px-8 text-center">
+            <img src="/kpege-logo.svg" alt="Kpege Logo" className="h-14 w-auto mx-auto" style={{ maxHeight: 96 }} />
+            <div className="bg-red-500/10 text-red-700 p-6 rounded-md">
+              <h2 className="text-xl font-semibold mb-2">Invalid Reset Link</h2>
+              <p className="mb-4">{error || 'This password reset link is invalid or has expired.'}</p>
+              <Button 
+                onClick={() => navigate('/login')}
+                className="bg-[#217a39] hover:bg-black text-white"
+              >
+                Back to Login
+              </Button>
+            </div>
+            {isDev && debugInfo && (
+              <details className="text-left">
+                <summary className="text-sm text-gray-600 cursor-pointer">Debug Info (Dev Mode)</summary>
+                <pre className="text-xs bg-gray-100 p-2 rounded mt-2 overflow-auto">{debugInfo}</pre>
+              </details>
+            )}
+          </div>
+        </div>
+      </PublicLayout>
+    );
+  }
 
   return (
     <PublicLayout>

@@ -45,6 +45,14 @@ const Login = () => {
   const [resetError, setResetError] = useState<string | null>(null);
   // Captcha token state
   const [captchaToken, setCaptchaToken] = useState<string | undefined>(undefined);
+  const [captchaTimestamp, setCaptchaTimestamp] = useState<number | undefined>(undefined);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [turnstileRef, setTurnstileRef] = useState<any>(null);
+  // Reset dialog captcha state
+  const [resetCaptchaToken, setResetCaptchaToken] = useState<string | undefined>(undefined);
+  const [resetCaptchaTimestamp, setResetCaptchaTimestamp] = useState<number | undefined>(undefined);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [resetTurnstileRef, setResetTurnstileRef] = useState<any>(null);
   // Password visibility toggles
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -57,6 +65,66 @@ const Login = () => {
   
   // Environment check
   const isDev = import.meta.env.DEV;
+
+  // Helper functions for captcha management
+  const isCaptchaTokenValid = () => {
+    if (!captchaToken || !captchaTimestamp) return false;
+    
+    // Turnstile tokens expire after 5 minutes (300 seconds)
+    const tokenAge = (Date.now() - captchaTimestamp) / 1000;
+    return tokenAge < 240; // Use 4 minutes to be safe
+  };
+
+  const resetCaptcha = () => {
+    setCaptchaToken(undefined);
+    setCaptchaTimestamp(undefined);
+    
+    // Reset the Turnstile widget if possible
+    if (turnstileRef && typeof turnstileRef.reset === 'function') {
+      turnstileRef.reset();
+    }
+  };
+
+  const handleCaptchaSuccess = (token: string) => {
+    const timestamp = Date.now();
+    setCaptchaToken(token);
+    setCaptchaTimestamp(timestamp);
+  };
+
+  const handleCaptchaError = (error: unknown) => {
+    console.warn('[Turnstile] Error:', error);
+    resetCaptcha();
+  };
+
+  // Helper functions for reset dialog captcha management
+  const isResetCaptchaTokenValid = () => {
+    if (!resetCaptchaToken || !resetCaptchaTimestamp) return false;
+    
+    // Turnstile tokens expire after 5 minutes (300 seconds)
+    const tokenAge = (Date.now() - resetCaptchaTimestamp) / 1000;
+    return tokenAge < 240; // Use 4 minutes to be safe
+  };
+
+  const resetResetCaptcha = () => {
+    setResetCaptchaToken(undefined);
+    setResetCaptchaTimestamp(undefined);
+    
+    // Reset the Turnstile widget if possible
+    if (resetTurnstileRef && typeof resetTurnstileRef.reset === 'function') {
+      resetTurnstileRef.reset();
+    }
+  };
+
+  const handleResetCaptchaSuccess = (token: string) => {
+    const timestamp = Date.now();
+    setResetCaptchaToken(token);
+    setResetCaptchaTimestamp(timestamp);
+  };
+
+  const handleResetCaptchaError = (error: unknown) => {
+    console.warn('[Reset Turnstile] Error:', error);
+    resetResetCaptcha();
+  };
 
   // Calculate password strength
   const calculatePasswordStrength = (password: string) => {
@@ -106,18 +174,26 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate captcha token
-    if (!captchaToken) {
+    // Validate captcha token exists and is fresh
+    if (!isCaptchaTokenValid()) {
+      const errorMsg = !captchaToken 
+        ? "Please complete the captcha verification to continue."
+        : "Captcha token has expired. Please complete the captcha again.";
+      
       toast({
         title: "Captcha required",
-        description: "Please complete the captcha verification to continue.",
+        description: errorMsg,
         variant: "destructive",
       });
+      
+      // Reset and refresh captcha
+      resetCaptcha();
       return;
     }
     
     try {
       setIsProcessing(true);
+      
       if (isSignUp) {
         // Validate passwords
         if (password !== confirmPassword) {
@@ -136,6 +212,9 @@ const Login = () => {
           title: "Account created!",
           description: "Please check your email to verify your account.",
         });
+        
+        // Reset captcha after successful use
+        resetCaptcha();
       } else {
         await signIn(email, password, captchaToken);
         navigate('/dashboard');
@@ -143,12 +222,15 @@ const Login = () => {
           title: "Welcome back!",
           description: "You have successfully logged in.",
         });
+        
+        // Reset captcha after successful use
+        resetCaptcha();
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An error occurred";
       
       // Reset captcha token on error so user needs to complete it again
-      setCaptchaToken(undefined);
+      resetCaptcha();
       
       // Check if error is about existing user
       if (errorMessage.includes("already registered") || errorMessage.includes("already exists") || errorMessage.includes("try logging in")) {
@@ -180,35 +262,49 @@ const Login = () => {
     e.preventDefault();
     setResetError(null);
     
-    // Validate captcha token
-    if (!captchaToken) {
-      setResetError("Please complete the captcha verification to continue.");
+    // Validate captcha token exists and is fresh
+    if (!isResetCaptchaTokenValid()) {
+      const errorMsg = !resetCaptchaToken 
+        ? "Please complete the captcha verification to continue."
+        : "Captcha token has expired. Please complete the captcha again.";
+      
+      setResetError(errorMsg);
       toast({
         title: "Captcha required",
-        description: "Please complete the captcha verification to continue.",
+        description: errorMsg,
         variant: "destructive",
       });
+      
+      // Reset and refresh captcha
+      resetResetCaptcha();
       return;
     }
     
     try {
       setIsProcessing(true);
-      console.log('[Login] Attempting password reset with captcha token');
-      await resetPassword(resetEmail, captchaToken);
+      
+      await resetPassword(resetEmail, resetCaptchaToken);
+      
       toast({
         title: "Password reset email sent",
         description: "Please check your email for password reset instructions.",
       });
       setIsResetDialogOpen(false);
-      // Reset captcha token after successful use
-      setCaptchaToken(undefined);
+      
+      // Reset captcha token after successful use to prevent reuse
+      resetResetCaptcha();
     } catch (error) {
-      setResetError(error instanceof Error ? error.message : "Failed to send reset email");
+      const errorMessage = error instanceof Error ? error.message : "Failed to send reset email";
+      console.error('[Login] Password reset error:', errorMessage);
+      
+      setResetError(errorMessage);
+      
       // Reset captcha token on error so user needs to complete it again
-      setCaptchaToken(undefined);
+      resetResetCaptcha();
+      
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to send reset email",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -465,48 +561,45 @@ const Login = () => {
 
             {/* Cloudflare Turnstile Captcha */}
             <div className="flex justify-center mb-4">
-              <Turnstile
-                siteKey={import.meta.env.TURNSTILE_SITE_KEY}
-                onSuccess={(token) => {
-                  console.log('[Turnstile] Success - token received:', token ? 'YES' : 'NO');
-                  console.log('[Turnstile] Token length:', token?.length || 0);
-                  setCaptchaToken(token);
-                  console.log('[Turnstile] Button should now be enabled');
-                }}
-                onError={(error) => {
-                  console.warn('[Turnstile] Error:', error);
-                  setCaptchaToken(undefined);
-                  // Show user-friendly error in development
-                  if (isDev) {
-                    toast({
-                      title: "Captcha Error",
-                      description: "Please refresh the page and try again. If the issue persists, contact support.",
-                      variant: "destructive",
-                    });
-                  }
-                }}
-                onExpire={() => {
-                  console.log('[Turnstile] Token expired');
-                  setCaptchaToken(undefined);
-                }}
-                onTimeout={() => {
-                  console.warn('[Turnstile] Timeout');
-                  setCaptchaToken(undefined);
-                }}
-              />
+              {import.meta.env.TURNSTILE_SITE_KEY ? (
+                <Turnstile
+                  ref={setTurnstileRef}
+                  siteKey={import.meta.env.TURNSTILE_SITE_KEY}
+                  onSuccess={handleCaptchaSuccess}
+                  onError={handleCaptchaError}
+                  onExpire={() => {
+                    console.log('[Turnstile] Token expired');
+                    resetCaptcha();
+                  }}
+                  onTimeout={() => {
+                    console.warn('[Turnstile] Timeout');
+                    resetCaptcha();
+                  }}
+                  options={{
+                    theme: 'light',
+                    size: 'normal',
+                    tabIndex: 0
+                  }}
+                />
+              ) : (
+                <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
+                  Captcha configuration missing. Please contact support.
+                </div>
+              )}
             </div>
 
             {isDev && (
               <div className="text-xs text-gray-500 text-center mb-2">
-                Debug: Captcha token {captchaToken ? '✓ Valid' : '✗ Missing'} | 
-                Button {(isProcessing || !captchaToken || (isSignUp && (!passwordsMatch || confirmPassword.length === 0))) ? 'Disabled' : 'Enabled'}
+                Debug: Captcha token {isCaptchaTokenValid() ? '✓ Valid' : '✗ Missing/Expired'} | 
+                {captchaTimestamp && ` Age: ${Math.round((Date.now() - captchaTimestamp) / 1000)}s |`}
+                Button {(isProcessing || !isCaptchaTokenValid() || (isSignUp && (!passwordsMatch || confirmPassword.length === 0))) ? 'Disabled' : 'Enabled'}
               </div>
             )}
 
             <Button 
               type="submit" 
               className="px-8 py-2 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent rounded-md mx-auto block text-base min-w-[120px] w-full sm:w-auto"
-              disabled={isProcessing || !captchaToken || (isSignUp && (!passwordsMatch || confirmPassword.length === 0))}
+              disabled={isProcessing || !isCaptchaTokenValid() || (isSignUp && (!passwordsMatch || confirmPassword.length === 0))}
             >
               {isProcessing ? 'Processing...' : isSignUp ? 'Sign Up' : 'Sign In'}
             </Button>
@@ -517,7 +610,7 @@ const Login = () => {
                 onClick={() => {
                   setIsSignUp(!isSignUp);
                   // Reset captcha when switching modes
-                  setCaptchaToken(undefined);
+                  resetCaptcha();
                 }}
                 className="text-sm text-[#217a39] hover:text-black transition-colors"
               >
@@ -554,6 +647,8 @@ const Login = () => {
             setNewPassword('');
             setConfirmNewPassword('');
             setResetError(null);
+            // Reset captcha state
+            resetResetCaptcha();
           }
         }}>
           <DialogContent className="bg-white text-black border-none sm:max-w-[500px] font-sans">
@@ -696,6 +791,42 @@ const Login = () => {
                       className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
                     />
                   </div>
+                  
+                  {/* Captcha verification for reset */}
+                  <div className="flex justify-center">
+                    {import.meta.env.TURNSTILE_SITE_KEY ? (
+                      <Turnstile
+                        ref={setResetTurnstileRef}
+                        siteKey={import.meta.env.TURNSTILE_SITE_KEY}
+                        onSuccess={handleResetCaptchaSuccess}
+                        onError={handleResetCaptchaError}
+                        onExpire={() => {
+                          console.log('[Reset Turnstile] Token expired');
+                          resetResetCaptcha();
+                        }}
+                        onTimeout={() => {
+                          console.warn('[Reset Turnstile] Timeout');
+                          resetResetCaptcha();
+                        }}
+                        options={{
+                          theme: 'light',
+                          size: 'normal',
+                          tabIndex: 0
+                        }}
+                      />
+                    ) : (
+                      <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
+                        Captcha configuration missing. Please contact support.
+                      </div>
+                    )}
+                  </div>
+
+                  {isDev && (
+                    <div className="text-xs text-gray-500 text-center">
+                      Debug: Reset Captcha {isResetCaptchaTokenValid() ? '✓ Valid' : '✗ Missing/Expired'} | 
+                      {resetCaptchaTimestamp && ` Age: ${Math.round((Date.now() - resetCaptchaTimestamp) / 1000)}s`}
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex justify-between items-center mt-4">
@@ -721,7 +852,7 @@ const Login = () => {
                   <Button
                     type="submit"
                     className="bg-[#217a39] hover:bg-black text-white"
-                    disabled={isProcessing}
+                    disabled={isProcessing || !isResetCaptchaTokenValid()}
                   >
                     {isProcessing ? 'Sending...' : 'Send Reset Link'}
                   </Button>

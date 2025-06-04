@@ -7,31 +7,31 @@ export const FinanceEvents = {
   /**
    * Track when a user signs up
    */
-  trackSignUp: (properties?: {
+  trackSignUp: async (properties?: {
     method?: string;
     source?: string;
     referrer?: string;
     [key: string]: any;
   }) => {
-    MixpanelService.trackEvent('Sign Up', properties);
+    await MixpanelService.trackEvent('Sign Up', properties);
   },
 
   /**
    * Track when a user views live currency information
    */
-  trackLiveCurrency: (properties?: {
+  trackLiveCurrency: async (properties?: {
     currencies?: string[];
     baseCurrency?: string;
     viewType?: string;
     [key: string]: any;
   }) => {
-    MixpanelService.trackEvent('Live Currency', properties);
+    await MixpanelService.trackEvent('Live Currency', properties);
   },
 
   /**
    * Track when a user adds a transaction
    */
-  trackAddTransaction: (properties?: {
+  trackAddTransaction: async (properties?: {
     transactionType?: 'income' | 'expense' | 'transfer';
     category?: string;
     amount?: number;
@@ -40,13 +40,13 @@ export const FinanceEvents = {
     recurring?: boolean;
     [key: string]: any;
   }) => {
-    MixpanelService.trackEvent('Add Transaction', properties);
+    await MixpanelService.trackEvent('Add Transaction', properties);
   },
 
   /**
    * Track when a user adds a subscription
    */
-  trackAddSubscription: (properties?: {
+  trackAddSubscription: async (properties?: {
     subscriptionName?: string;
     amount?: number;
     currency?: string;
@@ -54,19 +54,19 @@ export const FinanceEvents = {
     category?: string;
     [key: string]: any;
   }) => {
-    MixpanelService.trackEvent('Add Subscription', properties);
+    await MixpanelService.trackEvent('Add Subscription', properties);
   },
 
   /**
    * Track when a user creates a bank account
    */
-  trackCreateBankAccount: (properties?: {
+  trackCreateBankAccount: async (properties?: {
     accountType?: string;
     bank?: string;
     currency?: string;
     initialBalance?: number;
     [key: string]: any;
   }) => {
-    MixpanelService.trackEvent('Create Bank Account', properties);
+    await MixpanelService.trackEvent('Create Bank Account', properties);
   }
 }; 
