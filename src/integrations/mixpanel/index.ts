@@ -14,35 +14,56 @@ const MIXPANEL_DEV_TOKEN = import.meta.env.MIXPANEL_DEV_TOKEN;
 let analyticsBlocked = false;
 // Flag to prevent console error spam
 let errorLogged = false;
+// Flag to track if Mixpanel is properly initialized
+let mixpanelInitialized = false;
+
+// Type definitions for better type safety
+type MixpanelProperties = Record<string, string | number | boolean | Date | null | undefined>;
+type ErrorWithMessage = {
+  message?: string;
+  toString(): string;
+};
 
 // Initialize Mixpanel with the appropriate token
-if (isProd) {
-  mixpanel.init(MIXPANEL_PROD_TOKEN, { 
-    debug: false, 
-    ignore_dnt: true,
-    cross_subdomain_cookie: false,
-    secure_cookie: true,
-    xhr_headers: {
-      'Access-Control-Allow-Origin': '*'
-    }
-  });
-} else if (isDev) {
-  mixpanel.init(MIXPANEL_DEV_TOKEN, { 
-    debug: true, 
-    ignore_dnt: true,
-    cross_subdomain_cookie: false,
-    secure_cookie: true,
-    xhr_headers: {
-      'Access-Control-Allow-Origin': '*'
-    }
-  });
-} else {
-  // In test environments, use a mock implementation
-  console.log('[Mixpanel] Test environment detected, tracking disabled');
+try {
+  if (isProd && MIXPANEL_PROD_TOKEN) {
+    mixpanel.init(MIXPANEL_PROD_TOKEN, { 
+      debug: false, 
+      ignore_dnt: true,
+      cross_subdomain_cookie: false,
+      secure_cookie: true,
+      xhr_headers: {
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+    mixpanelInitialized = true;
+    console.log('[Mixpanel] Production analytics initialized');
+  } else if (isDev && MIXPANEL_DEV_TOKEN) {
+    mixpanel.init(MIXPANEL_DEV_TOKEN, { 
+      debug: true, 
+      ignore_dnt: true,
+      cross_subdomain_cookie: false,
+      secure_cookie: true,
+      xhr_headers: {
+        'Access-Control-Allow-Origin': '*'
+      }
+    });
+    mixpanelInitialized = true;
+    console.log('[Mixpanel] Development analytics initialized');
+  } else if (isTest) {
+    // In test environments, use a mock implementation
+    console.log('[Mixpanel] Test environment detected, tracking disabled');
+  } else {
+    // No token available
+    console.warn('[Mixpanel] No analytics token configured, tracking disabled');
+  }
+} catch (error) {
+  console.warn('[Mixpanel] Failed to initialize:', error);
+  mixpanelInitialized = false;
 }
 
 // Graceful error handler to reduce console spam
-const handleAnalyticsError = (error: any) => {
+const handleAnalyticsError = (error: ErrorWithMessage) => {
   // Check if error is related to network/request blocking
   if (error && (
       error.toString().includes('network error') || 
@@ -67,20 +88,20 @@ const handleAnalyticsError = (error: any) => {
 
 // Utility functions for tracking - will safely handle all environments
 export const MixpanelService = {
-  trackEvent: (eventName: string, properties?: Record<string, any>) => {
+  trackEvent: (eventName: string, properties?: MixpanelProperties) => {
     if (isTest) {
       console.log(`[Mixpanel Mock] Track: ${eventName}`, properties);
       return;
     }
     
-    // Skip if we already know analytics is blocked
-    if (analyticsBlocked) return;
+    // Skip if Mixpanel is not initialized or analytics is blocked
+    if (!mixpanelInitialized || analyticsBlocked) return;
     
     try {
       mixpanel.track(eventName, properties);
       if (isDev) console.log(`[Mixpanel] Tracked: ${eventName}`, properties);
     } catch (error) {
-      handleAnalyticsError(error);
+      handleAnalyticsError(error as ErrorWithMessage);
     }
   },
   
@@ -90,31 +111,31 @@ export const MixpanelService = {
       return;
     }
     
-    // Skip if we already know analytics is blocked
-    if (analyticsBlocked) return;
+    // Skip if Mixpanel is not initialized or analytics is blocked
+    if (!mixpanelInitialized || analyticsBlocked) return;
     
     try {
       mixpanel.identify(userId);
       if (isDev) console.log(`[Mixpanel] Identified user: ${userId}`);
     } catch (error) {
-      handleAnalyticsError(error);
+      handleAnalyticsError(error as ErrorWithMessage);
     }
   },
   
-  setUserProfile: (properties: Record<string, any>) => {
+  setUserProfile: (properties: MixpanelProperties) => {
     if (isTest) {
       console.log(`[Mixpanel Mock] Set Profile:`, properties);
       return;
     }
     
-    // Skip if we already know analytics is blocked
-    if (analyticsBlocked) return;
+    // Skip if Mixpanel is not initialized or analytics is blocked
+    if (!mixpanelInitialized || analyticsBlocked) return;
     
     try {
       mixpanel.people.set(properties);
       if (isDev) console.log(`[Mixpanel] Set profile:`, properties);
     } catch (error) {
-      handleAnalyticsError(error);
+      handleAnalyticsError(error as ErrorWithMessage);
     }
   },
   
@@ -124,17 +145,22 @@ export const MixpanelService = {
       return;
     }
     
-    // Always try to reset, even if blocked
+    // Skip if Mixpanel is not initialized
+    if (!mixpanelInitialized) return;
+    
     try {
       mixpanel.reset();
       if (isDev) console.log(`[Mixpanel] Reset tracking`);
     } catch (error) {
-      handleAnalyticsError(error);
+      handleAnalyticsError(error as ErrorWithMessage);
     }
   },
   
   // Expose blocked state for components that need to know
-  isBlocked: () => analyticsBlocked
+  isBlocked: () => analyticsBlocked,
+  
+  // Expose initialization state
+  isInitialized: () => mixpanelInitialized
 };
 
 // Set up global error handler for Mixpanel requests

@@ -5,7 +5,7 @@ import path from 'path';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env variables for use in config
-  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  const env = loadEnv(mode, process.cwd(), '');
   
   // Get the Supabase URL from environment variables
   const supabaseUrl = env.VITE_SUPABASE_URL || 'https://idcgvnwatraddbsppxzl.supabase.co';
@@ -45,6 +45,12 @@ export default defineConfig(({ mode }) => {
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization', 'X-Client-Info', 'apikey'],
       }
+    },
+    define: {
+      // Expose specific environment variables to the client
+      'import.meta.env.TURNSTILE_SITE_KEY': JSON.stringify(env.TURNSTILE_SITE_KEY),
+      'import.meta.env.MIXPANEL_PROD_TOKEN': JSON.stringify(env.MIXPANEL_PROD_TOKEN),
+      'import.meta.env.MIXPANEL_DEV_TOKEN': JSON.stringify(env.MIXPANEL_DEV_TOKEN),
     },
   };
 }); 
