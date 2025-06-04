@@ -54,6 +54,9 @@ const Login = () => {
   const { signIn, signUp, resetPassword, resendVerificationEmail } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Environment check
+  const isDev = import.meta.env.DEV;
 
   // Calculate password strength
   const calculatePasswordStrength = (password: string) => {
@@ -448,12 +451,27 @@ const Login = () => {
               <Turnstile
                 siteKey={import.meta.env.TURNSTILE_SITE_KEY}
                 onSuccess={(token) => {
+                  console.log('[Turnstile] Success - token received');
                   setCaptchaToken(token);
                 }}
-                onError={() => {
+                onError={(error) => {
+                  console.warn('[Turnstile] Error:', error);
                   setCaptchaToken(undefined);
+                  // Show user-friendly error if needed
+                  if (isDev) {
+                    toast({
+                      title: "Captcha Error",
+                      description: "Please refresh the page and try again. If the issue persists, contact support.",
+                      variant: "destructive",
+                    });
+                  }
                 }}
                 onExpire={() => {
+                  console.log('[Turnstile] Token expired');
+                  setCaptchaToken(undefined);
+                }}
+                onTimeout={() => {
+                  console.warn('[Turnstile] Timeout');
                   setCaptchaToken(undefined);
                 }}
               />

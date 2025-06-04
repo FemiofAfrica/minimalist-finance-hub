@@ -5,16 +5,21 @@ import { TextItem } from 'pdfjs-dist/types/src/display/api';
  * Initialize PDF.js worker with robust fallback handling
  */
 export const initPDFWorker = () => {
-  // Use a known available version on CDN instead of the dynamic version
-  // The latest stable version on CDNJS is 3.11.174
-  const workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
-  
-  console.log(`Initialized PDF.js worker using version 3.11.174 (API version: ${pdfjsLib.version})`);
-  
-  // If there's a version mismatch, warn about it
-  if (pdfjsLib.version !== '3.11.174') {
-    console.warn(`PDF.js version mismatch: API is ${pdfjsLib.version} but worker is 3.11.174. This might cause issues.`);
+  try {
+    // Use the worker that matches our installed pdfjs-dist version (5.2.133)
+    // First try to use the local worker file
+    const workerSrc = '/assets/pdf/pdf.worker.mjs';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+    
+    console.log(`Initialized PDF.js worker using version ${pdfjsLib.version} (API version: ${pdfjsLib.version})`);
+  } catch (error) {
+    console.warn('Failed to initialize local PDF worker, falling back to CDN:', error);
+    
+    // Fallback to CDN with matching version
+    const cdnWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = cdnWorkerSrc;
+    
+    console.log(`Initialized PDF.js worker using CDN version ${pdfjsLib.version}`);
   }
 };
 

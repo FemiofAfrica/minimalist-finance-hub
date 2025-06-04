@@ -34,6 +34,25 @@ try {
   console.error('Failed to initialize client environment:', error);
 }
 
+// Error boundary wrapper for analytics components
+const SafeAnalytics = () => {
+  try {
+    return <Analytics />;
+  } catch (error) {
+    console.warn('[Analytics] Failed to load - likely blocked by ad blocker:', error);
+    return null;
+  }
+};
+
+const SafeSpeedInsights = () => {
+  try {
+    return <SpeedInsights />;
+  } catch (error) {
+    console.warn('[Speed Insights] Failed to load - likely blocked by ad blocker:', error);
+    return null;
+  }
+};
+
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   
@@ -101,8 +120,8 @@ function App() {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 <Toaster />
-                <Analytics />
-                <SpeedInsights />
+                <SafeAnalytics />
+                <SafeSpeedInsights />
               </NotificationProvider>
             </OnboardingProvider>
           </CurrencyProvider>
