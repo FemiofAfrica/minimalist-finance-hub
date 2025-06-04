@@ -72,7 +72,7 @@ const Login = () => {
     
     // Turnstile tokens expire after 5 minutes (300 seconds)
     const tokenAge = (Date.now() - captchaTimestamp) / 1000;
-    return tokenAge < 240; // Use 4 minutes to be safe
+    return tokenAge < 270; // Use 4.5 minutes to be safer with slower users
   };
 
   const resetCaptcha = () => {
@@ -102,7 +102,7 @@ const Login = () => {
     
     // Turnstile tokens expire after 5 minutes (300 seconds)
     const tokenAge = (Date.now() - resetCaptchaTimestamp) / 1000;
-    return tokenAge < 240; // Use 4 minutes to be safe
+    return tokenAge < 270; // Use 4.5 minutes to be safer with slower users
   };
 
   const resetResetCaptcha = () => {
