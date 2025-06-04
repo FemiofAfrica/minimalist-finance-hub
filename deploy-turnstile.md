@@ -1,6 +1,6 @@
-# Independent Turnstile Setup Guide
+# Independent Turnstile Setup Guide (Vercel)
 
-This guide shows how to set up Cloudflare Turnstile independently of Supabase's built-in captcha configuration.
+This guide shows how to set up Cloudflare Turnstile independently of Supabase's built-in captcha configuration using **Vercel API routes**.
 
 ## Benefits of Independent Setup
 
@@ -8,19 +8,17 @@ This guide shows how to set up Cloudflare Turnstile independently of Supabase's 
 - **Avoid Supabase Issues**: Bypasses Supabase's captcha validation problems
 - **More Reliable**: Direct integration with Cloudflare's API
 - **Better Error Handling**: Custom error messages and retry logic
+- **Vercel Environment Variables**: Proper and secure environment variable support
 
 ## Setup Steps
 
-### 1. Deploy the Verification Edge Function
+### 1. Set Environment Variables in Vercel
 
-```bash
-# Deploy the new edge function
-supabase functions deploy verify-turnstile
-```
+In your Vercel dashboard:
 
-### 2. Set Environment Variables
-
-In your Supabase dashboard, go to Settings > Edge Functions and add:
+1. Go to your project settings
+2. Navigate to **Environment Variables**
+3. Add the following variable:
 
 ```bash
 # REQUIRED: Your Turnstile secret key (server-side only)
@@ -32,7 +30,7 @@ TURNSTILE_SECRET_KEY=your_turnstile_secret_key_here
 - Get this from Cloudflare Dashboard > Turnstile > Your Site > Settings
 - Keep this secret and never expose it client-side
 
-### 3. Update Environment Variables
+### 2. Your Local Environment Variables
 
 Your `.env` file should have:
 
@@ -44,10 +42,11 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 # Turnstile site key (public, client-side)
 TURNSTILE_SITE_KEY=your_turnstile_site_key
 
-# Other optional variables...
+# For local development testing (optional)
+TURNSTILE_SECRET_KEY=your_turnstile_secret_key
 ```
 
-### 4. Disable Supabase Captcha (Optional)
+### 3. Disable Supabase Captcha (Optional)
 
 In your Supabase dashboard:
 1. Go to Authentication > Settings
@@ -64,21 +63,21 @@ User completes Turnstile → Token passed to Supabase → Supabase validates →
                           ❌ Supabase often rejects valid tokens
 ```
 
-### After (Independent)
+### After (Independent with Vercel)
 ```
-User completes Turnstile → Token verified by your edge function → Auth action proceeds
+User completes Turnstile → Token verified by Vercel API → Auth action proceeds
                           ✅ Direct verification with Cloudflare
 ```
 
 ## Code Changes Made
 
-1. **New Edge Function**: `supabase/functions/verify-turnstile/index.ts`
+1. **New Vercel API Route**: `api/verify-turnstile.js`
    - Verifies tokens directly with Cloudflare
-   - Better error handling
-   - CORS support
+   - Proper environment variable support
+   - Better error handling and CORS support
 
-2. **New Utility**: `src/utils/turnstileVerification.ts`
-   - Client-side verification helper
+2. **Updated Utility**: `src/utils/turnstileVerification.ts`
+   - Now calls Vercel API route instead of Supabase edge function
    - Error message mapping
    - Token format validation
 
@@ -91,57 +90,68 @@ User completes Turnstile → Token verified by your edge function → Auth actio
 
 1. **Local Development**:
    ```bash
-   # Start Supabase locally
-   supabase start
+   # Start your development server
+   npm run dev
    
-   # Deploy functions locally
-   supabase functions deploy verify-turnstile --no-verify-jwt
-   
-   # Test the function
-   curl -X POST "http://localhost:54321/functions/v1/verify-turnstile" \
+   # Test the API route (in another terminal)
+   curl -X POST "http://localhost:5173/api/verify-turnstile" \
      -H "Content-Type: application/json" \
      -d '{"token":"test_token"}'
    ```
 
 2. **Production Testing**:
+   - Deploy to Vercel with environment variable set
    - Complete a Turnstile challenge
    - Check browser console for verification logs
    - Ensure auth actions work smoothly
 
-## Rollback Plan
+## Deployment
 
-If you need to rollback:
+### Vercel Deployment
 
-1. Revert `AuthContext.tsx` changes
-2. Re-enable Supabase captcha in dashboard
-3. Remove the edge function:
+1. Push your code to GitHub/GitLab/Bitbucket
+2. Connect repository to Vercel
+3. Set environment variables in Vercel dashboard:
    ```bash
-   supabase functions delete verify-turnstile
+   TURNSTILE_SECRET_KEY=your_turnstile_secret_key
    ```
+4. Deploy!
 
 ## Troubleshooting
 
 ### "Turnstile secret not configured"
-- Ensure `TURNSTILE_SECRET_KEY` is set in Supabase dashboard
+- Ensure `TURNSTILE_SECRET_KEY` is set in Vercel environment variables
 - Use the **secret key**, not the site key
+- Redeploy after setting environment variables
 
 ### "Failed to verify with Turnstile service"
 - Check Cloudflare's Turnstile service status
 - Verify your secret key is correct
 - Check domain configuration in Cloudflare dashboard
 
-### Edge function not found
-- Deploy the function: `supabase functions deploy verify-turnstile`
-- Check function exists in Supabase dashboard
+### API route not found (404)
+- Ensure `api/verify-turnstile.js` exists in your project
+- Check Vercel function logs in dashboard
 
 ### CORS errors
-- The edge function includes CORS headers
-- Ensure your domain is in Turnstile's allowed domains list
+- The API route includes CORS headers for development
+- For production, consider restricting origins to your domain
+
+## Cleanup (Optional)
+
+Since we're now using Vercel instead of Supabase edge functions, you can remove:
+
+```bash
+# Remove the Supabase edge function (optional)
+rm -rf supabase/functions/verify-turnstile/
+```
 
 ## Benefits Achieved
 
 ✅ **No more "timeout-or-duplicate" errors**
 ✅ **Independent captcha verification**
+✅ **Proper environment variable support via Vercel**
 ✅ **Better error messages**
 ✅ **More reliable auth flow**
-✅ **Full control over verification logic** 
+✅ **Full control over verification logic**
+✅ **Easy deployment and scaling with Vercel** 

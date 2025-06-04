@@ -1,5 +1,3 @@
-import { supabase } from '@/integrations/supabase/client';
-
 export interface TurnstileVerificationResult {
   success: boolean;
   errorCodes?: string[];
@@ -13,7 +11,7 @@ export interface TurnstileError extends Error {
 }
 
 /**
- * Verify a Turnstile token independently using our Supabase edge function
+ * Verify a Turnstile token independently using our Vercel API route
  * This bypasses Supabase's built-in captcha configuration issues
  */
 export async function verifyTurnstileToken(
@@ -23,18 +21,26 @@ export async function verifyTurnstileToken(
   try {
     console.log('[Turnstile] Verifying token independently...');
     
-    // Call our custom edge function for verification
-    const { data, error } = await supabase.functions.invoke('verify-turnstile', {
-      body: { 
-        token, 
-        remoteip: remoteip || undefined 
-      }
+    // Use Vercel API route for verification
+    const verifyUrl = '/api/verify-turnstile';
+    
+    const response = await fetch(verifyUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        token,
+        remoteip: remoteip || undefined
+      })
     });
 
-    if (error) {
-      console.error('[Turnstile] Edge function error:', error);
-      throw new Error(`Verification service error: ${error.message}`);
+    if (!response.ok) {
+      console.error('[Turnstile] API route error:', response.status, response.statusText);
+      throw new Error(`Verification service error: ${response.status} ${response.statusText}`);
     }
+
+    const data = await response.json();
 
     if (!data) {
       throw new Error('No response from verification service');
