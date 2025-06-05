@@ -32,20 +32,28 @@ const checkTableExists = async (): Promise<boolean> => {
   if (tableExists !== null) return tableExists;
   
   try {
-    const { data, error } = await supabase
+    // Use a simpler query that's less likely to cause 406 errors
+    const { error } = await supabase
       .from('monthly_snapshots')
-      .select('snapshot_id')
-      .limit(1);
+      .select('snapshot_id', { count: 'exact', head: true });
     
-    if (error && error.code === 'PGRST106') {
-      // Table doesn't exist
-      tableExists = false;
-      return false;
+    if (error) {
+      if (error.code === 'PGRST106' || error.message?.includes('relation') || error.message?.includes('does not exist')) {
+        // Table doesn't exist
+        console.log('Monthly snapshots table does not exist');
+        tableExists = false;
+        return false;
+      }
+      // Other errors (like permissions) still indicate table exists
+      console.warn('Monthly snapshots table exists but query failed:', error);
+      tableExists = true;
+      return true;
     }
     
     tableExists = true;
     return true;
   } catch (error) {
+    console.error('Error checking monthly_snapshots table existence:', error);
     tableExists = false;
     return false;
   }
