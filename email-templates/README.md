@@ -52,6 +52,19 @@ This directory contains professionally designed, responsive email templates for 
   - Action context information
   - Emergency security contacts
 
+### 7. **Subscription Reminder** (`subscription-reminder.html` + `.txt`) 🆕
+- **Purpose**: Remind users of upcoming subscription renewals
+- **Features**: 
+  - Warning-style notification design with amber accents
+  - Subscription details (name, amount, renewal date)
+  - Action buttons for managing subscriptions
+  - One-click unsubscribe options
+  - Clear next steps and billing information
+  - **Both HTML and plain text versions** for better deliverability
+- **Files**: 
+  - `subscription-reminder.html` - Rich HTML template
+  - `subscription-reminder.txt` - Plain text version
+
 ## 🎨 Design Features
 
 ### Branding
@@ -96,6 +109,14 @@ Each template uses these Postmark variables:
 | `{{.Email}}` | Current email address | Email change template |
 | `{{.NewEmail}}` | New email address | Email change template |
 | `{{.Token}}` | Verification code | Reauthentication template |
+| `{{.SubscriptionName}}` | Name of the subscription | Subscription reminder |
+| `{{.Amount}}` | Subscription amount | Subscription reminder |
+| `{{.RenewalDate}}` | Next billing date | Subscription reminder |
+| `{{.ManageURL}}` | Link to manage specific subscription | Subscription reminder |
+| `{{.ViewAllURL}}` | Link to view all subscriptions | Subscription reminder |
+| `{{.DashboardURL}}` | Link to user dashboard | Subscription reminder |
+| `{{.UnsubscribeURL}}` | Link to unsubscribe from reminders | Subscription reminder |
+| `{{.PreferencesURL}}` | Link to email preferences | Subscription reminder |
 
 ### 3. Suggested Email Subjects
 
@@ -106,6 +127,7 @@ Magic Link: "Your secure login link for Kpege"
 User Invitation: "You've been invited to join Kpege"
 Email Change: "Confirm your new email address"
 Reauthentication: "Security verification required"
+Subscription Reminder: "Reminder: [Subscription Name] renews in [X] days"
 ```
 
 ### 4. Integration Example
@@ -146,6 +168,7 @@ These templates are tested and optimized for:
 - **Desktop**: Outlook 2016+, Apple Mail, Thunderbird
 - **Mobile**: iPhone Mail, Gmail Mobile, Outlook Mobile
 - **Features**: Dark mode support, high DPI displays
+- **Plain Text**: Fallback support for text-only email clients
 
 ## 🎯 Best Practices
 
@@ -154,12 +177,14 @@ These templates are tested and optimized for:
 - Use clear, action-oriented CTAs
 - Include fallback text for images
 - Provide alternative contact methods
+- **Always provide plain text versions** for accessibility and deliverability
 
 ### Technical
 - Inline CSS for maximum compatibility
 - Table-based layouts for email clients
 - Alt text for all images
 - Preheader text optimization
+- **Multi-part emails** (HTML + plain text) for best delivery rates
 
 ### Security
 - Always use HTTPS for links

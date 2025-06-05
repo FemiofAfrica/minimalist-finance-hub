@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Reminder - Kpege</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #ffffff;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: #e8f1df;
+            border-radius: 8px;
+            padding: 40px;
+            border: 1px solid #e0e0e0;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo-badge {
+            display: inline-block;
+            color: black;
+            padding: 24px 24px;
+            border-radius: 8px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            text-decoration: none;
+            letter-spacing: 0.5px;
+        }
+        .content {
+            text-align: center;
+        }
+        .content h2 {
+            color: #333;
+            font-size: 24px;
+            margin: 0 0 20px 0;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: 600;
+        }
+        .content p {
+            color: #666;
+            font-size: 16px;
+            margin: 0 0 25px 0;
+        }
+        .subscription-details {
+            background-color: #ffffff;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: left;
+            border: 1px solid #e0e0e0;
+        }
+        .subscription-details h3 {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin: 0 0 15px 0;
+            text-align: center;
+        }
+        .detail-row {
+            display: table;
+            width: 100%;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .detail-row:last-child {
+            margin-bottom: 0;
+        }
+        .detail-label {
+            display: table-cell;
+            font-weight: 600;
+            color: #333;
+            width: 40%;
+        }
+        .detail-value {
+            display: table-cell;
+            color: #666;
+            font-weight: 500;
+        }
+        .button {
+            display: inline-block;
+            background: #15803d;
+            color: white !important;
+            padding: 14px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-weight: 600;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 16px;
+        }
+        .secondary-links {
+            font-size: 14px;
+            color: #666;
+            margin: 20px 0;
+        }
+        .secondary-links a {
+            color: #15803d;
+            text-decoration: none;
+        }
+        .secondary-links a:hover {
+            text-decoration: underline;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+        .footer a {
+            color: #15803d;
+            text-decoration: none;
+        }
+        .unsubscribe-text {
+            font-size: 12px;
+            color: #999;
+            margin-top: 20px;
+        }
+        .unsubscribe-text a {
+            color: #15803d;
+            text-decoration: none;
+        }
+        
+        /* Mobile responsive */
+        @media only screen and (max-width: 600px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            .detail-row {
+                display: block;
+            }
+            .detail-label, .detail-value {
+                display: block;
+                width: 100%;
+            }
+            .detail-label {
+                margin-bottom: 5px;
+            }
+            .detail-value {
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <div class="logo-badge">KPEGE</div>
+        </div>
+        
+        <div class="content">
+            <h2>Subscription Reminder</h2>
+            <p>Your subscription <strong>{{SubscriptionName}}</strong> is due for renewal soon.</p>
+            
+            <div class="subscription-details">
+                <h3>Renewal Details</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Subscription:</span>
+                    <span class="detail-value">{{SubscriptionName}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Amount:</span>
+                    <span class="detail-value">${{Amount}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Renewal Date:</span>
+                    <span class="detail-value">{{RenewalDate}}</span>
+                </div>
+            </div>
+            
+            <p>Review your subscription and make any necessary changes before the renewal date.</p>
+            
+            <a href="{{ManageURL}}" class="button">Manage Subscription</a>
+            
+            <div class="secondary-links">
+                <p>You can also <a href="{{ViewAllURL}}">view all your subscriptions</a> or visit your <a href="{{DashboardURL}}">dashboard</a>.</p>
+            </div>
+            
+            <div class="unsubscribe-text">
+                <p>Don't want these reminders? <a href="{{UnsubscribeURL}}">Unsubscribe</a> or <a href="{{PreferencesURL}}">manage your email preferences</a>.</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© 2025 Kpege. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html> 

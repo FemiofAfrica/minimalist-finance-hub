@@ -1,0 +1,42 @@
+===============================================
+        KPEGE - AI-powered financial insights
+===============================================
+
+⚠️     STAY IN CONTROL OF YOUR MONEY
+
+We wanted to give you complete visibility into an upcoming subscription renewal so you can stay in control.
+
+-----------------------------------------------
+        SUBSCRIPTION DETAILS
+-----------------------------------------------
+
+Service: {{.SubscriptionName}}
+Amount: ${{.Amount}}
+Renewal Date: {{.RenewalDate}}
+
+-----------------------------------------------
+
+This subscription will automatically renew unless you take action. Kpege makes it simple to manage all your subscriptions in one place.
+
+🔗 TAKE CONTROL:
+• Control This Subscription: {{.ManageURL}}
+• View All Subscriptions: {{.ViewAllURL}}
+
+-----------------------------------------------
+    SIMPLE AND EFFORTLESS MANAGEMENT
+-----------------------------------------------
+
+Your payment method will be charged automatically on the renewal date. With Kpege, you can cancel, pause, or modify any subscription anytime from your unified financial dashboard.
+
+-----------------------------------------------
+
+Questions? Contact our support team: hello@kpege.com
+Go to Dashboard: {{.DashboardURL}}
+
+Unsubscribe from financial reminders: {{.UnsubscribeURL}}
+Email preferences: {{.PreferencesURL}}
+
+-----------------------------------------------
+Making financial management simple and effortless
+© Kpege - AI-powered financial insights
+----------------------------------------------- 

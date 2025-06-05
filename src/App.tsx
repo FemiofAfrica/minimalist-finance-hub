@@ -22,6 +22,7 @@ import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
 import LandingPage from '@/pages/LandingPage';
 import Blog from '@/pages/Blog';
+import Unsubscribe from '@/pages/Unsubscribe';
 import './App.css';
 import { OnboardingProvider } from '@/contexts/OnboardingContext';
 import { useEffect } from 'react';
@@ -110,6 +111,7 @@ function App() {
                   <Route path="/login" element={<Login />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/blog" element={<Blog />} />
+                  <Route path="/unsubscribe" element={<Unsubscribe />} />
                   <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
                   <Route path="/transactions" element={<PrivateRoute><Transactions /></PrivateRoute>} />
                   <Route path="/subscriptions" element={<PrivateRoute><Subscriptions /></PrivateRoute>} />

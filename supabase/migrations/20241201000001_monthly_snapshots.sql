@@ -112,6 +112,7 @@ DECLARE
     v_month INTEGER;
     v_current_year INTEGER;
     v_current_month INTEGER;
+    rec RECORD;
 BEGIN
     -- Get user_id and date info
     IF TG_OP = 'DELETE' THEN
@@ -133,15 +134,12 @@ BEGIN
     
     -- Update snapshots from the affected month to current month
     FOR rec IN 
-        SELECT DISTINCT year, month 
+        SELECT DISTINCT EXTRACT(YEAR FROM month_date)::INTEGER AS year, EXTRACT(MONTH FROM month_date)::INTEGER AS month
         FROM generate_series(
             DATE(v_year || '-' || LPAD(v_month::text, 2, '0') || '-01'),
             DATE(v_current_year || '-' || LPAD(v_current_month::text, 2, '0') || '-01'),
             INTERVAL '1 month'
-        ) AS month_series(date)
-        CROSS JOIN LATERAL (
-            SELECT EXTRACT(YEAR FROM date) AS year, EXTRACT(MONTH FROM date) AS month
-        ) AS date_parts
+        ) AS month_date
         ORDER BY year, month
     LOOP
         PERFORM public.calculate_monthly_snapshot(v_user_id, rec.year, rec.month);

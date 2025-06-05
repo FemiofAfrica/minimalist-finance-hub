@@ -1,0 +1,19 @@
+KPEGE
+
+Subscription Reminder
+
+Your subscription {{SubscriptionName}} is due for renewal soon. Here are the details:
+
+Subscription: {{SubscriptionName}}
+Amount: ${{Amount}}
+Renewal Date: {{RenewalDate}}
+
+Review your subscription and make any necessary changes before the renewal date.
+
+Manage Subscription: {{ManageURL}}
+
+You can also view all your subscriptions ({{ViewAllURL}}) or visit your dashboard ({{DashboardURL}}).
+
+Don't want these reminders? Unsubscribe ({{UnsubscribeURL}}) or manage your email preferences ({{PreferencesURL}}).
+
+© 2025 Kpege. All rights reserved. 
