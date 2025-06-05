@@ -273,7 +273,7 @@ const Login = () => {
 
     try {
       setIsResetting(true);
-      setResetError(null);
+    setResetError(null);
 
       console.log('[Login] Requesting password reset for:', resetEmail);
       
@@ -298,10 +298,10 @@ const Login = () => {
           description: "Check your email for a password reset link. You were automatically verified from your recent captcha completion.",
         });
       } else {
-        toast({
+      toast({
           title: "Reset Email Sent! 📧", 
           description: "Check your email for a password reset link. Your verification is now stored for future requests.",
-        });
+      });
       }
       
       setIsResetDialogOpen(false);
@@ -685,19 +685,19 @@ const Login = () => {
             </DialogHeader>
             
             <form onSubmit={(e) => { e.preventDefault(); handleResetPassword(); }}>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="resetEmail" className="text-black">Email</Label>
-                  <Input
-                    id="resetEmail"
-                    type="email"
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    required
-                    placeholder="your@email.com"
-                    className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
-                  />
-                </div>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="resetEmail" className="text-black">Email</Label>
+                    <Input
+                      id="resetEmail"
+                      type="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      required
+                      placeholder="your@email.com"
+                      className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
+                    />
+                  </div>
                 
                 {/* Smart Captcha Section */}
                 {captchaSessionInfo?.isValid ? (
@@ -764,37 +764,37 @@ const Login = () => {
                     {resetError}
                   </div>
                 )}
-              </div>
-              
-              <div className="flex justify-between items-center mt-4">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setIsCodeResetView(true)}
-                  className="bg-transparent text-black border-black hover:bg-[#e8f1df]"
-                >
-                  I have a reset code
-                </Button>
-              </div>
-              
-              <DialogFooter className="mt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsResetDialogOpen(false)}
-                  className="bg-transparent text-black border-black hover:bg-[#e8f1df]"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-[#217a39] hover:bg-black text-white"
+                </div>
+                
+                <div className="flex justify-between items-center mt-4">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setIsCodeResetView(true)}
+                    className="bg-transparent text-black border-black hover:bg-[#e8f1df]"
+                  >
+                    I have a reset code
+                  </Button>
+                </div>
+                
+                <DialogFooter className="mt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsResetDialogOpen(false)}
+                    className="bg-transparent text-black border-black hover:bg-[#e8f1df]"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="bg-[#217a39] hover:bg-black text-white"
                   disabled={isResetting || !resetEmail || (!captchaSessionInfo?.isValid && !isResetCaptchaTokenValid())}
-                >
+                  >
                   {isResetting ? 'Sending...' : 'Send Reset Link'}
-                </Button>
-              </DialogFooter>
-            </form>
+                  </Button>
+                </DialogFooter>
+              </form>
           </DialogContent>
         </Dialog>
 

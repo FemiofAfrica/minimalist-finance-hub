@@ -213,7 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('[AuthContext] Captcha verification failed:', error);
           const errorMessage = error instanceof Error ? error.message : 'Captcha verification failed';
           throw new Error(errorMessage);
-        }
+          }
       } else {
         // No valid session and no new token
         throw new Error('Captcha verification required. Please complete the captcha.');

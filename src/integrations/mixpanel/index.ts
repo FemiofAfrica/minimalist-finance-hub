@@ -77,13 +77,13 @@ const testMixpanelConnectivity = async (): Promise<boolean> => {
 // Initialize Mixpanel with the appropriate token
 try {
   if (isProd && MIXPANEL_PROD_TOKEN) {
-    mixpanel.init(MIXPANEL_PROD_TOKEN, { 
-      debug: false, 
-      ignore_dnt: true,
-      cross_subdomain_cookie: false,
-      secure_cookie: true,
-      xhr_headers: {
-        'Access-Control-Allow-Origin': '*'
+  mixpanel.init(MIXPANEL_PROD_TOKEN, { 
+    debug: false, 
+    ignore_dnt: true,
+    cross_subdomain_cookie: false,
+    secure_cookie: true,
+    xhr_headers: {
+      'Access-Control-Allow-Origin': '*'
       },
       // Disable automatic tracking to prevent immediate blocked requests
       track_pageview: false,
@@ -95,13 +95,13 @@ try {
     // Test connectivity after a short delay
     setTimeout(() => testMixpanelConnectivity(), 1000);
   } else if (isDev && MIXPANEL_DEV_TOKEN) {
-    mixpanel.init(MIXPANEL_DEV_TOKEN, { 
-      debug: true, 
-      ignore_dnt: true,
-      cross_subdomain_cookie: false,
-      secure_cookie: true,
-      xhr_headers: {
-        'Access-Control-Allow-Origin': '*'
+  mixpanel.init(MIXPANEL_DEV_TOKEN, { 
+    debug: true, 
+    ignore_dnt: true,
+    cross_subdomain_cookie: false,
+    secure_cookie: true,
+    xhr_headers: {
+      'Access-Control-Allow-Origin': '*'
       },
       // Disable automatic tracking to prevent immediate blocked requests
       track_pageview: false,
@@ -113,8 +113,8 @@ try {
     // Test connectivity after a short delay
     setTimeout(() => testMixpanelConnectivity(), 1000);
   } else if (isTest) {
-    // In test environments, use a mock implementation
-    console.log('[Mixpanel] Test environment detected, tracking disabled');
+  // In test environments, use a mock implementation
+  console.log('[Mixpanel] Test environment detected, tracking disabled');
   } else {
     // No token available
     console.warn('[Mixpanel] No analytics token configured, tracking disabled');

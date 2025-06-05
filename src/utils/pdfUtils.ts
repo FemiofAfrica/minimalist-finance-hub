@@ -9,8 +9,8 @@ export const initPDFWorker = () => {
     // Use the worker that matches our installed pdfjs-dist version (5.2.133)
     // First try to use the local worker file
     const workerSrc = '/assets/pdf/pdf.worker.mjs';
-    pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
-    
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+  
     console.log(`Initialized PDF.js worker using version ${pdfjsLib.version} (API version: ${pdfjsLib.version})`);
   } catch (error) {
     console.warn('Failed to initialize local PDF worker, falling back to CDN:', error);

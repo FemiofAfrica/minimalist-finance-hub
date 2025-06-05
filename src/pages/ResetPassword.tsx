@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,38 @@ const ResetPassword = () => {
   const location = useLocation();
   const { toast } = useToast();
   const isDev = import.meta.env.DEV;
+
+  // Capture the original URL immediately when component mounts
+  const originalUrl = useRef(window.location.href);
+  const originalHash = useRef(window.location.hash);
+  const originalSearch = useRef(window.location.search);
+
+  // Add immediate URL capture outside React lifecycle
+  useEffect(() => {
+    // Store immediate URL capture in localStorage for persistence
+    const immediateCapture = {
+      captureTime: new Date().toISOString(),
+      href: window.location.href,
+      hash: window.location.hash,
+      search: window.location.search,
+      pathname: window.location.pathname,
+      userAgent: navigator.userAgent,
+      referrer: document.referrer
+    };
+    
+    try {
+      localStorage.setItem('kpege_immediate_url_capture', JSON.stringify(immediateCapture));
+      console.log('[ResetPassword] Immediate URL capture:', immediateCapture);
+    } catch (e) {
+      console.warn('[ResetPassword] Could not store immediate capture:', e);
+    }
+    
+    console.log('[ResetPassword] Component mounted with original URL:', {
+      href: originalUrl.current,
+      hash: originalHash.current,
+      search: originalSearch.current
+    });
+  }, []);
 
   // Helper function to store debug information persistently
   const storeDebugInfo = (info: any) => {
@@ -131,6 +163,9 @@ const ResetPassword = () => {
       storeDebugInfo({
         mode: 'production',
         action: 'url_analysis',
+        originalUrl: originalUrl.current,
+        originalHash: originalHash.current,
+        originalSearch: originalSearch.current,
         ...currentLocationInfo,
         ...rawUrlInfo,
         ...urlAnalysis
@@ -452,28 +487,55 @@ const ResetPassword = () => {
               <div className="mt-6 p-4 bg-gray-100 rounded-md text-left text-xs">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="font-semibold text-gray-700">Debug Info</h3>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      navigator.clipboard.writeText(JSON.stringify(debugInfo, null, 2));
-                      toast({
-                        title: "Copied!",
-                        description: "Debug info copied to clipboard",
-                      });
-                    }}
-                    className="text-xs"
-                  >
-                    Copy
-                  </Button>
+                  <div className="space-x-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const immediateCapture = localStorage.getItem('kpege_immediate_url_capture');
+                        const pageLoadCapture = localStorage.getItem('kpege_page_load_url');
+                        const fullDebugData = {
+                          currentDebugInfo: debugInfo,
+                          immediateUrlCapture: immediateCapture ? JSON.parse(immediateCapture) : null,
+                          pageLoadCapture: pageLoadCapture ? JSON.parse(pageLoadCapture) : null
+                        };
+                        navigator.clipboard.writeText(JSON.stringify(fullDebugData, null, 2));
+                        toast({
+                          title: "Copied!",
+                          description: "Full debug info copied to clipboard",
+                        });
+                      }}
+                      className="text-xs"
+                    >
+                      Copy All
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        localStorage.removeItem('kpege_password_reset_debug');
+                        localStorage.removeItem('kpege_immediate_url_capture');
+                        setDebugInfo(null);
+                        toast({
+                          title: "Cleared!",
+                          description: "Debug info cleared",
+                        });
+                      }}
+                      className="text-xs"
+                    >
+                      Clear
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-1 text-gray-600">
                   <p><strong>Time:</strong> {debugInfo.timestamp}</p>
                   <p><strong>Action:</strong> {debugInfo.action}</p>
                   <p><strong>Mode:</strong> {debugInfo.mode}</p>
                   <p><strong>Full URL:</strong> {debugInfo.fullUrl}</p>
+                  <p><strong>Original URL:</strong> {debugInfo.originalUrl || 'Not captured'}</p>
                   <p><strong>Window Hash:</strong> {debugInfo.windowHash || 'None'}</p>
                   <p><strong>React Hash:</strong> {debugInfo.hash || 'None'}</p>
+                  <p><strong>Original Hash:</strong> {debugInfo.originalHash || 'None'}</p>
                   <p><strong>Has Tokens:</strong> {debugInfo.hasTokens ? 'Yes' : 'No'}</p>
                   <p><strong>Has Recovery Type:</strong> {debugInfo.hasRecoveryType ? 'Yes' : 'No'}</p>
                   {debugInfo.errorInfo && (
@@ -483,6 +545,49 @@ const ResetPassword = () => {
                     </div>
                   )}
                 </div>
+                
+                {/* Show immediate capture info if available */}
+                {(() => {
+                  try {
+                    const immediateCapture = localStorage.getItem('kpege_immediate_url_capture');
+                    const pageLoadCapture = localStorage.getItem('kpege_page_load_url');
+                    
+                    if (immediateCapture || pageLoadCapture) {
+                      return (
+                        <div className="mt-3 space-y-2">
+                          {pageLoadCapture && (() => {
+                            const parsed = JSON.parse(pageLoadCapture);
+                            return (
+                              <div className="p-2 bg-green-50 rounded text-gray-600">
+                                <p className="font-semibold">Page Load Capture (HTML Script):</p>
+                                <p><strong>Time:</strong> {parsed.timestamp}</p>
+                                <p><strong>Full URL:</strong> {parsed.href}</p>
+                                <p><strong>Hash:</strong> {parsed.hash || 'None'}</p>
+                                <p><strong>Referrer:</strong> {parsed.referrer || 'None'}</p>
+                              </div>
+                            );
+                          })()}
+                          
+                          {immediateCapture && (() => {
+                            const parsed = JSON.parse(immediateCapture);
+                            return (
+                              <div className="p-2 bg-blue-50 rounded text-gray-600">
+                                <p className="font-semibold">React Mount Capture:</p>
+                                <p><strong>Time:</strong> {parsed.captureTime}</p>
+                                <p><strong>Full URL:</strong> {parsed.href}</p>
+                                <p><strong>Hash:</strong> {parsed.hash || 'None'}</p>
+                                <p><strong>Referrer:</strong> {parsed.referrer || 'None'}</p>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      );
+                    }
+                  } catch (e) {
+                    return null;
+                  }
+                  return null;
+                })()}
               </div>
             )}
             

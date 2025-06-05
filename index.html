@@ -32,6 +32,33 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Open+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     
+    <!-- Immediate URL capture script - runs before React -->
+    <script>
+      (function() {
+        // Only capture for reset-password page
+        if (window.location.pathname === '/reset-password') {
+          const urlData = {
+            href: window.location.href,
+            hash: window.location.hash,
+            search: window.location.search,
+            pathname: window.location.pathname,
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            referrer: document.referrer
+          };
+          
+          console.log('[URL CAPTURE] Immediate page load URL capture:', urlData);
+          
+          // Store in localStorage for later retrieval
+          try {
+            localStorage.setItem('kpege_page_load_url', JSON.stringify(urlData));
+          } catch (e) {
+            console.warn('[URL CAPTURE] Could not store page load URL:', e);
+          }
+        }
+      })();
+    </script>
+    
     <!-- Schema.org markup for structured data -->
     <script type="application/ld+json">
     {
