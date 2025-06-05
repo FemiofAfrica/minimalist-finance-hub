@@ -110,7 +110,7 @@ export const createAccount = async (account: Omit<Account, 'account_id' | 'user_
     const insertData = {
       user_id: userId,
       name: dbAccountData.name,
-      type: dbAccountData.type,
+      type: dbAccountData.type?.toLowerCase() || 'checking', // Ensure lowercase type
       balance: dbAccountData.balance,
       currency: dbAccountData.currency || 'NGN',
       is_active: dbAccountData.is_active !== undefined ? dbAccountData.is_active : true,

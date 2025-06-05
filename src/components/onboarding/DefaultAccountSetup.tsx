@@ -55,7 +55,7 @@ export function DefaultAccountSetup() {
     };
     
     checkAccounts();
-  }, [toast]);
+  }, []); // Remove toast from dependency array to prevent infinite loops
 
   const handleChange = <K extends keyof Account>(field: K, value: Account[K]) => {
     setFormData(prev => ({

@@ -11,8 +11,16 @@ export interface TurnstileError extends Error {
 }
 
 /**
+ * Check if we're in development mode
+ */
+function isDevelopmentMode(): boolean {
+  return import.meta.env.DEV || import.meta.env.NODE_ENV === 'development';
+}
+
+/**
  * Verify a Turnstile token independently using our Vercel API route
  * This bypasses Supabase's built-in captcha configuration issues
+ * In development mode, this will mock the verification if the API is not available
  */
 export async function verifyTurnstileToken(
   token: string, 
@@ -37,6 +45,18 @@ export async function verifyTurnstileToken(
 
     if (!response.ok) {
       console.error('[Turnstile] API route error:', response.status, response.statusText);
+      
+      // In development mode, if the API endpoint is not available (404), mock the verification
+      if (isDevelopmentMode() && response.status === 404) {
+        console.warn('[Turnstile] API endpoint not available in development mode, using mock verification');
+        return {
+          success: true,
+          challengeTs: new Date().toISOString(),
+          hostname: 'localhost',
+          action: 'development_mock'
+        };
+      }
+      
       throw new Error(`Verification service error: ${response.status} ${response.statusText}`);
     }
 
@@ -66,6 +86,20 @@ export async function verifyTurnstileToken(
 
   } catch (error) {
     console.error('[Turnstile] Verification failed:', error);
+    
+    // In development mode, if there's a network error or API is unavailable, mock the verification
+    if (isDevelopmentMode() && (
+      error instanceof TypeError || // Network errors
+      (error instanceof Error && error.message.includes('404'))
+    )) {
+      console.warn('[Turnstile] Network error in development mode, using mock verification');
+      return {
+        success: true,
+        challengeTs: new Date().toISOString(),
+        hostname: 'localhost',
+        action: 'development_mock_fallback'
+      };
+    }
     
     // Re-throw with better error messages
     if (error instanceof Error) {

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { verifyTurnstileToken, getTurnstileErrorMessage } from '@/utils/turnstileVerification';
+import { captchaSession } from '@/utils/captchaSession';
 
 type AuthContextType = {
   user: User | null;
@@ -139,24 +140,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      // First check if a session exists to prevent AuthSessionMissingError
-      const { data } = await supabase.auth.getSession();
+      console.log('[Auth] Signing out...');
       
-      if (!data.session) {
-        // No session exists, manually clean up local state
-        setUser(null);
-        setSession(null);
-        return;
+      // Clear captcha session
+      captchaSession.clear();
+      
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('[Auth] Sign out error:', error);
+        throw error;
       }
       
-      // Proceed with normal signOut if session exists
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      console.log('[Auth] Signed out successfully');
     } catch (error) {
-      console.error('Sign out error:', error);
-      // Even if logout fails, clear local state to allow user to "escape"
-      setUser(null);
-      setSession(null);
+      console.error('[Auth] Sign out failed:', error);
+      throw error;
     }
   };
 
@@ -181,36 +179,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetPassword = async (email: string, captchaToken?: string) => {
+    const isDev = import.meta.env.DEV;
+    
     try {
       if (!email) {
         throw new Error('Email is required.');
       }
       
-      console.log('[Auth] Sending password reset email to:', email);
+      console.log('[AuthContext] Requesting password reset for:', email);
       
-      // If captcha token provided, verify it independently first
-      if (captchaToken) {
+      // Check if we have a valid captcha session first
+      const hasValidSession = captchaSession.isValid();
+      let verifiedToken = captchaSession.getToken();
+      
+      if (hasValidSession && verifiedToken) {
+        console.log('[AuthContext] Using valid captcha session');
+      } else if (captchaToken) {
+        // New captcha token provided - verify it
+        console.log('[AuthContext] Verifying new captcha token...');
         try {
-          console.log('[Auth] Verifying Turnstile token before password reset...');
-          await verifyTurnstileToken(captchaToken);
-          console.log('[Auth] Turnstile verification successful, proceeding with password reset');
+          const verificationResult = await verifyTurnstileToken(captchaToken);
+          console.log('[AuthContext] Captcha verification successful');
+          
+          // Store the session for future use
+          captchaSession.store(captchaToken);
+          verifiedToken = captchaToken;
+          
+          // Log if we're using development mock
+          if (isDev && verificationResult.action?.includes('development_mock')) {
+            console.log('[AuthContext] Using development mock verification - this would require real captcha in production');
+          }
         } catch (error) {
-          console.error('[Auth] Turnstile verification failed:', error);
+          console.error('[AuthContext] Captcha verification failed:', error);
           const errorMessage = error instanceof Error ? error.message : 'Captcha verification failed';
           throw new Error(errorMessage);
         }
+      } else {
+        // No valid session and no new token
+        throw new Error('Captcha verification required. Please complete the captcha.');
       }
       
-      // Simple redirect URL
-      const redirectTo = `${window.location.origin}/reset-password`;
+      // Ensure we're using the correct redirect URL
+      const redirectTo = isDev 
+        ? 'http://localhost:5173/reset-password'
+        : `${window.location.origin}/reset-password`;
       
-      // Send reset email WITHOUT captcha token to avoid Supabase issues
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo
+      console.log('[AuthContext] Using redirect URL:', redirectTo);
+      
+      // Send reset email (we don't pass captcha to Supabase to avoid conflicts)
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectTo,
       });
-      
+
       if (error) {
-        console.error('[Auth] Reset password error:', error);
+        console.error('[AuthContext] Password reset error:', error);
         
         // Provide user-friendly error messages
         if (error.message.includes('Email rate limit exceeded') || error.status === 429) {
@@ -223,12 +245,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           throw new Error('Unable to send reset email. Please try again or contact support.');
         }
       }
-      
-      console.log('[Auth] Reset email sent successfully');
-      return { success: true, message: 'Password reset email sent successfully.' };
+
+      console.log('[AuthContext] Password reset email sent successfully');
+      return { 
+        success: true, 
+        message: 'Password reset email sent successfully.',
+        hadValidSession: hasValidSession 
+      };
       
     } catch (error) {
-      console.error('Password reset error:', error);
+      console.error('[AuthContext] Failed to send reset email:', error);
       throw error;
     }
   };

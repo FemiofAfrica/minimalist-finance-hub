@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { captchaSession } from '@/utils/captchaSession';
 import { FinanceEvents } from '@/integrations/mixpanel/events';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,7 +43,9 @@ const Login = () => {
   const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
   const [isCodeResetView, setIsCodeResetView] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  const [showResetModal, setShowResetModal] = useState(false);
   // Captcha token state
   const [captchaToken, setCaptchaToken] = useState<string | undefined>(undefined);
   const [captchaTimestamp, setCaptchaTimestamp] = useState<number | undefined>(undefined);
@@ -65,6 +68,10 @@ const Login = () => {
   
   // Environment check
   const isDev = import.meta.env.DEV;
+
+  // Smart captcha state management
+  const [needsCaptcha, setNeedsCaptcha] = useState(false);
+  const [captchaSessionInfo, setCaptchaSessionInfo] = useState(captchaSession.getInfo());
 
   // Helper functions for captcha management
   const isCaptchaTokenValid = () => {
@@ -258,49 +265,64 @@ const Login = () => {
     }
   };
 
-  const handlePasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setResetError(null);
-    
-    // Validate captcha token exists and is fresh
-    if (!isResetCaptchaTokenValid()) {
-      const errorMsg = !resetCaptchaToken 
-        ? "Please complete the captcha verification to continue."
-        : "Captcha token has expired. Please complete the captcha again.";
-      
-      setResetError(errorMsg);
-      toast({
-        title: "Captcha required",
-        description: errorMsg,
-        variant: "destructive",
-      });
-      
-      // Reset and refresh captcha
-      resetResetCaptcha();
+  const handleResetPassword = async () => {
+    if (!resetEmail) {
+      setResetError("Please enter your email address");
       return;
     }
-    
+
     try {
-      setIsProcessing(true);
+      setIsResetting(true);
+      setResetError(null);
+
+      console.log('[Login] Requesting password reset for:', resetEmail);
       
-      await resetPassword(resetEmail, resetCaptchaToken);
+      // Check if we need captcha verification
+      const hasValidSession = captchaSession.isValid();
+      let captchaTokenToUse = undefined;
       
-      toast({
-        title: "Password reset email sent",
-        description: "Please check your email for password reset instructions.",
-      });
+      if (!hasValidSession) {
+        // Need fresh captcha verification
+        if (!resetCaptchaToken || !isResetCaptchaTokenValid()) {
+          setResetError("Please complete the captcha verification to continue.");
+          return;
+        }
+        captchaTokenToUse = resetCaptchaToken;
+      }
+      
+      const result = await resetPassword(resetEmail, captchaTokenToUse);
+      
+      if (result.hadValidSession) {
+        toast({
+          title: "Reset Email Sent! 📧",
+          description: "Check your email for a password reset link. You were automatically verified from your recent captcha completion.",
+        });
+      } else {
+        toast({
+          title: "Reset Email Sent! 📧", 
+          description: "Check your email for a password reset link. Your verification is now stored for future requests.",
+        });
+      }
+      
       setIsResetDialogOpen(false);
+      setResetEmail('');
       
-      // Reset captcha token after successful use to prevent reuse
+      // Reset captcha token after successful use
       resetResetCaptcha();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to send reset email";
-      console.error('[Login] Password reset error:', errorMessage);
       
+      // Update session info
+      setCaptchaSessionInfo(captchaSession.getInfo());
+      setNeedsCaptcha(false);
+      
+    } catch (error) {
+      console.error('[Login] Password reset failed:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : "Failed to send reset email";
       setResetError(errorMessage);
       
-      // Reset captcha token on error so user needs to complete it again
+      // Reset captcha on error so user needs to complete it again
       resetResetCaptcha();
+      setNeedsCaptcha(true);
       
       toast({
         title: "Error",
@@ -308,7 +330,7 @@ const Login = () => {
         variant: "destructive",
       });
     } finally {
-      setIsProcessing(false);
+      setIsResetting(false);
     }
   };
 
@@ -390,6 +412,21 @@ const Login = () => {
       setIsProcessing(false);
     }
   };
+
+  // Check captcha session status on component mount and periodically
+  useEffect(() => {
+    const checkCaptchaSession = () => {
+      const info = captchaSession.getInfo();
+      setCaptchaSessionInfo(info);
+      setNeedsCaptcha(!captchaSession.isValid());
+    };
+
+    checkCaptchaSession();
+    
+    // Check every minute to update UI
+    const interval = setInterval(checkCaptchaSession, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <PublicLayout>
@@ -638,227 +675,126 @@ const Login = () => {
         </div>
 
         {/* Password Reset Dialog */}
-        <Dialog open={isResetDialogOpen} onOpenChange={(open) => {
-          setIsResetDialogOpen(open);
-          if (!open) {
-            // Reset state when dialog closes
-            setIsCodeResetView(false);
-            setResetCode('');
-            setNewPassword('');
-            setConfirmNewPassword('');
-            setResetError(null);
-            // Reset captcha state
-            resetResetCaptcha();
-          }
-        }}>
+        <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
           <DialogContent className="bg-white text-black border-none sm:max-w-[500px] font-sans">
             <DialogHeader>
               <DialogTitle className="text-2xl font-semibold text-black font-sans">Reset Password</DialogTitle>
               <DialogDescription className="text-black font-sans">
-                {isCodeResetView 
-                  ? "Enter the code from your email and your new password" 
-                  : "Enter your email address and we'll send you a password reset link."}
+                Enter your email address and we'll send you a password reset link.
               </DialogDescription>
             </DialogHeader>
             
-            {resetError && (
-              <div className="bg-red-500/20 text-black p-3 rounded-md text-sm">
-                {resetError}
-              </div>
-            )}
-            
-            {isCodeResetView ? (
-              <form onSubmit={handleCodeBasedReset}>
-                <div className="grid gap-4 py-4">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="resetEmail2" className="text-black">Email</Label>
-                      <Input
-                        id="resetEmail2"
-                        type="email"
-                        value={resetEmail}
-                        onChange={(e) => setResetEmail(e.target.value)}
-                        required
-                        placeholder="your@email.com"
-                        className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="resetCode" className="text-black">Reset Code</Label>
-                      <Input
-                        id="resetCode"
-                        type="text"
-                        value={resetCode}
-                        onChange={(e) => setResetCode(e.target.value)}
-                        required
-                        placeholder="Enter the code"
-                        className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="newPassword" className="text-black">New Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="newPassword"
-                        type={showNewPassword ? "text" : "password"}
-                        value={newPassword}
-                        onChange={handleNewPasswordChange}
-                        required
-                        placeholder="Enter your new password"
-                        className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#217a39] hover:text-black"
-                        tabIndex={-1}
-                      >
-                        {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="confirmNewPassword" className="text-black">Confirm Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="confirmNewPassword"
-                        type={showConfirmNewPassword ? "text" : "password"}
-                        value={confirmNewPassword}
-                        onChange={handleConfirmNewPasswordChange}
-                        required
-                        placeholder="Confirm your new password"
-                        className={`mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10 ${!newPasswordsMatch && confirmNewPassword.length > 0 ? 'border-red-500' : ''}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#217a39] hover:text-black"
-                        tabIndex={-1}
-                      >
-                        {showConfirmNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                      </button>
-                    </div>
-                    {!newPasswordsMatch && confirmNewPassword.length > 0 && (
-                      <p className="text-red-400 text-xs mt-1">Passwords don't match</p>
-                    )}
-                  </div>
+            <form onSubmit={(e) => { e.preventDefault(); handleResetPassword(); }}>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="resetEmail" className="text-black">Email</Label>
+                  <Input
+                    id="resetEmail"
+                    type="email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    required
+                    placeholder="your@email.com"
+                    className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
+                  />
                 </div>
                 
-                <div className="flex justify-between items-center mt-4">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setIsCodeResetView(false)}
-                    className="bg-transparent text-black border-black hover:bg-[#e8f1df]"
-                  >
-                    Back to Email Reset
-                  </Button>
-                </div>
-
-                <DialogFooter className="mt-6">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsResetDialogOpen(false)}
-                    className="bg-transparent text-black border-black hover:bg-[#e8f1df]"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="bg-[#217a39] hover:bg-black text-white"
-                    disabled={isProcessing || !newPasswordsMatch || confirmNewPassword.length === 0}
-                  >
-                    {isProcessing ? 'Processing...' : 'Reset Password'}
-                  </Button>
-                </DialogFooter>
-              </form>
-            ) : (
-              <form onSubmit={handlePasswordReset}>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="resetEmail" className="text-black">Email</Label>
-                    <Input
-                      id="resetEmail"
-                      type="email"
-                      value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
-                      required
-                      placeholder="your@email.com"
-                      className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black"
-                    />
+                {/* Smart Captcha Section */}
+                {captchaSessionInfo?.isValid ? (
+                  <div className="bg-green-50 text-green-700 p-3 rounded-md border border-green-200">
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-600">✓</span>
+                      <span className="font-medium">Verified</span>
+                    </div>
+                    <p className="text-sm mt-1">
+                      You're verified for the next {captchaSessionInfo.remainingMinutes} minutes
+                    </p>
                   </div>
-                  
-                  {/* Captcha verification for reset */}
-                  <div className="flex justify-center">
+                ) : (
+                  <div className="space-y-3">
+                    <div className="text-sm text-gray-600">
+                      Security verification required
+                    </div>
+                    
                     {import.meta.env.TURNSTILE_SITE_KEY ? (
-                      <Turnstile
-                        ref={setResetTurnstileRef}
-                        siteKey={import.meta.env.TURNSTILE_SITE_KEY}
-                        onSuccess={handleResetCaptchaSuccess}
-                        onError={handleResetCaptchaError}
-                        onExpire={() => {
-                          console.log('[Reset Turnstile] Token expired');
-                          resetResetCaptcha();
-                        }}
-                        onTimeout={() => {
-                          console.warn('[Reset Turnstile] Timeout');
-                          resetResetCaptcha();
-                        }}
-                        options={{
-                          theme: 'light',
-                          size: 'normal',
-                          tabIndex: 0
-                        }}
-                      />
+                      <div className="flex justify-center">
+                        <Turnstile
+                          ref={setResetTurnstileRef}
+                          siteKey={import.meta.env.TURNSTILE_SITE_KEY}
+                          onSuccess={handleResetCaptchaSuccess}
+                          onError={handleResetCaptchaError}
+                          onExpire={() => {
+                            console.log('[Reset Turnstile] Token expired');
+                            resetResetCaptcha();
+                          }}
+                          onTimeout={() => {
+                            console.warn('[Reset Turnstile] Timeout');
+                            resetResetCaptcha();
+                          }}
+                          options={{
+                            theme: 'light',
+                            size: 'normal',
+                            tabIndex: 0
+                          }}
+                        />
+                      </div>
                     ) : (
                       <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
                         Captcha configuration missing. Please contact support.
                       </div>
                     )}
+                    
+                    {isDev && (
+                      <div className="text-xs text-gray-500 text-center">
+                        Debug: Reset Captcha {isResetCaptchaTokenValid() ? '✓ Valid' : '✗ Missing/Expired'} | 
+                        {resetCaptchaTimestamp && ` Age: ${Math.round((Date.now() - resetCaptchaTimestamp) / 1000)}s`}
+                      </div>
+                    )}
                   </div>
+                )}
 
-                  {isDev && (
-                    <div className="text-xs text-gray-500 text-center">
-                      Debug: Reset Captcha {isResetCaptchaTokenValid() ? '✓ Valid' : '✗ Missing/Expired'} | 
-                      {resetCaptchaTimestamp && ` Age: ${Math.round((Date.now() - resetCaptchaTimestamp) / 1000)}s`}
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex justify-between items-center mt-4">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setIsCodeResetView(true)}
-                    className="bg-transparent text-black border-black hover:bg-[#e8f1df]"
-                  >
-                    I have a reset code
-                  </Button>
-                </div>
-                
-                <DialogFooter className="mt-6">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsResetDialogOpen(false)}
-                    className="bg-transparent text-black border-black hover:bg-[#e8f1df]"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="bg-[#217a39] hover:bg-black text-white"
-                    disabled={isProcessing || !isResetCaptchaTokenValid()}
-                  >
-                    {isProcessing ? 'Sending...' : 'Send Reset Link'}
-                  </Button>
-                </DialogFooter>
-              </form>
-            )}
+                {isDev && (
+                  <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded text-center">
+                    Development Mode: Captcha verification will be mocked if API endpoint is unavailable
+                  </div>
+                )}
+
+                {resetError && (
+                  <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
+                    {resetError}
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-between items-center mt-4">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setIsCodeResetView(true)}
+                  className="bg-transparent text-black border-black hover:bg-[#e8f1df]"
+                >
+                  I have a reset code
+                </Button>
+              </div>
+              
+              <DialogFooter className="mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsResetDialogOpen(false)}
+                  className="bg-transparent text-black border-black hover:bg-[#e8f1df]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-[#217a39] hover:bg-black text-white"
+                  disabled={isResetting || !resetEmail || (!captchaSessionInfo?.isValid && !isResetCaptchaTokenValid())}
+                >
+                  {isResetting ? 'Sending...' : 'Send Reset Link'}
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
 

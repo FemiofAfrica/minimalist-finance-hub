@@ -12,6 +12,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import Login from '@/pages/Login';
 import ResetPassword from '@/pages/ResetPassword';
+import TestResetPassword from '@/pages/TestResetPassword';
 import Dashboard from '@/pages/Dashboard';
 import Transactions from '@/pages/Transactions';
 import Subscriptions from '@/pages/Subscriptions';
@@ -110,6 +111,7 @@ function App() {
                   <Route path="/" element={<LandingPage />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/test-reset-password" element={<TestResetPassword />} />
                   <Route path="/blog" element={<Blog />} />
                   <Route path="/unsubscribe" element={<Unsubscribe />} />
                   <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />

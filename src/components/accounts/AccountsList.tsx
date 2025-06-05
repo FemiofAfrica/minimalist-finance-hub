@@ -58,7 +58,7 @@ const AccountsList = () => {
       document.removeEventListener('refresh', handleRefresh);
       document.removeEventListener('refresh-transactions', handleRefresh);
     };
-  }, [refreshAccounts, fetchBalances]);
+  }, []); // Remove functions from dependency array to prevent infinite loops
 
   const handleEditAccount = (account: Account) => {
     console.log("Editing account:", account);

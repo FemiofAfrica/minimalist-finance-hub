@@ -16,119 +16,99 @@ const ResetPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [validResetLink, setValidResetLink] = useState<boolean | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string>('');
+  const [hasSession, setHasSession] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const isDev = import.meta.env.DEV;
 
   useEffect(() => {
-    // Enhanced URL parsing for reset tokens
-    const parseResetUrl = () => {
-      const urlParams = new URLSearchParams(location.search);
-      const hash = window.location.hash;
+    const initializeResetPage = async () => {
+      console.log('[ResetPassword] Initializing reset page...');
       
-      // Debug information
-      const debugData = {
-        fullUrl: window.location.href,
-        pathname: location.pathname,
-        search: location.search,
-        hash: hash,
-        urlParams: Object.fromEntries(urlParams),
-        hashParams: {}
-      };
-
-      // Parse hash fragment (modern Supabase format)
-      if (hash) {
-        const hashParams = new URLSearchParams(hash.substring(1));
-        debugData.hashParams = Object.fromEntries(hashParams);
-        
-        const type = hashParams.get('type');
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
-        
-        if (isDev) {
-          console.log('[ResetPassword] Hash analysis:', {
-            type,
-            hasAccessToken: !!accessToken,
-            hasRefreshToken: !!refreshToken,
-            allHashParams: debugData.hashParams
-          });
-        }
-        
-        // Check for recovery type OR valid tokens
-        if (type === 'recovery' || (accessToken && refreshToken)) {
-          setValidResetLink(true);
-          
-          // Handle mock tokens for development testing
-          if (isDev && (accessToken?.includes('mock_token') || refreshToken?.includes('mock_refresh'))) {
-            console.log('[ResetPassword] Mock token detected - development testing mode');
-            setValidResetLink(true);
-            return;
-          }
-          
-          // If we have tokens, set the session
-          if (accessToken && refreshToken) {
-            supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken
-            }).then(({ data, error }) => {
-              if (error) {
-                console.error('[ResetPassword] Error setting session:', error);
-                setError('Invalid reset link. Please request a new password reset.');
-                setValidResetLink(false);
-              } else {
-                console.log('[ResetPassword] Session set successfully');
-              }
-            });
-          }
-          
-          return;
-        }
-      }
-      
-      // Parse URL parameters (legacy format or alternative)
-      const token = urlParams.get('token') || urlParams.get('access_token');
-      const type = urlParams.get('type');
-      
-      if (type === 'recovery' || token) {
+      // In development mode, always allow the form to show
+      if (isDev) {
+        console.log('[ResetPassword] Development mode - allowing password reset');
         setValidResetLink(true);
         return;
       }
+
+      // For production, handle the URL properly
+      const hash = window.location.hash;
+      const urlParams = new URLSearchParams(location.search);
       
-      // Check if we have any authentication-related parameters
-      const hasAuthParams = urlParams.has('token') || 
-                           urlParams.has('access_token') || 
-                           urlParams.has('refresh_token') ||
-                           hash.includes('access_token') ||
-                           hash.includes('recovery');
-      
-      if (isDev) {
-        setDebugInfo(JSON.stringify(debugData, null, 2));
-        console.log('[ResetPassword] URL analysis:', debugData);
-        console.log('[ResetPassword] Has auth params:', hasAuthParams);
-      }
-      
-      if (!hasAuthParams) {
-        setValidResetLink(false);
-        setError('Invalid reset link. This page should only be accessed from a valid password reset email link.');
+      console.log('[ResetPassword] Checking URL:', { hash, search: location.search });
+
+      // Check for Supabase errors first
+      if (hash.includes('error=')) {
+        const hashParams = new URLSearchParams(hash.substring(1));
+        const error = hashParams.get('error');
+        const errorCode = hashParams.get('error_code');
         
-        setTimeout(() => {
-          navigate('/login');
-        }, 3000);
-      } else {
-        // Assume it's valid if we have some auth params but couldn't parse them
+        console.error('[ResetPassword] Supabase error detected:', { error, errorCode });
+        setValidResetLink(false);
+        setError('This reset link has expired or is invalid. Please request a new one.');
+        setTimeout(() => navigate('/login'), 5000);
+        return;
+      }
+
+      // Check for valid reset tokens
+      const hasValidTokens = hash.includes('access_token') && hash.includes('type=recovery');
+      const hasLegacyToken = urlParams.has('token') && urlParams.get('type') === 'recovery';
+      
+      if (hasValidTokens || hasLegacyToken) {
+        console.log('[ResetPassword] Valid reset tokens found');
+        
+        // If we have tokens in the hash, try to set the session
+        if (hasValidTokens) {
+          const hashParams = new URLSearchParams(hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          
+          if (accessToken && refreshToken) {
+            try {
+              const { data, error } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
+              });
+              
+              if (error) {
+                console.error('[ResetPassword] Session error:', error);
+                setValidResetLink(false);
+                setError('Invalid reset link. Please request a new one.');
+                setTimeout(() => navigate('/login'), 5000);
+                return;
+              }
+              
+              console.log('[ResetPassword] Session set successfully');
+              setHasSession(true);
+            } catch (err) {
+              console.error('[ResetPassword] Error setting session:', err);
+              setValidResetLink(false);
+              setError('Failed to authenticate. Please request a new reset link.');
+              setTimeout(() => navigate('/login'), 5000);
+              return;
+            }
+          }
+        }
+        
         setValidResetLink(true);
+      } else {
+        console.warn('[ResetPassword] No valid reset parameters found');
+        setValidResetLink(false);
+        setError('Invalid reset link. Please request a new password reset.');
+        setTimeout(() => navigate('/login'), 5000);
       }
     };
 
-    parseResetUrl();
-  }, [location, navigate, isDev, toast]);
+    initializeResetPage();
+  }, [location, navigate, isDev]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
+    // Basic validation
     if (password !== confirmPassword) {
       setError("Passwords don't match");
       return;
@@ -142,69 +122,69 @@ const ResetPassword = () => {
     try {
       setLoading(true);
       
-      // Check if we're in mock mode for development testing
-      const hash = window.location.hash;
-      const hashParams = new URLSearchParams(hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-      const isMockMode = isDev && accessToken?.includes('mock_token');
-      
-      if (isMockMode) {
-        console.log('[ResetPassword] Mock mode: simulating password update');
-        
-        // Simulate a delay for realism
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      // Development mode: simulate success
+      if (isDev) {
+        console.log('[ResetPassword] Development mode - simulating password update');
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
         toast({
-          title: "Password updated (Mock)",
-          description: "In development mode, this would update your real password. Mock password reset completed successfully.",
+          title: "Password Updated Successfully! 🎉",
+          description: "Development mode: This simulates a successful password reset. In production, your actual password would be updated.",
         });
         
-        // Simulate redirect
         setTimeout(() => {
           navigate('/login');
         }, 2000);
-        
         return;
       }
+
+      // Production mode: actual password update
+      console.log('[ResetPassword] Attempting to update password...');
       
-      // Get current session to ensure we're authenticated
+      // First, ensure we have a valid session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
         console.error('[ResetPassword] Session error:', sessionError);
-        throw new Error('Authentication error. Please try clicking the reset link again.');
+        throw new Error('Authentication error. Please click the reset link from your email again.');
       }
-      
+
       if (!session) {
-        console.error('[ResetPassword] No active session found');
-        throw new Error('No active session. Please click the reset link in your email again.');
-      }
-      
-      console.log('[ResetPassword] Updating password with valid session');
-      
-      const { error } = await supabase.auth.updateUser({
-        password
-      });
-      
-      if (error) {
-        console.error('[ResetPassword] Password update error:', error);
-        throw error;
+        console.error('[ResetPassword] No session found');
+        throw new Error('No active session. Please click the reset link from your email again.');
       }
 
+      console.log('[ResetPassword] Valid session found, updating password...');
+
+      // Update the password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: password
+      });
+
+      if (updateError) {
+        console.error('[ResetPassword] Password update error:', updateError);
+        throw new Error(updateError.message || 'Failed to update password');
+      }
+
+      console.log('[ResetPassword] Password updated successfully');
+
+      // Show success message
       toast({
-        title: "Password updated",
-        description: "Your password has been reset successfully. Please log in with your new password.",
+        title: "Password Updated Successfully! 🎉",
+        description: "Your password has been reset. You can now log in with your new password.",
       });
 
-      // Clear the session and redirect to login
+      // Sign out to clear the reset session and redirect to login
       await supabase.auth.signOut();
       
       setTimeout(() => {
         navigate('/login');
       }, 2000);
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to reset password";
-      console.error('[ResetPassword] Error:', errorMessage);
+      console.error('[ResetPassword] Reset error:', errorMessage);
+      
       setError(errorMessage);
       toast({
         title: "Error",
@@ -216,21 +196,21 @@ const ResetPassword = () => {
     }
   };
 
-  // Show loading while validating the link
+  // Loading state
   if (validResetLink === null) {
     return (
       <PublicLayout>
         <div className="min-h-screen flex flex-col items-center justify-center bg-[#e8f1df]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#217a39] mx-auto"></div>
-            <p className="mt-4 text-black">Validating reset link...</p>
+            <p className="mt-4 text-black">Setting up password reset...</p>
           </div>
         </div>
       </PublicLayout>
     );
   }
 
-  // Show error if link is invalid
+  // Error state
   if (validResetLink === false) {
     return (
       <PublicLayout>
@@ -238,27 +218,24 @@ const ResetPassword = () => {
           <div className="w-full max-w-md space-y-6 px-8 text-center">
             <img src="/kpege-logo.svg" alt="Kpege Logo" className="h-14 w-auto mx-auto" style={{ maxHeight: 96 }} />
             <div className="bg-red-500/10 text-red-700 p-6 rounded-md">
-              <h2 className="text-xl font-semibold mb-2">Invalid Reset Link</h2>
-              <p className="mb-4">{error || 'This password reset link is invalid or has expired.'}</p>
-              <Button 
-                onClick={() => navigate('/login')}
-                className="bg-[#217a39] hover:bg-black text-white"
-              >
-                Back to Login
-              </Button>
+              <h2 className="text-xl font-semibold mb-2">Reset Link Problem</h2>
+              <p className="mb-4">{error}</p>
+              <div className="space-y-3">
+                <Button 
+                  onClick={() => navigate('/login')}
+                  className="bg-[#217a39] hover:bg-black text-white w-full"
+                >
+                  Request New Reset Link
+                </Button>
+              </div>
             </div>
-            {isDev && debugInfo && (
-              <details className="text-left">
-                <summary className="text-sm text-gray-600 cursor-pointer">Debug Info (Dev Mode)</summary>
-                <pre className="text-xs bg-gray-100 p-2 rounded mt-2 overflow-auto">{debugInfo}</pre>
-              </details>
-            )}
           </div>
         </div>
       </PublicLayout>
     );
   }
 
+  // Password reset form
   return (
     <PublicLayout>
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#e8f1df] w-screen h-screen m-0 p-0 overflow-auto auth-page">
@@ -267,10 +244,20 @@ const ResetPassword = () => {
         </div>
         <div className="w-full max-w-md space-y-6 px-8">
           <div className="text-center space-y-0">
-            <h2 className="text-2xl font-semibold text-center text-black mb-3">Reset Password</h2>
+            <h2 className="text-2xl font-semibold text-center text-black mb-3">Reset Your Password</h2>
             <p className="text-black">
               Enter your new password below
             </p>
+            {isDev && (
+              <div className="bg-blue-50 text-blue-700 p-2 rounded mt-2 text-sm">
+                Development Mode: Password reset will be simulated
+              </div>
+            )}
+            {!isDev && hasSession && (
+              <div className="bg-green-50 text-green-700 p-2 rounded mt-2 text-sm">
+                ✅ Reset link verified - you can update your password
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4 p-6">
@@ -290,8 +277,9 @@ const ResetPassword = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    minLength={6}
                     className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10"
-                    placeholder="Enter your new password"
+                    placeholder="Enter your new password (min. 6 characters)"
                   />
                   <button
                     type="button"
@@ -303,8 +291,9 @@ const ResetPassword = () => {
                   </button>
                 </div>
               </div>
+              
               <div>
-                <Label htmlFor="confirmPassword" className="text-sm font-medium text-black">Confirm Password</Label>
+                <Label htmlFor="confirmPassword" className="text-sm font-medium text-black">Confirm New Password</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
@@ -312,6 +301,7 @@ const ResetPassword = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
+                    minLength={6}
                     className="mt-1 h-11 bg-transparent border-gray-200 text-black placeholder-black pr-10"
                     placeholder="Confirm your new password"
                   />
@@ -329,13 +319,18 @@ const ResetPassword = () => {
 
             <Button 
               type="submit" 
-              className="px-8 py-2 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent rounded-md mx-auto block text-base min-w-[120px]"
-              disabled={loading}
+              className="px-8 py-2 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent rounded-md mx-auto block text-base min-w-[120px] w-full"
+              disabled={loading || password.length < 6 || password !== confirmPassword}
             >
-              {loading ? 'Updating Password...' : 'Reset Password'}
+              {loading ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Updating Password...
+                </div>
+              ) : 'Update Password'}
             </Button>
 
-            <div className="text-center mt-2">
+            <div className="text-center mt-4">
               <button
                 type="button"
                 onClick={() => navigate('/login')}

@@ -34,7 +34,7 @@ interface AccountDialogProps {
 const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
   const [formData, setFormData] = useState<Partial<Account>>({
     name: '',
-    type: 'CHECKING',
+    type: 'checking', // Fix: should be lowercase to match AccountType
     institution: '',
     bank_name: '',
     account_number: '',
@@ -67,7 +67,7 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
     } else {
       setFormData({
         name: '',
-        type: 'CHECKING',
+        type: 'checking', // Fix: should be lowercase to match AccountType
         institution: '',
         bank_name: '',
         account_number: '',
