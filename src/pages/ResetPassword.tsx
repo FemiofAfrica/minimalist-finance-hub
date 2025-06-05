@@ -145,6 +145,10 @@ const ResetPassword = () => {
       const search = window.location.search || location.search;
       const urlParams = new URLSearchParams(search);
       
+      // Parse URL parameters from hash  
+      const hashParams = new URLSearchParams(hash.replace('#', ''));
+      const searchParams = new URLSearchParams(search);
+      
       const urlAnalysis = {
         reactRouterHash: location.hash,
         windowHash: window.location.hash,
@@ -152,9 +156,16 @@ const ResetPassword = () => {
         reactRouterSearch: location.search,
         windowSearch: window.location.search,
         finalSearch: search,
-        hasTokens: hash.includes('access_token'),
-        hasRecoveryType: hash.includes('type=recovery'),
-        hasError: hash.includes('error=')
+        hasTokens: hashParams.has('access_token') || searchParams.has('access_token'),
+        hasRecoveryType: hashParams.has('type') && hashParams.get('type') === 'recovery' ||
+                        searchParams.has('type') && searchParams.get('type') === 'recovery',
+        hasError: hashParams.has('error') || searchParams.has('error'),
+        // Check for valid tokens (Supabase password reset provides access_token without type=recovery)
+        hasValidTokens: hashParams.has('access_token') || searchParams.has('access_token'),
+        hasLegacyToken: searchParams.has('token') && searchParams.get('type') === 'recovery',
+        isValid: (hashParams.has('access_token') || searchParams.has('access_token') || 
+                 (searchParams.has('token') && searchParams.get('type') === 'recovery')) &&
+                 !(hashParams.has('error') || searchParams.has('error'))
       };
       
       console.log('[ResetPassword] URL analysis:', urlAnalysis);
@@ -196,19 +207,16 @@ const ResetPassword = () => {
         return;
       }
 
-      // Check for valid reset tokens
-      const hasValidTokens = hash.includes('access_token') && hash.includes('type=recovery');
-      const hasLegacyToken = urlParams.has('token') && urlParams.get('type') === 'recovery';
-      
+      // Use the already computed validation from urlAnalysis
       const tokenValidation = {
-        hasValidTokens,
-        hasLegacyToken,
-        isValid: hasValidTokens || hasLegacyToken
+        hasValidTokens: urlAnalysis.hasValidTokens,
+        hasLegacyToken: urlAnalysis.hasLegacyToken,
+        isValid: urlAnalysis.isValid
       };
       
       console.log('[ResetPassword] Token validation:', tokenValidation);
       
-      if (hasValidTokens || hasLegacyToken) {
+      if (urlAnalysis.hasValidTokens || urlAnalysis.hasLegacyToken) {
         console.log('[ResetPassword] Valid reset tokens found');
         
         storeDebugInfo({
@@ -221,7 +229,7 @@ const ResetPassword = () => {
         });
         
         // If we have tokens in the hash, try to set the session
-        if (hasValidTokens) {
+        if (urlAnalysis.hasValidTokens) {
           const hashParams = new URLSearchParams(hash.substring(1));
           const accessToken = hashParams.get('access_token');
           const refreshToken = hashParams.get('refresh_token');
@@ -538,6 +546,9 @@ const ResetPassword = () => {
                   <p><strong>Original Hash:</strong> {debugInfo.originalHash || 'None'}</p>
                   <p><strong>Has Tokens:</strong> {debugInfo.hasTokens ? 'Yes' : 'No'}</p>
                   <p><strong>Has Recovery Type:</strong> {debugInfo.hasRecoveryType ? 'Yes' : 'No'}</p>
+                  <p><strong>Has Valid Tokens:</strong> {debugInfo.hasValidTokens ? 'Yes' : 'No'}</p>
+                  <p><strong>Has Legacy Token:</strong> {debugInfo.hasLegacyToken ? 'Yes' : 'No'}</p>
+                  <p><strong>Is Valid:</strong> {debugInfo.isValid ? 'Yes' : 'No'}</p>
                   {debugInfo.errorInfo && (
                     <div className="mt-2 p-2 bg-red-50 rounded">
                       <p><strong>Error:</strong> {debugInfo.errorInfo.error}</p>
