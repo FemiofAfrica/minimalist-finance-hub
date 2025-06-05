@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/components/ui/use-toast';
+
 import PublicLayout from '@/components/PublicLayout';
 import { Eye, EyeOff } from 'lucide-react';
 
@@ -17,10 +17,10 @@ const ResetPassword = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [validResetLink, setValidResetLink] = useState<boolean | null>(null);
   const [hasSession, setHasSession] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<any>(null);
+
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
+
   const isDev = import.meta.env.DEV;
 
   // Capture the original URL immediately when component mounts
@@ -28,57 +28,32 @@ const ResetPassword = () => {
   const originalHash = useRef(window.location.hash);
   const originalSearch = useRef(window.location.search);
 
-  // Add immediate URL capture outside React lifecycle
+  // Log URL information for troubleshooting
   useEffect(() => {
-    // Store immediate URL capture in localStorage for persistence
-    const immediateCapture = {
-      captureTime: new Date().toISOString(),
-      href: window.location.href,
-      hash: window.location.hash,
-      search: window.location.search,
-      pathname: window.location.pathname,
-      userAgent: navigator.userAgent,
-      referrer: document.referrer
-    };
-    
-    try {
-      localStorage.setItem('kpege_immediate_url_capture', JSON.stringify(immediateCapture));
-      console.log('[ResetPassword] Immediate URL capture:', immediateCapture);
-    } catch (e) {
-      console.warn('[ResetPassword] Could not store immediate capture:', e);
-    }
-    
-    console.log('[ResetPassword] Component mounted with original URL:', {
+    console.log('[ResetPassword] Component mounted with URL:', {
       href: originalUrl.current,
       hash: originalHash.current,
       search: originalSearch.current
     });
   }, []);
 
-  // Helper function to store debug information persistently
-  const storeDebugInfo = (info: any) => {
-    const debugData = {
+  // Helper function to log important information for troubleshooting
+  const logForTroubleshooting = (action: string, info: any) => {
+    const logData = {
       timestamp: new Date().toISOString(),
+      action,
       ...info
     };
     
-    try {
-      localStorage.setItem('kpege_password_reset_debug', JSON.stringify(debugData));
-      setDebugInfo(debugData);
-      console.log('[ResetPassword] Debug info stored:', debugData);
-    } catch (e) {
-      console.warn('[ResetPassword] Could not store debug info:', e);
-    }
-  };
-
-  // Helper function to clear debug information
-  const clearDebugInfo = () => {
-    try {
-      localStorage.removeItem('kpege_password_reset_debug');
-      setDebugInfo(null);
-      console.log('[ResetPassword] Debug info cleared');
-    } catch (e) {
-      console.warn('[ResetPassword] Could not clear debug info:', e);
+    console.log(`[ResetPassword] ${action}:`, logData);
+    
+    // Store only critical failure cases for troubleshooting
+    if (action.includes('error') || action.includes('failed') || action === 'no_tokens_found_direct_visit') {
+      try {
+        localStorage.setItem('kpege_password_reset_last_issue', JSON.stringify(logData));
+      } catch (e) {
+        console.warn('[ResetPassword] Could not store troubleshooting info:', e);
+      }
     }
   };
 
@@ -86,17 +61,7 @@ const ResetPassword = () => {
     const initializeResetPage = async () => {
       console.log('[ResetPassword] Initializing reset page...');
       
-      // Load any previous debug info from localStorage
-      try {
-        const savedDebugInfo = localStorage.getItem('kpege_password_reset_debug');
-        if (savedDebugInfo) {
-          const parsed = JSON.parse(savedDebugInfo);
-          setDebugInfo(parsed);
-          console.log('[ResetPassword] Loaded previous debug info:', parsed);
-        }
-      } catch (e) {
-        console.warn('[ResetPassword] Could not load previous debug info:', e);
-      }
+
       
       // Add a small delay to ensure URL fragments are fully loaded
       // This helps with timing issues when users click email links
@@ -129,12 +94,6 @@ const ResetPassword = () => {
       // In development mode, always allow the form to show
       if (isDev) {
         console.log('[ResetPassword] Development mode - allowing password reset');
-        storeDebugInfo({
-          mode: 'development',
-          action: 'allowing_form',
-          ...currentLocationInfo,
-          ...rawUrlInfo
-        });
         setValidResetLink(true);
         return;
       }
@@ -190,18 +149,6 @@ const ResetPassword = () => {
       
       console.log('[ResetPassword] URL analysis:', urlAnalysis);
 
-      // Store comprehensive debug info
-      storeDebugInfo({
-        mode: 'production',
-        action: 'url_analysis',
-        originalUrl: originalUrl.current,
-        originalHash: originalHash.current,
-        originalSearch: originalSearch.current,
-        ...currentLocationInfo,
-        ...rawUrlInfo,
-        ...urlAnalysis
-      });
-
       // Check for Supabase errors first
       if (hash.includes('error=')) {
         const hashParams = new URLSearchParams(hash.substring(1));
@@ -212,12 +159,8 @@ const ResetPassword = () => {
         const errorInfo = { error, errorCode, errorDescription };
         console.error('[ResetPassword] Supabase error detected:', errorInfo);
         
-        storeDebugInfo({
-          mode: 'production',
-          action: 'supabase_error_detected',
+        logForTroubleshooting('supabase_error_detected', {
           ...currentLocationInfo,
-          ...rawUrlInfo,
-          ...urlAnalysis,
           errorInfo
         });
         
@@ -238,15 +181,6 @@ const ResetPassword = () => {
       
       if (urlAnalysis.hasValidTokens || urlAnalysis.hasLegacyToken) {
         console.log('[ResetPassword] Valid reset tokens found');
-        
-        storeDebugInfo({
-          mode: 'production',
-          action: 'valid_tokens_found',
-          ...currentLocationInfo,
-          ...rawUrlInfo,
-          ...urlAnalysis,
-          ...tokenValidation
-        });
         
         // If we have tokens in the hash, try to set the session
         if (urlAnalysis.hasValidTokens) {
@@ -274,15 +208,9 @@ const ResetPassword = () => {
               if (error) {
                 console.error('[ResetPassword] Session error:', error);
                 
-                storeDebugInfo({
-                  mode: 'production',
-                  action: 'session_error',
+                logForTroubleshooting('session_error', {
                   ...currentLocationInfo,
-                  ...rawUrlInfo,
-                  ...urlAnalysis,
-                  ...tokenValidation,
-                  ...extractedTokens,
-                  sessionError: error
+                  sessionError: error.message
                 });
                 
                 setValidResetLink(false);
@@ -291,31 +219,14 @@ const ResetPassword = () => {
                 return;
               }
               
-              console.log('[ResetPassword] Session set successfully:', data);
-              
-              storeDebugInfo({
-                mode: 'production',
-                action: 'session_success',
-                ...currentLocationInfo,
-                ...rawUrlInfo,
-                ...urlAnalysis,
-                ...tokenValidation,
-                ...extractedTokens,
-                sessionData: data
-              });
+              console.log('[ResetPassword] Session set successfully:', data.session ? 'Session created' : 'No session');
               
               setHasSession(true);
             } catch (err) {
               console.error('[ResetPassword] Error setting session:', err);
               
-              storeDebugInfo({
-                mode: 'production',
-                action: 'session_exception',
+              logForTroubleshooting('session_failed', {
                 ...currentLocationInfo,
-                ...rawUrlInfo,
-                ...urlAnalysis,
-                ...tokenValidation,
-                ...extractedTokens,
                 exception: err instanceof Error ? err.message : 'Unknown error'
               });
               
@@ -327,14 +238,10 @@ const ResetPassword = () => {
           } else {
             console.error('[ResetPassword] Missing access or refresh token');
             
-            storeDebugInfo({
-              mode: 'production',
-              action: 'missing_tokens',
+            logForTroubleshooting('missing_tokens_error', {
               ...currentLocationInfo,
-              ...rawUrlInfo,
-              ...urlAnalysis,
-              ...tokenValidation,
-              ...extractedTokens
+              hasAccessToken: !!hashParams.get('access_token'),
+              hasRefreshToken: !!hashParams.get('refresh_token')
             });
             
             setValidResetLink(false);
@@ -348,15 +255,10 @@ const ResetPassword = () => {
       } else {
         // No reset tokens found - this could be a direct visit
         console.log('[ResetPassword] No reset tokens found - treating as direct visit');
-        console.log('[ResetPassword] Final decision: showing blue info message for direct visit');
         
-        storeDebugInfo({
-          mode: 'production',
-          action: 'no_tokens_found_direct_visit',
+        logForTroubleshooting('no_tokens_found_direct_visit', {
           ...currentLocationInfo,
-          ...rawUrlInfo,
-          ...urlAnalysis,
-          ...tokenValidation
+          ...urlAnalysis
         });
         
         setValidResetLink(false);
@@ -510,124 +412,7 @@ const ResetPassword = () => {
               </div>
             </div>
             
-            {/* Debug Information Display */}
-            {debugInfo && (
-              <div className="mt-6 p-4 bg-gray-100 rounded-md text-left text-xs">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-semibold text-gray-700">Debug Info</h3>
-                  <div className="space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        const immediateCapture = localStorage.getItem('kpege_immediate_url_capture');
-                        const pageLoadCapture = localStorage.getItem('kpege_page_load_url');
-                        const fullDebugData = {
-                          currentDebugInfo: debugInfo,
-                          immediateUrlCapture: immediateCapture ? JSON.parse(immediateCapture) : null,
-                          pageLoadCapture: pageLoadCapture ? JSON.parse(pageLoadCapture) : null
-                        };
-                        navigator.clipboard.writeText(JSON.stringify(fullDebugData, null, 2));
-                        toast({
-                          title: "Copied!",
-                          description: "Full debug info copied to clipboard",
-                        });
-                      }}
-                      className="text-xs"
-                    >
-                      Copy All
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        localStorage.removeItem('kpege_password_reset_debug');
-                        localStorage.removeItem('kpege_immediate_url_capture');
-                        setDebugInfo(null);
-                        toast({
-                          title: "Cleared!",
-                          description: "Debug info cleared",
-                        });
-                      }}
-                      className="text-xs"
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                </div>
-                <div className="space-y-1 text-gray-600">
-                  <p><strong>Time:</strong> {debugInfo.timestamp}</p>
-                  <p><strong>Action:</strong> {debugInfo.action}</p>
-                  <p><strong>Mode:</strong> {debugInfo.mode}</p>
-                  <p><strong>Full URL:</strong> {debugInfo.fullUrl}</p>
-                  <p><strong>Original URL:</strong> {debugInfo.originalUrl || 'Not captured'}</p>
-                  <p><strong>Window Hash:</strong> {debugInfo.windowHash || 'None'}</p>
-                  <p><strong>React Hash:</strong> {debugInfo.hash || 'None'}</p>
-                  <p><strong>Original Hash:</strong> {debugInfo.originalHash || 'None'}</p>
-                  <p><strong>Has Tokens:</strong> {debugInfo.hasTokens ? 'Yes' : 'No'}</p>
-                  <p><strong>Has Recovery Type:</strong> {debugInfo.hasRecoveryType ? 'Yes' : 'No'}</p>
-                  <p><strong>Has Valid Tokens:</strong> {debugInfo.hasValidTokens ? 'Yes' : 'No'}</p>
-                  <p><strong>Has Legacy Token:</strong> {debugInfo.hasLegacyToken ? 'Yes' : 'No'}</p>
-                  <p><strong>Is Valid:</strong> {debugInfo.isValid ? 'Yes' : 'No'}</p>
-                  <p><strong>Using Page Load Capture:</strong> {debugInfo.usingPageLoadCapture ? 'Yes' : 'No'}</p>
-                  {debugInfo.errorInfo && (
-                    <div className="mt-2 p-2 bg-red-50 rounded">
-                      <p><strong>Error:</strong> {debugInfo.errorInfo.error}</p>
-                      <p><strong>Error Code:</strong> {debugInfo.errorInfo.errorCode}</p>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Show immediate capture info if available */}
-                {(() => {
-                  try {
-                    const immediateCapture = localStorage.getItem('kpege_immediate_url_capture');
-                    const pageLoadCapture = localStorage.getItem('kpege_page_load_url');
-                    
-                    if (immediateCapture || pageLoadCapture) {
-                      return (
-                        <div className="mt-3 space-y-2">
-                          {pageLoadCapture && (() => {
-                            const parsed = JSON.parse(pageLoadCapture);
-                            return (
-                              <div className="p-2 bg-green-50 rounded text-gray-600">
-                                <p className="font-semibold">Page Load Capture (HTML Script):</p>
-                                <p><strong>Time:</strong> {parsed.timestamp}</p>
-                                <p><strong>Full URL:</strong> {parsed.href}</p>
-                                <p><strong>Hash:</strong> {parsed.hash || 'None'}</p>
-                                <p><strong>Referrer:</strong> {parsed.referrer || 'None'}</p>
-                              </div>
-                            );
-                          })()}
-                          
-                          {immediateCapture && (() => {
-                            const parsed = JSON.parse(immediateCapture);
-                            return (
-                              <div className="p-2 bg-blue-50 rounded text-gray-600">
-                                <p className="font-semibold">React Mount Capture:</p>
-                                <p><strong>Time:</strong> {parsed.captureTime}</p>
-                                <p><strong>Full URL:</strong> {parsed.href}</p>
-                                <p><strong>Hash:</strong> {parsed.hash || 'None'}</p>
-                                <p><strong>Referrer:</strong> {parsed.referrer || 'None'}</p>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      );
-                    }
-                  } catch (e) {
-                    return null;
-                  }
-                  return null;
-                })()}
-              </div>
-            )}
-            
-            {/* Instructions for viewing full debug info */}
-            <div className="mt-4 p-3 bg-yellow-50 rounded-md text-sm text-yellow-700">
-              <p><strong>Troubleshooting:</strong></p>
-              <p>Debug information has been saved. If you need technical support, use the "Copy" button above to copy the debug details.</p>
-            </div>
+
           </div>
         </div>
       </PublicLayout>
