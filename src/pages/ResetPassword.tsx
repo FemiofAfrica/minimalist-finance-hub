@@ -141,8 +141,27 @@ const ResetPassword = () => {
 
       // For production, handle the URL properly
       // Check both location.hash (React Router) and window.location.hash (direct)
-      const hash = window.location.hash || location.hash;
-      const search = window.location.search || location.search;
+      let hash = window.location.hash || location.hash;
+      let search = window.location.search || location.search;
+      
+      // If current URL doesn't have tokens, check if pageLoadCapture has them
+      // This handles cases where tokens are stripped between page load and React processing
+      if ((!hash || !hash.includes('access_token')) && typeof window !== 'undefined') {
+        try {
+          const pageLoadData = localStorage.getItem('kpege_page_load_url');
+          if (pageLoadData) {
+            const parsed = JSON.parse(pageLoadData);
+            if (parsed.hash && parsed.hash.includes('access_token')) {
+              console.log('[ResetPassword] Using tokens from pageLoadCapture since current URL lacks them');
+              hash = parsed.hash;
+              search = parsed.search || search;
+            }
+          }
+        } catch (e) {
+          console.warn('[ResetPassword] Could not parse pageLoadCapture data:', e);
+        }
+      }
+      
       const urlParams = new URLSearchParams(search);
       
       // Parse URL parameters from hash  
@@ -156,6 +175,7 @@ const ResetPassword = () => {
         reactRouterSearch: location.search,
         windowSearch: window.location.search,
         finalSearch: search,
+        usingPageLoadCapture: hash !== (window.location.hash || location.hash),
         hasTokens: hashParams.has('access_token') || searchParams.has('access_token'),
         hasRecoveryType: hashParams.has('type') && hashParams.get('type') === 'recovery' ||
                         searchParams.has('type') && searchParams.get('type') === 'recovery',
@@ -549,6 +569,7 @@ const ResetPassword = () => {
                   <p><strong>Has Valid Tokens:</strong> {debugInfo.hasValidTokens ? 'Yes' : 'No'}</p>
                   <p><strong>Has Legacy Token:</strong> {debugInfo.hasLegacyToken ? 'Yes' : 'No'}</p>
                   <p><strong>Is Valid:</strong> {debugInfo.isValid ? 'Yes' : 'No'}</p>
+                  <p><strong>Using Page Load Capture:</strong> {debugInfo.usingPageLoadCapture ? 'Yes' : 'No'}</p>
                   {debugInfo.errorInfo && (
                     <div className="mt-2 p-2 bg-red-50 rounded">
                       <p><strong>Error:</strong> {debugInfo.errorInfo.error}</p>
