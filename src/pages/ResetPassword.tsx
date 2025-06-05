@@ -94,10 +94,11 @@ const ResetPassword = () => {
         
         setValidResetLink(true);
       } else {
-        console.warn('[ResetPassword] No valid reset parameters found');
+        // No reset tokens found - this could be a direct visit
+        console.log('[ResetPassword] No reset tokens found - treating as direct visit');
         setValidResetLink(false);
-        setError('Invalid reset link. Please request a new password reset.');
-        setTimeout(() => navigate('/login'), 5000);
+        setError('To reset your password, please click the reset link from your email. If you haven\'t received an email, request a new password reset.');
+        // Don't auto-redirect for direct visits - let user choose
       }
     };
 
@@ -210,23 +211,36 @@ const ResetPassword = () => {
     );
   }
 
-  // Error state
+  // Error state or direct visit guidance
   if (validResetLink === false) {
+    const isDirectVisit = !window.location.hash && !location.search;
+    
     return (
       <PublicLayout>
         <div className="min-h-screen flex flex-col items-center justify-center bg-[#e8f1df]">
           <div className="w-full max-w-md space-y-6 px-8 text-center">
             <img src="/kpege-logo.svg" alt="Kpege Logo" className="h-14 w-auto mx-auto" style={{ maxHeight: 96 }} />
-            <div className="bg-red-500/10 text-red-700 p-6 rounded-md">
-              <h2 className="text-xl font-semibold mb-2">Reset Link Problem</h2>
+            <div className={`p-6 rounded-md ${isDirectVisit ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-red-500/10 text-red-700'}`}>
+              <h2 className="text-xl font-semibold mb-2">
+                {isDirectVisit ? 'Password Reset Required' : 'Reset Link Problem'}
+              </h2>
               <p className="mb-4">{error}</p>
               <div className="space-y-3">
                 <Button 
                   onClick={() => navigate('/login')}
                   className="bg-[#217a39] hover:bg-black text-white w-full"
                 >
-                  Request New Reset Link
+                  {isDirectVisit ? 'Go to Login & Request Reset' : 'Request New Reset Link'}
                 </Button>
+                {isDirectVisit && (
+                  <div className="text-sm text-blue-600 mt-3">
+                    <p>💡 <strong>How to reset your password:</strong></p>
+                    <p>1. Go to the login page</p>
+                    <p>2. Click "Forgot Password?"</p>
+                    <p>3. Check your email for the reset link</p>
+                    <p>4. Click the link in your email</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
