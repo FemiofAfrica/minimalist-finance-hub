@@ -17,35 +17,144 @@ const ResetPassword = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [validResetLink, setValidResetLink] = useState<boolean | null>(null);
   const [hasSession, setHasSession] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const isDev = import.meta.env.DEV;
 
+  // Helper function to store debug information persistently
+  const storeDebugInfo = (info: any) => {
+    const debugData = {
+      timestamp: new Date().toISOString(),
+      ...info
+    };
+    
+    try {
+      localStorage.setItem('kpege_password_reset_debug', JSON.stringify(debugData));
+      setDebugInfo(debugData);
+      console.log('[ResetPassword] Debug info stored:', debugData);
+    } catch (e) {
+      console.warn('[ResetPassword] Could not store debug info:', e);
+    }
+  };
+
+  // Helper function to clear debug information
+  const clearDebugInfo = () => {
+    try {
+      localStorage.removeItem('kpege_password_reset_debug');
+      setDebugInfo(null);
+      console.log('[ResetPassword] Debug info cleared');
+    } catch (e) {
+      console.warn('[ResetPassword] Could not clear debug info:', e);
+    }
+  };
+
   useEffect(() => {
     const initializeResetPage = async () => {
       console.log('[ResetPassword] Initializing reset page...');
       
+      // Load any previous debug info from localStorage
+      try {
+        const savedDebugInfo = localStorage.getItem('kpege_password_reset_debug');
+        if (savedDebugInfo) {
+          const parsed = JSON.parse(savedDebugInfo);
+          setDebugInfo(parsed);
+          console.log('[ResetPassword] Loaded previous debug info:', parsed);
+        }
+      } catch (e) {
+        console.warn('[ResetPassword] Could not load previous debug info:', e);
+      }
+      
+      // Add a small delay to ensure URL fragments are fully loaded
+      // This helps with timing issues when users click email links
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const currentLocationInfo = {
+        pathname: location.pathname,
+        search: location.search,
+        hash: location.hash,
+        windowHash: window.location.hash,
+        windowSearch: window.location.search,
+        fullUrl: window.location.href
+      };
+      
+      console.log('[ResetPassword] Current location:', currentLocationInfo);
+      
+      // Additional debugging: show exactly what we're parsing
+      const rawUrlInfo = {
+        'window.location.href': window.location.href,
+        'window.location.pathname': window.location.pathname,
+        'window.location.search': window.location.search,
+        'window.location.hash': window.location.hash,
+        'React Router location.pathname': location.pathname,
+        'React Router location.search': location.search,
+        'React Router location.hash': location.hash
+      };
+      
+      console.log('[ResetPassword] Raw URL components:', rawUrlInfo);
+      
       // In development mode, always allow the form to show
       if (isDev) {
         console.log('[ResetPassword] Development mode - allowing password reset');
+        storeDebugInfo({
+          mode: 'development',
+          action: 'allowing_form',
+          ...currentLocationInfo,
+          ...rawUrlInfo
+        });
         setValidResetLink(true);
         return;
       }
 
       // For production, handle the URL properly
-      const hash = window.location.hash;
-      const urlParams = new URLSearchParams(location.search);
+      // Check both location.hash (React Router) and window.location.hash (direct)
+      const hash = window.location.hash || location.hash;
+      const search = window.location.search || location.search;
+      const urlParams = new URLSearchParams(search);
       
-      console.log('[ResetPassword] Checking URL:', { hash, search: location.search });
+      const urlAnalysis = {
+        reactRouterHash: location.hash,
+        windowHash: window.location.hash,
+        finalHash: hash,
+        reactRouterSearch: location.search,
+        windowSearch: window.location.search,
+        finalSearch: search,
+        hasTokens: hash.includes('access_token'),
+        hasRecoveryType: hash.includes('type=recovery'),
+        hasError: hash.includes('error=')
+      };
+      
+      console.log('[ResetPassword] URL analysis:', urlAnalysis);
+
+      // Store comprehensive debug info
+      storeDebugInfo({
+        mode: 'production',
+        action: 'url_analysis',
+        ...currentLocationInfo,
+        ...rawUrlInfo,
+        ...urlAnalysis
+      });
 
       // Check for Supabase errors first
       if (hash.includes('error=')) {
         const hashParams = new URLSearchParams(hash.substring(1));
         const error = hashParams.get('error');
         const errorCode = hashParams.get('error_code');
+        const errorDescription = hashParams.get('error_description');
         
-        console.error('[ResetPassword] Supabase error detected:', { error, errorCode });
+        const errorInfo = { error, errorCode, errorDescription };
+        console.error('[ResetPassword] Supabase error detected:', errorInfo);
+        
+        storeDebugInfo({
+          mode: 'production',
+          action: 'supabase_error_detected',
+          ...currentLocationInfo,
+          ...rawUrlInfo,
+          ...urlAnalysis,
+          errorInfo
+        });
+        
         setValidResetLink(false);
         setError('This reset link has expired or is invalid. Please request a new one.');
         setTimeout(() => navigate('/login'), 5000);
@@ -56,8 +165,25 @@ const ResetPassword = () => {
       const hasValidTokens = hash.includes('access_token') && hash.includes('type=recovery');
       const hasLegacyToken = urlParams.has('token') && urlParams.get('type') === 'recovery';
       
+      const tokenValidation = {
+        hasValidTokens,
+        hasLegacyToken,
+        isValid: hasValidTokens || hasLegacyToken
+      };
+      
+      console.log('[ResetPassword] Token validation:', tokenValidation);
+      
       if (hasValidTokens || hasLegacyToken) {
         console.log('[ResetPassword] Valid reset tokens found');
+        
+        storeDebugInfo({
+          mode: 'production',
+          action: 'valid_tokens_found',
+          ...currentLocationInfo,
+          ...rawUrlInfo,
+          ...urlAnalysis,
+          ...tokenValidation
+        });
         
         // If we have tokens in the hash, try to set the session
         if (hasValidTokens) {
@@ -65,8 +191,18 @@ const ResetPassword = () => {
           const accessToken = hashParams.get('access_token');
           const refreshToken = hashParams.get('refresh_token');
           
+          const extractedTokens = {
+            hasAccessToken: !!accessToken,
+            hasRefreshToken: !!refreshToken,
+            accessTokenLength: accessToken?.length,
+            refreshTokenLength: refreshToken?.length
+          };
+          
+          console.log('[ResetPassword] Extracted tokens:', extractedTokens);
+          
           if (accessToken && refreshToken) {
             try {
+              console.log('[ResetPassword] Setting session with extracted tokens...');
               const { data, error } = await supabase.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken
@@ -74,21 +210,74 @@ const ResetPassword = () => {
               
               if (error) {
                 console.error('[ResetPassword] Session error:', error);
+                
+                storeDebugInfo({
+                  mode: 'production',
+                  action: 'session_error',
+                  ...currentLocationInfo,
+                  ...rawUrlInfo,
+                  ...urlAnalysis,
+                  ...tokenValidation,
+                  ...extractedTokens,
+                  sessionError: error
+                });
+                
                 setValidResetLink(false);
                 setError('Invalid reset link. Please request a new one.');
                 setTimeout(() => navigate('/login'), 5000);
                 return;
               }
               
-              console.log('[ResetPassword] Session set successfully');
+              console.log('[ResetPassword] Session set successfully:', data);
+              
+              storeDebugInfo({
+                mode: 'production',
+                action: 'session_success',
+                ...currentLocationInfo,
+                ...rawUrlInfo,
+                ...urlAnalysis,
+                ...tokenValidation,
+                ...extractedTokens,
+                sessionData: data
+              });
+              
               setHasSession(true);
             } catch (err) {
               console.error('[ResetPassword] Error setting session:', err);
+              
+              storeDebugInfo({
+                mode: 'production',
+                action: 'session_exception',
+                ...currentLocationInfo,
+                ...rawUrlInfo,
+                ...urlAnalysis,
+                ...tokenValidation,
+                ...extractedTokens,
+                exception: err instanceof Error ? err.message : 'Unknown error'
+              });
+              
               setValidResetLink(false);
               setError('Failed to authenticate. Please request a new reset link.');
               setTimeout(() => navigate('/login'), 5000);
               return;
             }
+          } else {
+            console.error('[ResetPassword] Missing access or refresh token');
+            
+            storeDebugInfo({
+              mode: 'production',
+              action: 'missing_tokens',
+              ...currentLocationInfo,
+              ...rawUrlInfo,
+              ...urlAnalysis,
+              ...tokenValidation,
+              ...extractedTokens
+            });
+            
+            setValidResetLink(false);
+            setError('Incomplete reset link. Please request a new one.');
+            setTimeout(() => navigate('/login'), 5000);
+            return;
           }
         }
         
@@ -96,6 +285,17 @@ const ResetPassword = () => {
       } else {
         // No reset tokens found - this could be a direct visit
         console.log('[ResetPassword] No reset tokens found - treating as direct visit');
+        console.log('[ResetPassword] Final decision: showing blue info message for direct visit');
+        
+        storeDebugInfo({
+          mode: 'production',
+          action: 'no_tokens_found_direct_visit',
+          ...currentLocationInfo,
+          ...rawUrlInfo,
+          ...urlAnalysis,
+          ...tokenValidation
+        });
+        
         setValidResetLink(false);
         setError('To reset your password, please click the reset link from your email. If you haven\'t received an email, request a new password reset.');
         // Don't auto-redirect for direct visits - let user choose
@@ -175,6 +375,9 @@ const ResetPassword = () => {
         description: "Your password has been reset. You can now log in with your new password.",
       });
 
+      // Clear debug info on success
+      clearDebugInfo();
+
       // Sign out to clear the reset session and redirect to login
       await supabase.auth.signOut();
       
@@ -242,6 +445,51 @@ const ResetPassword = () => {
                   </div>
                 )}
               </div>
+            </div>
+            
+            {/* Debug Information Display */}
+            {debugInfo && (
+              <div className="mt-6 p-4 bg-gray-100 rounded-md text-left text-xs">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-semibold text-gray-700">Debug Info</h3>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      navigator.clipboard.writeText(JSON.stringify(debugInfo, null, 2));
+                      toast({
+                        title: "Copied!",
+                        description: "Debug info copied to clipboard",
+                      });
+                    }}
+                    className="text-xs"
+                  >
+                    Copy
+                  </Button>
+                </div>
+                <div className="space-y-1 text-gray-600">
+                  <p><strong>Time:</strong> {debugInfo.timestamp}</p>
+                  <p><strong>Action:</strong> {debugInfo.action}</p>
+                  <p><strong>Mode:</strong> {debugInfo.mode}</p>
+                  <p><strong>Full URL:</strong> {debugInfo.fullUrl}</p>
+                  <p><strong>Window Hash:</strong> {debugInfo.windowHash || 'None'}</p>
+                  <p><strong>React Hash:</strong> {debugInfo.hash || 'None'}</p>
+                  <p><strong>Has Tokens:</strong> {debugInfo.hasTokens ? 'Yes' : 'No'}</p>
+                  <p><strong>Has Recovery Type:</strong> {debugInfo.hasRecoveryType ? 'Yes' : 'No'}</p>
+                  {debugInfo.errorInfo && (
+                    <div className="mt-2 p-2 bg-red-50 rounded">
+                      <p><strong>Error:</strong> {debugInfo.errorInfo.error}</p>
+                      <p><strong>Error Code:</strong> {debugInfo.errorInfo.errorCode}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Instructions for viewing full debug info */}
+            <div className="mt-4 p-3 bg-yellow-50 rounded-md text-sm text-yellow-700">
+              <p><strong>Troubleshooting:</strong></p>
+              <p>Debug information has been saved. If you need technical support, use the "Copy" button above to copy the debug details.</p>
             </div>
           </div>
         </div>
