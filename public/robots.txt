@@ -1,9 +1,8 @@
 User-agent: *
 Allow: /
 
-# Sitemaps (both domains point to canonical www version)
+# Sitemap
 Sitemap: https://www.kpege.com/sitemap.xml
-Sitemap: https://kpege.com/sitemap.xml
 
 # Block admin/auth related pages from indexing
 Disallow: /login
