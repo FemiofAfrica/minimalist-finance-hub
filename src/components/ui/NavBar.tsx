@@ -182,7 +182,7 @@ const NavBar: React.FC<NavBarProps> = ({
             </Link>
             {isAuthenticated ? (
               <Link to="/dashboard">
-                <Button size="sm" variant="outline" className="hover:border-green-700 hover:text-green-700 h-8 px-3 py-1 text-xs">
+                <Button size="sm" className="bg-green-700 hover:bg-green-800 text-white h-8 px-3 py-1 text-xs">
                   Go to Dashboard
                 </Button>
               </Link>
@@ -263,8 +263,7 @@ const NavBar: React.FC<NavBarProps> = ({
                 {isAuthenticated ? (
                   <Link to="/dashboard" onClick={() => handleMobileNavClick()}>
                     <Button 
-                      variant="outline" 
-                      className="w-full hover:border-green-700 hover:text-green-700 h-10 text-sm font-medium"
+                      className="w-full bg-green-700 hover:bg-green-800 text-white h-10 text-sm font-medium"
                     >
                       Go to Dashboard
                     </Button>
