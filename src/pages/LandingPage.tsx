@@ -858,7 +858,7 @@ const LandingPage: React.FC = () => {
               <div>
                 <h4 className="font-bold mb-2 md:mb-3 text-xs md:text-sm">Company</h4>
                 <ul className="space-y-1 md:space-y-1.5">
-                  <li><a href="#" className="text-xs hover:text-white transition-colors">About</a></li>
+                  <li><Link to="/about" className="text-xs hover:text-white transition-colors">About</Link></li>
                   <li><a href="#" className="text-xs hover:text-white transition-colors">Blog</a></li>
                   <li><a href="#" className="text-xs hover:text-white transition-colors">Careers</a></li>
                 </ul>

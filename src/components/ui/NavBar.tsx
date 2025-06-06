@@ -174,6 +174,9 @@ const NavBar: React.FC<NavBarProps> = ({
                 Features
               </button>
             )}
+            <Link to="/about" className="nav-link text-foreground hover:text-green-700 transition-colors text-sm leading-none px-1 py-2">
+              About Us
+            </Link>
             <Link to="/blog" className="nav-link text-foreground hover:text-green-700 transition-colors text-sm leading-none px-1 py-2">
               Blog
             </Link>
@@ -241,6 +244,13 @@ const NavBar: React.FC<NavBarProps> = ({
                   Features
                 </button>
               )}
+              <Link 
+                to="/about" 
+                className="text-foreground hover:text-green-700 transition-colors text-base font-medium py-2"
+                onClick={() => handleMobileNavClick()}
+              >
+                About Us
+              </Link>
               <Link 
                 to="/blog" 
                 className="text-foreground hover:text-green-700 transition-colors text-base font-medium py-2"

@@ -22,7 +22,10 @@ import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
 import LandingPage from '@/pages/LandingPage';
+import AboutUs from '@/pages/AboutUs';
 import Blog from '@/pages/Blog';
+import KpegeCompleteGuide from '@/pages/KpegeCompleteGuide';
+import WhyMoneyManagementMatters from '@/pages/WhyMoneyManagementMatters';
 import Unsubscribe from '@/pages/Unsubscribe';
 import './App.css';
 import { OnboardingProvider } from '@/contexts/OnboardingContext';
@@ -112,7 +115,10 @@ function App() {
                   <Route path="/login" element={<Login />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/test-reset-password" element={<TestResetPassword />} />
+                  <Route path="/about" element={<AboutUs />} />
                   <Route path="/blog" element={<Blog />} />
+                  <Route path="/blog/kpege-complete-guide" element={<KpegeCompleteGuide />} />
+                  <Route path="/blog/why-money-management-matters" element={<WhyMoneyManagementMatters />} />
                   <Route path="/unsubscribe" element={<Unsubscribe />} />
                   <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
                   <Route path="/transactions" element={<PrivateRoute><Transactions /></PrivateRoute>} />
