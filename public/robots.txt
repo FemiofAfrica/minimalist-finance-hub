@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://www.kpege.com/sitemap.xml
+
+# Block admin/auth related pages from indexing
+Disallow: /login
+Disallow: /signup
+Disallow: /admin
+Disallow: /dashboard 
