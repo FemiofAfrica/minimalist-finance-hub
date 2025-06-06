@@ -115,12 +115,12 @@ export function DashboardSidebar() {
   
   const navigation = (
     <div className="flex h-full flex-col">
-      <div className="flex items-center p-4 border-b border-slate-200 dark:border-neutral-700">
-        <Link to="/dashboard" className="flex items-center gap-2 text-slate-900 dark:text-white">
+      <div className="flex items-end h-[57px] px-4 border-b border-slate-200 dark:border-neutral-700">
+        <Link to="/dashboard" className="flex items-end gap-2 text-slate-900 dark:text-white mb-2">
           <img
             src={theme === 'dark' ? '/kpege-logo-light.svg' : '/kpege-logo.svg'}
             alt="Kpege Logo"
-            className="h-10 w-auto bg-white dark:bg-transparent rounded-xl p-1 my-2"
+            className="h-10 w-auto bg-white dark:bg-transparent rounded-xl p-1"
             style={{ maxHeight: 48 }}
           />
         </Link>
