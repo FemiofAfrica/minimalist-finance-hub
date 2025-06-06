@@ -5,6 +5,7 @@ import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { ChevronDown, Send, Upload, Mic, CreditCard, Tag, Calendar, PiggyBank, Check, Globe, Search } from 'lucide-react';
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { useAuth } from "@/contexts/AuthContext";
 import NavBar from "@/components/ui/NavBar";
 import TransactionParserDemo from "@/components/demo/TransactionParserDemo";
 import ReceiptScannerDemo from "@/components/demo/ReceiptScannerDemo";
@@ -372,8 +373,8 @@ function parseTransaction(text: string, selectedCurrency: typeof currencies[0], 
 }
 
 const LandingPage: React.FC = () => {
-  // Add state for authentication status
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Get authentication status from context
+  const { user, loading } = useAuth();
   
   // Access the currency context
   const { 
@@ -410,23 +411,8 @@ const LandingPage: React.FC = () => {
   const demoSectionRef = useRef<HTMLElement>(null);
   const featuresRef = useRef<HTMLElement>(null);
   
-  // Check if user is authenticated
-  useEffect(() => {
-    // This would typically check with your auth service
-    // For now, we'll just use a mock check
-    const checkAuth = async () => {
-      try {
-        // Mock authentication check - replace with your actual auth logic
-        const token = localStorage.getItem('kpege-auth-token');
-        setIsAuthenticated(!!token);
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        setIsAuthenticated(false);
-      }
-    };
-    
-    checkAuth();
-  }, []);
+  // Derived authentication status
+  const isAuthenticated = !!user;
   
   // Effect to sync the selected currency with the currency context
   useEffect(() => {
@@ -503,11 +489,19 @@ const LandingPage: React.FC = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-8 max-w-md sm:max-w-none mx-auto">
-            <Link to="/login" className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:w-auto bg-green-700 hover:bg-green-800 text-white px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium">
-                Control Your Money Now
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <Link to="/dashboard" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full sm:w-auto bg-green-700 hover:bg-green-800 text-white px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium">
+                  Go to Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <Link to="/login" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full sm:w-auto bg-green-700 hover:bg-green-800 text-white px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium">
+                  Control Your Money Now
+                </Button>
+              </Link>
+            )}
             <Button 
               variant="outline" 
               size="lg" 

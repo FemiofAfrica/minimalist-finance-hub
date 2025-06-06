@@ -183,7 +183,7 @@ const NavBar: React.FC<NavBarProps> = ({
             {isAuthenticated ? (
               <Link to="/dashboard">
                 <Button size="sm" variant="outline" className="hover:border-green-700 hover:text-green-700 h-8 px-3 py-1 text-xs">
-                  Dashboard
+                  Go to Dashboard
                 </Button>
               </Link>
             ) : (
@@ -266,7 +266,7 @@ const NavBar: React.FC<NavBarProps> = ({
                       variant="outline" 
                       className="w-full hover:border-green-700 hover:text-green-700 h-10 text-sm font-medium"
                     >
-                      Dashboard
+                      Go to Dashboard
                     </Button>
                   </Link>
                 ) : (
