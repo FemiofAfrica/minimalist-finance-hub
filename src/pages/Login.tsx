@@ -1,28 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { captchaSession } from '@/utils/captchaSession';
-import { FinanceEvents } from '@/integrations/mixpanel/events';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/components/ui/use-toast';
-import { Progress } from '@/components/ui/progress';
 import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase } from '@/integrations/supabase/client';
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription, 
+  DialogFooter 
+} from '@/components/ui/dialog';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import PublicLayout from '@/components/PublicLayout';
-import { Eye, EyeOff } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { verifyTurnstileToken, getTurnstileErrorMessage } from '@/utils/turnstileVerification';
+import { captchaSession } from '@/utils/captchaSession';
 import { Turnstile } from '@marsidev/react-turnstile';
+
+import { FinanceEvents } from '@/integrations/mixpanel/events';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -72,6 +71,48 @@ const Login = () => {
   // Smart captcha state management
   const [needsCaptcha, setNeedsCaptcha] = useState(false);
   const [captchaSessionInfo, setCaptchaSessionInfo] = useState(captchaSession.getInfo());
+
+  // Handle email verification redirects
+  useEffect(() => {
+    const handleEmailVerificationRedirect = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      
+      // Check if this is an email verification redirect
+      const hasEmailVerificationParams = 
+        hashParams.has('access_token') || 
+        urlParams.get('message') === 'email_confirmed' ||
+        hashParams.get('type') === 'signup';
+      
+      if (hasEmailVerificationParams) {
+        console.log('[Login] Email verification redirect detected, clearing session...');
+        
+        // Sign out to clear any auto-authentication from email verification
+        try {
+          await supabase.auth.signOut();
+          
+          // Clear URL parameters
+          window.history.replaceState({}, document.title, window.location.pathname);
+          
+          toast({
+            title: "Email verified successfully! 🎉",
+            description: "Please log in to complete your account setup.",
+          });
+          
+          // Pre-fill email if available
+          const verifiedEmail = hashParams.get('email') || urlParams.get('email');
+          if (verifiedEmail) {
+            setEmail(verifiedEmail);
+          }
+          
+        } catch (error) {
+          console.error('[Login] Error during session clearing:', error);
+        }
+      }
+    };
+
+    handleEmailVerificationRedirect();
+  }, []);
 
   // Helper functions for captcha management
   const isCaptchaTokenValid = () => {

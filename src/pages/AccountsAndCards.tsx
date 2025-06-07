@@ -7,11 +7,9 @@ import CardsList from "@/components/cards/CardsList";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Building, CreditCard } from "lucide-react";
-import AccountDialog from "@/components/accounts/AccountDialog";
 
 const AccountsAndCards = () => {
   const [activeTab, setActiveTab] = useState("accounts");
-  const [isAccountDialogOpen, setIsAccountDialogOpen] = useState(false);
   const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -66,10 +64,6 @@ const AccountsAndCards = () => {
     window.history.pushState({}, "", url.toString());
   };
 
-  const handleAccountDialogClose = (refresh: boolean = false) => {
-    setIsAccountDialogOpen(false);
-  };
-
   return (
     <DashboardLayout>
       <div className="container mx-auto px-4 py-6 md:py-8 max-w-7xl">
@@ -96,13 +90,6 @@ const AccountsAndCards = () => {
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Account Dialog */}
-      <AccountDialog
-        isOpen={isAccountDialogOpen}
-        onClose={handleAccountDialogClose}
-        account={null}
-      />
     </DashboardLayout>
   );
 };

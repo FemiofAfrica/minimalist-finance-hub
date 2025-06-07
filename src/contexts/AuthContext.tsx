@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/login`,
           data: userMetadata
         }
       });
@@ -271,7 +271,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password: '', // This will be ignored when the user already exists
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/login`,
         }
       });
       

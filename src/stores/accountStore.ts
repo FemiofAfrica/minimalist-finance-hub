@@ -13,15 +13,22 @@ interface AccountState {
   getAccount: (accountId: string) => Account | undefined;
 }
 
-// Create the store
-export const useAccountStore = create<AccountState>((set, get) => ({
+// Create the store with stable function references
+export const useAccountStore = create<AccountState>()((set, get) => ({
   accounts: [],
   isLoading: false,
   lastUpdated: 0,
   
   // Refresh accounts completely
   refreshAccounts: async () => {
+    const state = get();
+    if (state.isLoading) {
+      console.log('AccountStore: Already loading, skipping refresh');
+      return;
+    }
+    
     try {
+      console.log('AccountStore: Starting refresh accounts');
       set({ isLoading: true });
       const accounts = await fetchAccounts();
       console.log(`AccountStore: Refreshed ${accounts.length} accounts`);
@@ -31,7 +38,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
         lastUpdated: Date.now()
       });
     } catch (error) {
-      console.error('Error refreshing accounts:', error);
+      console.error('AccountStore: Error refreshing accounts:', error);
       set({ isLoading: false });
     }
   },
@@ -39,15 +46,18 @@ export const useAccountStore = create<AccountState>((set, get) => ({
   // Just fetch balances for all existing accounts
   fetchBalances: async () => {
     try {
-      const { accounts } = get();
-      if (!accounts.length) {
-        // If no accounts in store, do a full refresh
-        await get().refreshAccounts();
+      const { accounts, isLoading } = get();
+      
+      // Skip if already loading or no accounts
+      if (isLoading || !accounts.length) {
+        console.log('AccountStore: Skipping balance fetch - loading or no accounts');
         return;
       }
       
       // Get all account IDs
       const accountIds = accounts.map(acc => acc.account_id);
+      
+      console.log(`AccountStore: Fetching balances for ${accountIds.length} accounts`);
       
       // Fetch latest balances directly from database
       const { data, error } = await supabase
@@ -56,20 +66,22 @@ export const useAccountStore = create<AccountState>((set, get) => ({
         .in('account_id', accountIds);
         
       if (error) {
-        console.error('Error fetching account balances:', error);
+        console.error('AccountStore: Error fetching account balances:', error);
         return;
       }
       
       if (!data || !data.length) {
-        console.warn('No account balances returned from database');
+        console.warn('AccountStore: No account balances returned from database');
         return;
       }
       
       // Update accounts with new balances
+      let hasUpdates = false;
       const updatedAccounts = accounts.map(account => {
         const updatedAccount = data.find(a => a.account_id === account.account_id);
         if (updatedAccount && updatedAccount.balance !== account.balance) {
           console.log(`AccountStore: Updated ${account.name} balance from ${account.balance} to ${updatedAccount.balance}`);
+          hasUpdates = true;
           return {
             ...account,
             balance: updatedAccount.balance
@@ -78,12 +90,18 @@ export const useAccountStore = create<AccountState>((set, get) => ({
         return account;
       });
       
-      set({ 
-        accounts: updatedAccounts,
-        lastUpdated: Date.now()
-      });
+      // Only update state if there were actual changes
+      if (hasUpdates) {
+        console.log('AccountStore: Applying balance updates');
+        set({ 
+          accounts: updatedAccounts,
+          lastUpdated: Date.now()
+        });
+      } else {
+        console.log('AccountStore: No balance changes detected');
+      }
     } catch (error) {
-      console.error('Error fetching account balances:', error);
+      console.error('AccountStore: Error fetching account balances:', error);
     }
   },
   

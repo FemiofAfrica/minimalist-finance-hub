@@ -7,6 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import VoiceInput from "@/components/VoiceInput";
 import { getDefaultAccount } from "@/services/accountService";
 import { createTransferTransaction, createTransaction } from "@/services/transactionService";
+import { useAccountStore } from "@/stores/accountStore";
+import AccountDialog from "@/components/accounts/AccountDialog";
 
 // Define types for parsed transaction data
 interface ParsedTransactionData {
@@ -37,6 +39,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
   const [isProcessing, setIsProcessing] = useState(false); // Tracks if a submission is in progress
   const [isPreviewMode, setIsPreviewMode] = useState(false); // True when voice input is captured and awaiting confirmation/submit
   const [previewTimeLeft, setPreviewTimeLeft] = useState(3); // Countdown timer for voice preview
+  const [showAccountDialog, setShowAccountDialog] = useState(false); // For account creation
 
   // --- Refs ---
   // Ref for the countdown timer (using browser's setInterval ID type)
@@ -46,6 +49,9 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
 
   // --- Hooks ---
   const { toast } = useToast(); // Hook to display notifications
+  const accounts = useAccountStore(state => state.accounts);
+  const refreshAccounts = useAccountStore(state => state.refreshAccounts);
+  const isLoading = useAccountStore(state => state.isLoading);
 
   // --- Effects ---
   // Cleanup: Clear any active timer when the component unmounts
@@ -63,6 +69,23 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       inputRef.current.focus();
     }
   }, []);
+
+  // Load accounts when component mounts - fix infinite loop
+  useEffect(() => {
+    // Only fetch if no accounts and not currently loading
+    if (accounts.length === 0 && !isLoading) {
+      console.log('ChatInput: Loading accounts on mount');
+      refreshAccounts();
+    }
+  }, []); // Empty dependency array - only run once on mount
+
+  const handleAccountDialogClose = async (refresh: boolean = false) => {
+    setShowAccountDialog(false);
+    if (refresh) {
+      // Refresh accounts after creation
+      await refreshAccounts();
+    }
+  };
 
   // --- Handlers ---
 
@@ -258,7 +281,13 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       }
       
       if (!accountId) {
-        throw new Error('No account found to record this transaction. Please set up an account first.');
+        // Instead of throwing an error, show helpful message with account creation option
+        toast({
+          title: 'No Account Found',
+          description: 'You need to create an account first to track your transactions.',
+          variant: 'destructive',
+        });
+        return;
       }
 
       // --- Create Transaction ---
@@ -333,6 +362,22 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
         Describe your transaction in plain language. For example: "Spent ₦5000 on groceries yesterday" or "Received ₦50,000 salary on Monday".
       </p>
       
+      {/* Show account creation prompt if no accounts exist */}
+      {accounts.length === 0 && (
+        <div className="p-3 bg-muted rounded-lg border">
+          <p className="text-sm text-muted-foreground mb-2">
+            You need to create an account first to track your transactions.
+          </p>
+          <Button 
+            onClick={() => setShowAccountDialog(true)}
+            size="sm"
+            className="w-full"
+          >
+            Create Your First Account
+          </Button>
+        </div>
+      )}
+      
       <form onSubmit={handleSubmit} className="flex flex-col space-y-2">
         <div className="flex items-center space-x-2">
           <Input
@@ -341,15 +386,15 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
             onChange={(e) => setInput(e.target.value)}
             onFocus={handleInputInteraction}
             onClick={handleInputInteraction}
-            placeholder="Enter your transaction here or click the microphone to use voice..."
-            disabled={isProcessing}
+            placeholder={accounts.length === 0 ? "Create an account first to add transactions..." : "Enter your transaction here or click the microphone to use voice..."}
+            disabled={isProcessing || accounts.length === 0}
             className="flex-1"
           />
           
           <Button 
             type="submit"
             size="icon"
-            disabled={!input.trim() || isProcessing}
+            disabled={!input.trim() || isProcessing || accounts.length === 0}
             aria-label="Send"
             className="h-10 w-10"
           >
@@ -358,7 +403,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
           
           <VoiceInput 
             onTextCaptured={handleVoiceInput}
-            disabled={isProcessing} 
+            disabled={isProcessing || accounts.length === 0} 
           />
         </div>
         
@@ -374,6 +419,13 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
           </div>
         )}
       </form>
+      
+      {/* Account Dialog for creating accounts */}
+      <AccountDialog
+        isOpen={showAccountDialog}
+        onClose={handleAccountDialogClose}
+        account={null}
+      />
     </div>
   );
 };

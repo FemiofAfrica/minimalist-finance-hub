@@ -11,13 +11,16 @@ export const OnboardingContext = createContext<OnboardingContextType | undefined
 
 export function OnboardingProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(true);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(false);
 
   // Check if user has completed onboarding on initial load and when user changes
   useEffect(() => {
     if (user) {
       const onboardingStatus = localStorage.getItem(`onboarding-completed-${user.id}`);
       setHasCompletedOnboarding(onboardingStatus === 'true');
+    } else {
+      // Reset to false when no user (logged out)
+      setHasCompletedOnboarding(false);
     }
   }, [user]);
 

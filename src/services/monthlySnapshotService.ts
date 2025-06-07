@@ -39,10 +39,10 @@ const checkTableExists = async (): Promise<boolean> => {
     
     if (error) {
       if (error.code === 'PGRST106' || error.message?.includes('relation') || error.message?.includes('does not exist')) {
-        // Table doesn't exist
+      // Table doesn't exist
         console.log('Monthly snapshots table does not exist');
-        tableExists = false;
-        return false;
+      tableExists = false;
+      return false;
       }
       // Other errors (like permissions) still indicate table exists
       console.warn('Monthly snapshots table exists but query failed:', error);

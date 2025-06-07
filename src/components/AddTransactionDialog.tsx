@@ -22,6 +22,7 @@ import { TransactionFlowType, TransactionType } from "@/types/transaction";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccountStore } from "@/stores/accountStore";
 import { FinanceEvents } from "@/integrations/mixpanel/events";
+import AccountDialog from "@/components/accounts/AccountDialog";
 
 interface AddTransactionDialogProps {
   open?: boolean;
@@ -32,6 +33,7 @@ interface AddTransactionDialogProps {
 const AddTransactionDialog = ({ open, setOpen, onTransactionAdded }: AddTransactionDialogProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showAccountDialog, setShowAccountDialog] = useState(false);
   const [formData, setFormData] = useState<{
     description: string;
     amount: string;
@@ -50,8 +52,10 @@ const AddTransactionDialog = ({ open, setOpen, onTransactionAdded }: AddTransact
     transaction_type: 'REGULAR' as TransactionFlowType
   });
   
-  // Get accounts from global store
-  const { accounts, refreshAccounts } = useAccountStore();
+  // Get accounts from global store - using individual selectors to prevent function recreation
+  const accounts = useAccountStore(state => state.accounts);
+  const refreshAccounts = useAccountStore(state => state.refreshAccounts);
+  const isLoading = useAccountStore(state => state.isLoading);
   const { toast } = useToast();
 
   // Use either controlled (from props) or internal state
@@ -92,23 +96,28 @@ const AddTransactionDialog = ({ open, setOpen, onTransactionAdded }: AddTransact
     } else {
       console.error("No accounts found or accounts store is empty");
       setFormData(prev => ({ ...prev, account_id: '' }));
-      toast({
-        title: "Warning",
-        description: "No accounts found. Please create an account first.",
-        variant: "destructive"
-      });
+      // Don't show toast here - we'll handle this in the UI
     }
-  }, [accounts, toast]);
+  }, [accounts]);
 
   useEffect(() => {
     if (dialogOpen) {
-      if (!accounts.length) {
+      if (!accounts.length && !isLoading) {
+        console.log('AddTransactionDialog: Loading accounts');
         refreshAccounts();
-      } else {
+      } else if (accounts.length > 0) {
         setDefaultAccount();
       }
     }
-  }, [dialogOpen, accounts, refreshAccounts, setDefaultAccount]);
+  }, [dialogOpen, accounts.length, isLoading]);
+
+  const handleAccountDialogClose = async (refresh: boolean = false) => {
+    setShowAccountDialog(false);
+    if (refresh) {
+      // Refresh accounts and set default
+      await refreshAccounts();
+    }
+  };
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -330,23 +339,41 @@ const AddTransactionDialog = ({ open, setOpen, onTransactionAdded }: AddTransact
               <h4 className="text-sm font-medium mb-2">Link to Account</h4>
               <div className="space-y-2">
                 <Label htmlFor="account">Account</Label>
-                <Select name="account_id" value={formData.account_id} onValueChange={(value) => handleChange('account_id', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accounts.map((account) => (
-                      <SelectItem key={account.account_id} value={account.account_id}>
-                        {account.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {accounts.length === 0 ? (
+                  <div className="space-y-3">
+                    <div className="p-3 bg-muted rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        You need to create an account first to track your transactions.
+                      </p>
+                      <Button 
+                        type="button"
+                        onClick={() => setShowAccountDialog(true)}
+                        size="sm"
+                        className="w-full"
+                      >
+                        Create Your First Account
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Select name="account_id" value={formData.account_id} onValueChange={(value) => handleChange('account_id', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accounts.map((account) => (
+                        <SelectItem key={account.account_id} value={account.account_id}>
+                          {account.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
             
             <DialogFooter>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading || accounts.length === 0}>
                 {loading ? 'Adding...' : 'Add Transaction'}
               </Button>
             </DialogFooter>
@@ -442,28 +469,53 @@ const AddTransactionDialog = ({ open, setOpen, onTransactionAdded }: AddTransact
             <h4 className="text-sm font-medium mb-2">Link to Account</h4>
             <div className="space-y-2">
               <Label htmlFor="account">Account</Label>
-              <Select name="account_id" value={formData.account_id} onValueChange={(value) => handleChange('account_id', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select account" />
-                </SelectTrigger>
-                <SelectContent>
-                  {accounts.map((account) => (
-                    <SelectItem key={account.account_id} value={account.account_id}>
-                      {account.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {accounts.length === 0 ? (
+                <div className="space-y-3">
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      You need to create an account first to track your transactions.
+                    </p>
+                    <Button 
+                      type="button"
+                      onClick={() => setShowAccountDialog(true)}
+                      size="sm"
+                      className="w-full"
+                    >
+                      Create Your First Account
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Select name="account_id" value={formData.account_id} onValueChange={(value) => handleChange('account_id', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accounts.map((account) => (
+                      <SelectItem key={account.account_id} value={account.account_id}>
+                        {account.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
           
           <DialogFooter>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || accounts.length === 0}>
               {loading ? 'Adding...' : 'Add Transaction'}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
+      
+      {/* Account Dialog for creating accounts */}
+      <AccountDialog
+        isOpen={showAccountDialog}
+        onClose={handleAccountDialogClose}
+        account={null}
+      />
     </Dialog>
   );
 };

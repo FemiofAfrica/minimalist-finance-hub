@@ -10,6 +10,13 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BankSelector } from '@/components/BankSelector';
+import { createAccount } from '@/services/accountService';
+import { useAccountStore } from '@/stores/accountStore';
+import { useToast } from '@/hooks/use-toast';
+import { Account } from '@/types/account';
 
 const featureHighlights = [
   {
@@ -55,12 +62,28 @@ export const Onboarding = () => {
   const [open, setOpen] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [currentFeature, setCurrentFeature] = useState(0);
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const { completeOnboarding } = useOnboarding();
   const navigate = useNavigate();
   const { supportedCurrencies, currentCurrency, setCurrentCurrency, isLiveConversionEnabled, toggleLiveConversion } = useCurrency();
   const [selectedCurrencyCode, setSelectedCurrencyCode] = useState(currentCurrency.code);
+  const { refreshAccounts } = useAccountStore();
+  const { toast } = useToast();
 
-  const steps = ["Welcome", "Features", "Currency", "Ready!"];
+  // Account creation form data
+  const [accountFormData, setAccountFormData] = useState({
+    name: "",
+    type: "checking",
+    institution: "",
+    bank_name: "",
+    account_number: "",
+    currency: currentCurrency.code,
+    balance: "0",
+    is_default: true,
+    custom_tags: [] as string[]
+  });
+
+  const steps = ["Welcome", "Features", "Currency", "Account", "Ready!"];
 
   useEffect(() => {
     // Auto-rotate through features every 4 seconds in the Features step
@@ -73,17 +96,95 @@ export const Onboarding = () => {
     return () => clearInterval(interval);
   }, [currentStep]);
 
-  const handleNext = () => {
+  // Update account form currency when currency selection changes
+  useEffect(() => {
+    setAccountFormData(prev => ({
+      ...prev,
+      currency: selectedCurrencyCode
+    }));
+  }, [selectedCurrencyCode]);
+
+  const handleAccountInputChange = (field: string, value: string) => {
+    setAccountFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleBankChange = (bankId: string, bankName?: string) => {
+    setAccountFormData(prev => ({
+      ...prev,
+      institution: bankId,
+      bank_name: bankName || ""
+    }));
+  };
+
+  const handleCreateAccount = async () => {
+    if (!accountFormData.name.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Account name is required",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    setIsCreatingAccount(true);
+    try {
+      console.log("Onboarding: Creating account with data:", accountFormData);
+      const newAccount = await createAccount({
+        name: accountFormData.name,
+        type: accountFormData.type as Account['type'],
+        institution: accountFormData.institution || undefined,
+        bank_name: accountFormData.bank_name || undefined,
+        account_number: accountFormData.account_number || undefined,
+        balance: parseFloat(accountFormData.balance) || 0,
+        currency: accountFormData.currency,
+        is_active: true,
+        is_default: accountFormData.is_default,
+        custom_tags: accountFormData.custom_tags || []
+      });
+
+      console.log("Onboarding: Account created successfully:", newAccount);
+      
+      // Refresh the account store
+      await refreshAccounts();
+      
+      toast({
+        title: "Success",
+        description: "Your first account has been created successfully!",
+      });
+
+      return true;
+    } catch (error) {
+      console.error("Onboarding: Error creating account:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create account. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setIsCreatingAccount(false);
+    }
+  };
+
+  const handleNext = async () => {
+    // Apply currency selection when moving from the currency step
+    if (currentStep === 2) {
+      const selectedCurrency = supportedCurrencies.find(c => c.code === selectedCurrencyCode);
+      if (selectedCurrency) {
+        setCurrentCurrency(selectedCurrency);
+      }
+    }
+
+    // Handle account creation when moving from the account step
+    if (currentStep === 3) {
+      const accountCreated = await handleCreateAccount();
+      if (!accountCreated) {
+        return; // Don't proceed if account creation failed
+      }
+    }
+
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
-      
-      // Apply currency selection when moving from the currency step
-      if (currentStep === 2) {
-        const selectedCurrency = supportedCurrencies.find(c => c.code === selectedCurrencyCode);
-        if (selectedCurrency) {
-          setCurrentCurrency(selectedCurrency);
-        }
-      }
     } else {
       handleComplete();
     }
@@ -273,6 +374,98 @@ export const Onboarding = () => {
 
             {currentStep === 3 && (
               <motion.div
+                key="account"
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                variants={containerVariants}
+                className="space-y-6 py-4"
+              >
+                <motion.div variants={textVariants} className="text-4xl font-bold mb-4 text-center">
+                  Create Your First Account 🏦
+                </motion.div>
+                
+                <motion.div variants={textVariants} className="text-lg opacity-90 mb-6 text-center">
+                  Let's set up your first account to start tracking your finances.
+                </motion.div>
+                
+                <motion.div variants={textVariants} className="bg-white/10 p-6 rounded-lg space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-white" htmlFor="account-name">Account Name *</Label>
+                    <Input
+                      id="account-name"
+                      value={accountFormData.name}
+                      onChange={(e) => handleAccountInputChange('name', e.target.value)}
+                      placeholder="e.g., Main Savings, Investment Fund"
+                      className="bg-white/20 border-white/20 text-white placeholder:text-white/50"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-white" htmlFor="account-type">Account Type</Label>
+                    <Select value={accountFormData.type} onValueChange={(value) => handleAccountInputChange('type', value)}>
+                      <SelectTrigger className="bg-white/20 border-white/20 text-white">
+                        <SelectValue placeholder="Select account type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="savings">Savings</SelectItem>
+                        <SelectItem value="checking">Checking</SelectItem>
+                        <SelectItem value="current">Current</SelectItem>
+                        <SelectItem value="credit">Credit</SelectItem>
+                        <SelectItem value="investment">Investment</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-white" htmlFor="institution">Institution (Optional)</Label>
+                    <BankSelector
+                      value={accountFormData.institution}
+                      onChange={handleBankChange}
+                      placeholder="Select your bank..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-white" htmlFor="account-number">Account Number (Optional)</Label>
+                    <Input
+                      id="account-number"
+                      value={accountFormData.account_number}
+                      onChange={(e) => handleAccountInputChange('account_number', e.target.value)}
+                      placeholder="e.g., 1234567890"
+                      className="bg-white/20 border-white/20 text-white placeholder:text-white/50"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-white" htmlFor="balance">Current Balance</Label>
+                    <Input
+                      id="balance"
+                      type="number"
+                      step="0.01"
+                      value={accountFormData.balance}
+                      onChange={(e) => handleAccountInputChange('balance', e.target.value)}
+                      placeholder="0"
+                      className="bg-white/20 border-white/20 text-white placeholder:text-white/50"
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2 pt-2">
+                    <Checkbox
+                      id="is_default"
+                      checked={accountFormData.is_default}
+                      onCheckedChange={(checked) => handleAccountInputChange('is_default', checked.toString())}
+                      className="bg-white/20 border-white/20 data-[state=checked]:bg-emerald-500"
+                    />
+                    <Label className="text-white" htmlFor="is_default">Set as default account for transactions</Label>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+
+            {currentStep === 4 && (
+              <motion.div
                 key="ready"
                 initial="hidden"
                 animate="visible"
@@ -293,19 +486,27 @@ export const Onboarding = () => {
                   variants={textVariants}
                   className="py-4 px-6 bg-white/10 rounded-lg mt-4 space-y-4"
                 >
-                  <h3 className="font-semibold text-lg mb-2">Key Benefits:</h3>
+                  <h3 className="font-semibold text-lg mb-2">What you've set up:</h3>
                   <ul className="text-left space-y-3">
                     <li className="flex items-start gap-2">
                       <span className="text-white mt-1">💬</span>
                       <span>Chat or speak your transactions to manage your finances</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-white mt-1">💸</span>
-                      <span>No more unnecessary spending on subscriptions. Manage them easily!</span>
+                      <span className="text-white mt-1">🌍</span>
+                      <span>Currency: {supportedCurrencies.find(c => c.code === selectedCurrencyCode)?.name}</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-white mt-1">🌍</span>
-                      <span>Your selected currency ({supportedCurrencies.find(c => c.code === selectedCurrencyCode)?.name}) will be used throughout the app</span>
+                      <span className="text-white mt-1">🏦</span>
+                      <span>
+                        Account: {accountFormData.name || 'Your first account'}
+                        {accountFormData.type && ` (${accountFormData.type.charAt(0).toUpperCase() + accountFormData.type.slice(1)})`}
+                        {accountFormData.bank_name && ` at ${accountFormData.bank_name}`}
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-white mt-1">💸</span>
+                      <span>Ready to track expenses and manage subscriptions!</span>
                     </li>
                   </ul>
                 </motion.div>
@@ -359,6 +560,7 @@ export const Onboarding = () => {
               variant="outline"
               onClick={handleBack}
               className="bg-transparent border-white text-white hover:bg-white/10"
+              disabled={isCreatingAccount}
             >
               Back
             </Button>
@@ -368,8 +570,9 @@ export const Onboarding = () => {
           <Button
             onClick={handleNext}
             className="bg-white text-[#004D40] hover:bg-white/90"
+            disabled={isCreatingAccount}
           >
-            {currentStep < steps.length - 1 ? "Next" : "Get Started"}
+            {isCreatingAccount ? "Creating Account..." : (currentStep < steps.length - 1 ? "Next" : "Get Started")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -40,7 +40,9 @@ interface TransferDialogProps {
 }
 
 const TransferDialog = ({ isOpen, onClose, initialSourceAccountId }: TransferDialogProps) => {
-  const { accounts, refreshAccounts } = useAccountStore();
+  const accounts = useAccountStore(state => state.accounts);
+  const refreshAccounts = useAccountStore(state => state.refreshAccounts);
+  const isLoading = useAccountStore(state => state.isLoading);
   const { toast } = useToast();
   
   const [loading, setLoading] = useState(true);
@@ -78,18 +80,19 @@ const TransferDialog = ({ isOpen, onClose, initialSourceAccountId }: TransferDia
     if (isOpen) {
       setLoading(true);
       
-      // If account store is empty, refresh it
-      if (accounts.length === 0) {
+      // If account store is empty and not currently loading, refresh it
+      if (accounts.length === 0 && !isLoading) {
+        console.log('TransferDialog: Loading accounts');
         refreshAccounts().then(() => {
           initializeAccounts();
           setLoading(false);
         });
-      } else {
+      } else if (accounts.length > 0) {
         initializeAccounts();
         setLoading(false);
       }
     }
-  }, [isOpen, accounts.length, initializeAccounts, refreshAccounts]);
+  }, [isOpen, accounts.length, isLoading]); // Removed functions from dependencies
 
   // Update destination account when source account changes
   useEffect(() => {

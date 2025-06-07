@@ -29,6 +29,8 @@ import WhyMoneyManagementMatters from '@/pages/WhyMoneyManagementMatters';
 import Unsubscribe from '@/pages/Unsubscribe';
 import './App.css';
 import { OnboardingProvider } from '@/contexts/OnboardingContext';
+import { Onboarding } from '@/components/onboarding/Onboarding';
+import { useOnboarding } from '@/hooks/useOnboarding';
 import { useEffect } from 'react';
 
 // Initialize client environment variables with error handling
@@ -58,6 +60,19 @@ const SafeSpeedInsights = () => {
   }
 };
 
+// Component to conditionally show onboarding for authenticated users only
+const OnboardingWrapper = () => {
+  const { user } = useAuth();
+  const { hasCompletedOnboarding } = useOnboarding();
+  
+  // Only show onboarding if user is authenticated and hasn't completed it
+  if (user && !hasCompletedOnboarding) {
+    return <Onboarding />;
+  }
+  
+  return null;
+};
+
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   
@@ -73,7 +88,13 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  return children;
+  return (
+    <>
+      {/* Show onboarding for authenticated users who haven't completed it */}
+      <OnboardingWrapper />
+      {children}
+    </>
+  );
 }
 
 // Separate component for Mixpanel tracking that uses the auth context

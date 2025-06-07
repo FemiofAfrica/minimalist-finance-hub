@@ -1,4 +1,4 @@
-export type AccountType = "checking" | "savings" | "credit" | "investment";
+export type AccountType = "checking" | "savings" | "current" | "credit" | "investment";
 
 /**
  * Represents a user's financial account.

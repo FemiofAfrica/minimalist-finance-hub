@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Account } from "@/types/account";
 import AccountCard from "./AccountCard";
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,11 @@ import { deleteAccount } from "@/services/accountService";
 import { useAccountStore } from "@/stores/accountStore";
 
 const AccountsList = () => {
-  // Account store for global state
-  const { accounts, isLoading, refreshAccounts, fetchBalances } = useAccountStore();
+  // Account store for global state - using individual selectors to prevent unnecessary re-renders
+  const accounts = useAccountStore(state => state.accounts);
+  const isLoading = useAccountStore(state => state.isLoading);
+  const refreshAccounts = useAccountStore(state => state.refreshAccounts);
+  const fetchBalances = useAccountStore(state => state.fetchBalances);
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
@@ -34,31 +37,49 @@ const AccountsList = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Load accounts on mount and set up polling for balance updates
+  // Memoize event handlers to prevent infinite loops
+  const handleRefreshEvent = useCallback(() => {
+    console.log("Refresh event received in AccountsList - refreshing accounts");
+    refreshAccounts();
+  }, [refreshAccounts]);
+
+  // Load accounts on mount and set up event listeners (no polling to prevent conflicts)
   useEffect(() => {
+    console.log("AccountsList: Initial mount, loading accounts");
+    
     // Initial load
     refreshAccounts();
     
-    // Set up polling for balances - every 2 seconds
-    const balanceInterval = setInterval(() => {
-      fetchBalances();
-    }, 2000);
-    
-    // Set up event listeners
-    const handleRefresh = () => {
-      console.log("Refresh event received in AccountsList - refreshing accounts");
-      refreshAccounts();
-    };
-    
-    document.addEventListener('refresh', handleRefresh);
-    document.addEventListener('refresh-transactions', handleRefresh);
+    // Set up event listeners for external refresh triggers
+    document.addEventListener('refresh', handleRefreshEvent);
+    document.addEventListener('refresh-transactions', handleRefreshEvent);
     
     return () => {
-      clearInterval(balanceInterval);
-      document.removeEventListener('refresh', handleRefresh);
-      document.removeEventListener('refresh-transactions', handleRefresh);
+      document.removeEventListener('refresh', handleRefreshEvent);
+      document.removeEventListener('refresh-transactions', handleRefreshEvent);
     };
-  }, []); // Remove functions from dependency array to prevent infinite loops
+  }, [refreshAccounts, handleRefreshEvent]);
+
+  // Separate effect for periodic balance updates (less aggressive)
+  useEffect(() => {
+    // Only set up balance polling if we have accounts and are not currently loading
+    if (accounts.length === 0 || isLoading) {
+      return;
+    }
+
+    console.log("AccountsList: Setting up balance polling for", accounts.length, "accounts");
+    
+    // Set up less aggressive polling for balances - every 10 seconds instead of 2
+    const balanceInterval = setInterval(() => {
+      console.log("AccountsList: Fetching balance updates");
+      fetchBalances();
+    }, 10000);
+    
+    return () => {
+      console.log("AccountsList: Clearing balance polling interval");
+      clearInterval(balanceInterval);
+    };
+  }, [accounts.length, isLoading, fetchBalances]);
 
   const handleEditAccount = (account: Account) => {
     console.log("Editing account:", account);
@@ -117,26 +138,26 @@ const AccountsList = () => {
     setIsTransferDialogOpen(true);
   };
 
-  const handleDialogClose = (refresh: boolean = false) => {
+  const handleDialogClose = useCallback((refresh: boolean = false) => {
     setIsDialogOpen(false);
     if (refresh) {
       console.log("Refreshing accounts after dialog closed");
       refreshAccounts();
     }
-  };
+  }, [refreshAccounts]);
 
-  const handleTransferDialogClose = (refresh: boolean = false) => {
+  const handleTransferDialogClose = useCallback((refresh: boolean = false) => {
     setIsTransferDialogOpen(false);
     if (refresh) {
       console.log("Refreshing accounts after transfer");
       refreshAccounts();
     }
-  };
+  }, [refreshAccounts]);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     console.log("Manual refresh requested");
     refreshAccounts();
-  };
+  }, [refreshAccounts]);
 
   if (isLoading) {
     return (
@@ -227,11 +248,11 @@ const AccountsList = () => {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={confirmDeleteAccount} 
+              onClick={confirmDeleteAccount}
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? 'Deleting...' : 'Delete Account'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
