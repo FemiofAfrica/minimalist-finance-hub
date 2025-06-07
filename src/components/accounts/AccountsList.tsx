@@ -202,10 +202,12 @@ const AccountsList = () => {
         <div className="text-center py-12 bg-muted/50 rounded-lg">
           <h3 className="text-lg font-medium mb-2">No accounts found</h3>
           <p className="text-muted-foreground mb-4">Add your first account to get started</p>
-          <Button onClick={handleAddAccount} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Add Account
-          </Button>
+          <div className="flex justify-center">
+            <Button onClick={handleAddAccount} className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add Account
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">

@@ -228,10 +228,12 @@ const CardsList = ({ accountId }: CardsListProps) => {
         <div className="text-center py-12 bg-muted/50 rounded-lg">
           <h3 className="text-lg font-medium mb-2">No cards found</h3>
           <p className="text-muted-foreground mb-4">Add your first card to get started</p>
-          <Button onClick={handleAddCard} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Add Card
-          </Button>
+          <div className="flex justify-center">
+            <Button onClick={handleAddCard} className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add Card
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
