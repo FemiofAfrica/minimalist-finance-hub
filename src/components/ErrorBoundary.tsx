@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { errorLogger } from '@/utils/errorLogger';
+import errorNotificationService from '@/services/errorNotificationService'
 
 interface Props {
   children: ReactNode;
@@ -32,8 +32,8 @@ class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     const { componentName, onError } = this.props;
     
-    // Log error with our error logging system
-    errorLogger.logComponentError(componentName || 'Unknown', error, errorInfo);
+    // Report error to our notification system
+    errorNotificationService.reportReactError(error, errorInfo.componentStack || '');
     
     // Update state with error info for more detailed error display
     this.setState({ errorInfo });
