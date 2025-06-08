@@ -21,6 +21,8 @@ import { NotificationType } from '@/types/notification';
 import { Loader2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { SupportBanner } from '@/components/ui/SupportBanner';
+import NotificationTestCenter from '@/components/admin/NotificationTestCenter';
+import ErrorLogsViewer from '@/components/admin/ErrorLogsViewer';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -361,8 +363,7 @@ export default function Settings() {
                     >
                       Security
                     </TabsTrigger>
-                    {/* Debug: Try with true instead of isAdmin to force render */}
-                    {true && (
+                    {isAdmin && (
                       <TabsTrigger 
                         value="admin" 
                         className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none h-12 md:h-14 rounded-none border-b-2 border-transparent font-medium text-sm md:text-base transition-all px-4 md:px-8 mx-2 md:mx-4"
@@ -541,16 +542,23 @@ export default function Settings() {
             {/* Admin Tab */}
             {isAdmin && (
               <TabsContent value="admin" className="p-4 md:p-8">
-                <div className="max-w-3xl mx-auto">
+                <div className="max-w-7xl mx-auto">
                   <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-6 md:mb-8 text-center">Admin Controls</h2>
                   
-                  <Card className="shadow-sm border mb-10">
+                  {/* New Comprehensive Admin Components */}
+                  <div className="space-y-8">
+                    <NotificationTestCenter />
+                    <ErrorLogsViewer />
+                  </div>
+                  
+                  {/* Legacy Global Notifications (keeping for backward compatibility) */}
+                  <Card className="shadow-sm border mb-10 mt-8">
                     <CardContent className="space-y-6">
                       {/* Global Notifications Section (existing) */}
                       <div className="text-center">
-                        <h3 className="text-lg font-medium mb-2">Global Notifications</h3>
+                        <h3 className="text-lg font-medium mb-2">Legacy Global Notifications</h3>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Send a notification to all users. Use with caution.
+                          Basic notification sending (consider using the comprehensive tool above).
                         </p>
                       </div>
                       <div className="space-y-2 text-center">
