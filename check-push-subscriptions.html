@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Check Push Subscriptions</title>
+</head>
+<body>
+    <h1>Check Push Subscriptions</h1>
+    <button onclick="checkSubscriptions()">Check Push Subscriptions</button>
+    <button onclick="subscribe()">Subscribe to Push Notifications</button>
+    <pre id="output"></pre>
+
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+        const supabaseUrl = 'https://idcgvnwatraddbsppxzl.supabase.co'
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlkY2d2bndhdHJhZGRic3BweHpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzMxMzU5MTQsImV4cCI6MjA0ODcxMTkxNH0.YNhobxB0wFGfb7mGFCiZnP41LTWjmBRLRX7H51UrLac'
+        
+        const supabase = createClient(supabaseUrl, supabaseKey)
+
+        window.checkSubscriptions = async function() {
+            const output = document.getElementById('output')
+            output.textContent = 'Checking subscriptions...\n'
+
+            try {
+                // Get session first
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+                
+                if (sessionError) {
+                    output.textContent += `Session error: ${sessionError.message}\n`
+                    return
+                }
+
+                if (!session) {
+                    output.textContent += 'No active session - user needs to log in\n'
+                    return
+                }
+
+                output.textContent += `Logged in as: ${session.user.email}\n`
+                output.textContent += `User ID: ${session.user.id}\n\n`
+
+                // Check push subscriptions
+                const { data: subscriptions, error } = await supabase
+                    .from('push_subscriptions')
+                    .select('*')
+                    .eq('user_id', session.user.id)
+
+                if (error) {
+                    output.textContent += `Error fetching subscriptions: ${error.message}\n`
+                } else {
+                    output.textContent += `Found ${subscriptions.length} subscription(s):\n`
+                    subscriptions.forEach((sub, index) => {
+                        output.textContent += `\nSubscription ${index + 1}:\n`
+                        output.textContent += `  ID: ${sub.id}\n`
+                        output.textContent += `  Endpoint: ${sub.endpoint.substring(0, 50)}...\n`
+                        output.textContent += `  Active: ${sub.is_active}\n`
+                        output.textContent += `  Created: ${sub.created_at}\n`
+                    })
+                }
+
+                // Check service worker registration
+                if ('serviceWorker' in navigator) {
+                    const registration = await navigator.serviceWorker.getRegistration()
+                    if (registration) {
+                        output.textContent += `\nService Worker: Registered\n`
+                        
+                        // Check push subscription
+                        const existingSubscription = await registration.pushManager.getSubscription()
+                        if (existingSubscription) {
+                            output.textContent += `Browser Push Subscription: Active\n`
+                            output.textContent += `Endpoint: ${existingSubscription.endpoint.substring(0, 50)}...\n`
+                        } else {
+                            output.textContent += `Browser Push Subscription: None\n`
+                        }
+                    } else {
+                        output.textContent += `\nService Worker: Not registered\n`
+                    }
+                } else {
+                    output.textContent += `\nService Worker: Not supported\n`
+                }
+
+            } catch (err) {
+                output.textContent += `Exception: ${err.message}\n`
+                console.error('Full error:', err)
+            }
+        }
+
+        window.subscribe = async function() {
+            const output = document.getElementById('output')
+            output.textContent += '\nAttempting to subscribe to push notifications...\n'
+
+            try {
+                // Check notification permission
+                if (Notification.permission !== 'granted') {
+                    const permission = await Notification.requestPermission()
+                    if (permission !== 'granted') {
+                        output.textContent += 'Notification permission denied\n'
+                        return
+                    }
+                }
+
+                // Register service worker (simplified for testing)
+                if ('serviceWorker' in navigator) {
+                    // Create a basic service worker inline for testing
+                    const swScript = `
+                        self.addEventListener('push', function(event) {
+                            const data = event.data ? event.data.json() : {};
+                            const options = {
+                                body: data.body || 'New notification',
+                                icon: '/icon-192x192.png',
+                                badge: '/icon-192x192.png',
+                                data: data.data || {}
+                            };
+                            event.waitUntil(
+                                self.registration.showNotification(data.title || 'kpege', options)
+                            );
+                        });
+                    `
+                    
+                    const blob = new Blob([swScript], { type: 'application/javascript' })
+                    const swUrl = URL.createObjectURL(blob)
+                    
+                    const registration = await navigator.serviceWorker.register(swUrl)
+                    output.textContent += 'Service worker registered\n'
+
+                    // Wait for service worker to be ready
+                    await navigator.serviceWorker.ready
+
+                    // Subscribe to push notifications
+                    const vapidPublicKey = 'BAUFmfzgm9fswJsOKS6FUWxvxVHzCKL4YVl-WR4hHJPDbCkuhlNqt0YyXGcO4SjGtRSlWlvH_j-CvJuHmrTQ-Hs'
+                    
+                    function urlBase64ToUint8Array(base64String) {
+                        const padding = '='.repeat((4 - base64String.length % 4) % 4)
+                        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+                        const rawData = window.atob(base64)
+                        const outputArray = new Uint8Array(rawData.length)
+                        for (let i = 0; i < rawData.length; ++i) {
+                            outputArray[i] = rawData.charCodeAt(i)
+                        }
+                        return outputArray
+                    }
+
+                    const subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+                    })
+
+                    output.textContent += 'Browser subscription created\n'
+
+                    // Save to database
+                    const { data: { session } } = await supabase.auth.getSession()
+                    const subscriptionJson = subscription.toJSON()
+                    
+                    const { error } = await supabase
+                        .from('push_subscriptions')
+                        .upsert({
+                            user_id: session.user.id,
+                            endpoint: subscriptionJson.endpoint,
+                            p256dh: subscriptionJson.keys.p256dh,
+                            auth: subscriptionJson.keys.auth,
+                            user_agent: navigator.userAgent,
+                            updated_at: new Date().toISOString()
+                        }, {
+                            onConflict: 'user_id,endpoint'
+                        })
+
+                    if (error) {
+                        output.textContent += `Error saving subscription: ${error.message}\n`
+                    } else {
+                        output.textContent += 'Subscription saved to database!\n'
+                        output.textContent += `Endpoint: ${subscriptionJson.endpoint.substring(0, 50)}...\n`
+                    }
+                }
+
+            } catch (err) {
+                output.textContent += `Exception: ${err.message}\n`
+                console.error('Full error:', err)
+            }
+        }
+    </script>
+</body>
+</html> 

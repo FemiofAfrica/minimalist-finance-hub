@@ -214,7 +214,7 @@ export type Database = {
           is_read: boolean | null
           link: string | null
           message: string
-          notification_id: string
+          id: string
           related_id: string | null
           source: string
           title: string

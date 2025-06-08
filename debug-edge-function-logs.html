@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Edge Function Logs</title>
+</head>
+<body>
+    <h1>🔍 Debug Edge Function Logs</h1>
+    
+    <div style="background: #fff3cd; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+        <h3>⚠️ Current Issue:</h3>
+        <ul>
+            <li>✅ Correct API key working</li>
+            <li>✅ 1 active push subscription in database</li>
+            <li>✅ Edge function finds 1 target user</li>
+            <li>❌ Edge function sends 0 notifications</li>
+        </ul>
+        <p><strong>Likely Issue:</strong> The push notification sending logic itself is failing</p>
+    </div>
+
+    <div style="margin: 20px 0;">
+        <label>Supabase Anon Key:</label><br>
+        <input type="text" id="supabaseKey" placeholder="Paste the working anon key here" style="width: 600px;" />
+    </div>
+
+    <h2>Debug Steps</h2>
+    
+    <div style="margin: 20px 0;">
+        <button onclick="checkEdgeFunctionLogs()">1. Check Edge Function Logs</button>
+        <p style="color: #666; font-size: 0.9em;">This will guide you to check Supabase logs</p>
+    </div>
+
+    <div style="margin: 20px 0;">
+        <button onclick="debugPushSubscription()">2. Debug Push Subscription</button>
+        <p style="color: #666; font-size: 0.9em;">Check if the subscription in DB is valid</p>
+    </div>
+
+    <div style="margin: 20px 0;">
+        <button onclick="testWithDetailedLogging()">3. Test with Detailed Logging</button>
+        <p style="color: #666; font-size: 0.9em;">Send notification with extra debug info</p>
+    </div>
+
+    <pre id="output"></pre>
+
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+        const supabaseUrl = 'https://idcgvnwatraddbsppxzl.supabase.co'
+
+        function getSupabaseClient() {
+            const key = document.getElementById('supabaseKey').value
+            if (!key.trim()) {
+                throw new Error('Please enter the Supabase anon key first')
+            }
+            return createClient(supabaseUrl, key)
+        }
+
+        window.checkEdgeFunctionLogs = function() {
+            const output = document.getElementById('output')
+            output.textContent = '📋 To check edge function logs:\n\n'
+            output.textContent += '1. Go to Supabase Dashboard → Your Project\n'
+            output.textContent += '2. Functions → send-push-notification\n'
+            output.textContent += '3. Click "Logs" tab\n'
+            output.textContent += '4. Look for recent entries with detailed error messages\n'
+            output.textContent += '5. Check for errors like:\n'
+            output.textContent += '   - "Failed to fetch push subscriptions"\n'
+            output.textContent += '   - "No push subscriptions found"\n'
+            output.textContent += '   - "Push service responded with..."\n'
+            output.textContent += '   - VAPID key errors\n\n'
+            output.textContent += 'After checking logs, run the other debug steps below.\n'
+        }
+
+        window.debugPushSubscription = async function() {
+            const output = document.getElementById('output')
+            output.textContent = '🔍 Debugging push subscription...\n'
+
+            try {
+                const supabase = getSupabaseClient()
+                
+                const { data: { session } } = await supabase.auth.getSession()
+                if (!session) {
+                    output.textContent += '❌ No session found\n'
+                    return
+                }
+
+                // Get the push subscription details
+                const { data: subscriptions, error } = await supabase
+                    .from('push_subscriptions')
+                    .select('*')
+                    .eq('user_id', session.user.id)
+                    .eq('is_active', true)
+
+                if (error) {
+                    output.textContent += `❌ Error fetching subscriptions: ${error.message}\n`
+                    return
+                }
+
+                output.textContent += `✅ Found ${subscriptions.length} active subscription(s)\n\n`
+
+                subscriptions.forEach((sub, index) => {
+                    output.textContent += `Subscription ${index + 1}:\n`
+                    output.textContent += `  ID: ${sub.id}\n`
+                    output.textContent += `  User ID: ${sub.user_id}\n`
+                    output.textContent += `  Endpoint: ${sub.endpoint}\n`
+                    output.textContent += `  P256DH: ${sub.p256dh ? 'Present' : 'Missing'}\n`
+                    output.textContent += `  Auth: ${sub.auth ? 'Present' : 'Missing'}\n`
+                    output.textContent += `  Is Active: ${sub.is_active}\n`
+                    output.textContent += `  Created: ${sub.created_at}\n`
+                    output.textContent += `  Updated: ${sub.updated_at}\n\n`
+                })
+
+                // Check if endpoint is reachable (basic validation)
+                if (subscriptions.length > 0) {
+                    const endpoint = subscriptions[0].endpoint
+                    output.textContent += '🔍 Checking endpoint validity...\n'
+                    
+                    if (endpoint.includes('fcm.googleapis.com')) {
+                        output.textContent += '✅ Using Firebase Cloud Messaging (FCM)\n'
+                    } else if (endpoint.includes('updates.push.services.mozilla.com')) {
+                        output.textContent += '✅ Using Mozilla Push Service\n'
+                    } else {
+                        output.textContent += `⚠️ Unknown push service: ${endpoint.split('/')[2]}\n`
+                    }
+                }
+
+            } catch (err) {
+                output.textContent += `❌ Exception: ${err.message}\n`
+            }
+        }
+
+        window.testWithDetailedLogging = async function() {
+            const output = document.getElementById('output')
+            output.textContent = '📱 Testing with detailed logging...\n'
+
+            try {
+                const supabase = getSupabaseClient()
+                
+                const { data: { session } } = await supabase.auth.getSession()
+                if (!session) {
+                    output.textContent += '❌ No session found\n'
+                    return
+                }
+
+                output.textContent += `✅ Authenticated as: ${session.user.email}\n`
+                output.textContent += '📤 Sending request to edge function...\n'
+
+                const startTime = Date.now()
+                
+                const { data, error } = await supabase.functions.invoke('send-push-notification', {
+                    body: {
+                        targetType: 'segment',
+                        segment: 'super_admins',
+                        title: '🔍 Debug Test',
+                        message: 'Testing with detailed logging to identify the issue',
+                        url: '/dashboard',
+                        shouldTriggerEmail: false,
+                        currentUserId: session.user.id
+                    }
+                })
+
+                const duration = Date.now() - startTime
+                output.textContent += `⏱️ Request took ${duration}ms\n\n`
+
+                if (error) {
+                    output.textContent += `❌ Error: ${JSON.stringify(error, null, 2)}\n`
+                } else {
+                    output.textContent += `📊 Detailed Result:\n`
+                    output.textContent += `  Success: ${data.success}\n`
+                    output.textContent += `  Message: ${data.message}\n`
+                    output.textContent += `  Total Targeted: ${data.details.totalTargeted}\n`
+                    output.textContent += `  Total Sent: ${data.details.totalSent}\n`
+                    output.textContent += `  Push Results: ${data.details.pushResults.length} items\n`
+                    output.textContent += `  Email Results: ${data.details.emailResults.length} items\n`
+                    output.textContent += `  Errors: ${data.details.errors.length} items\n\n`
+
+                    if (data.details.errors.length > 0) {
+                        output.textContent += `🚨 Errors found:\n`
+                        data.details.errors.forEach((error, i) => {
+                            output.textContent += `  ${i + 1}. ${error}\n`
+                        })
+                    }
+
+                    output.textContent += '\n📋 Next Steps:\n'
+                    output.textContent += '1. Check the Supabase Function logs for detailed error messages\n'
+                    output.textContent += '2. Verify VAPID keys are configured in Vercel environment\n'
+                    output.textContent += '3. Check if the push service endpoint is accessible\n'
+                }
+
+            } catch (err) {
+                output.textContent += `❌ Exception: ${err.message}\n`
+            }
+        }
+
+        // Auto-load saved key
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedKey = localStorage.getItem('supabase_anon_key')
+            if (savedKey) {
+                document.getElementById('supabaseKey').value = savedKey
+            }
+        })
+    </script>
+</body>
+</html> 

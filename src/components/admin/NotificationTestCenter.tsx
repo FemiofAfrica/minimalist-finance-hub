@@ -8,7 +8,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
-import { User, Users, Send, Bell, RefreshCw } from 'lucide-react'
+import { User, Users, Send, Bell, RefreshCw, History } from 'lucide-react'
+import NotificationHistory from './NotificationHistory'
+import CreateTestNotification from './CreateTestNotification'
 
 interface User {
   id: string
@@ -29,6 +31,8 @@ interface User {
 }
 
 const NotificationTestCenter: React.FC = () => {
+  console.log('🎯 NotificationTestCenter component loaded/rendered!')
+  
   // User management
   const [users, setUsers] = useState<User[]>([])
   const [selectedUser, setSelectedUser] = useState('')
@@ -37,7 +41,7 @@ const NotificationTestCenter: React.FC = () => {
   // Notification content
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
-  const [url, setUrl] = useState('')
+  const [url, setUrl] = useState<string>('/dashboard')
   const [shouldTriggerEmail, setShouldTriggerEmail] = useState(false)
 
   // Segment settings
@@ -106,6 +110,9 @@ const NotificationTestCenter: React.FC = () => {
   }, [])
 
   const sendNotification = async (targetType: 'single' | 'segment') => {
+    console.log('🚀 SEND NOTIFICATION FUNCTION CALLED!', targetType)
+    alert('Send notification function called!')
+    
     if (!title.trim() || !message.trim()) {
       toast.error('Please fill in both title and message')
       return
@@ -118,6 +125,48 @@ const NotificationTestCenter: React.FC = () => {
 
     try {
       setSending(true)
+
+      // Check if user has a valid session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      console.log('Session check:', { session: !!session, error: sessionError, hasToken: !!session?.access_token })
+      
+      if (sessionError || !session) {
+        toast.error('You need to log in again to send notifications')
+        console.error('Session error:', sessionError)
+        return
+      }
+
+      // Verify session is valid and user is authenticated
+      if (!session.access_token) {
+        toast.error('Invalid session - please log in again')
+        return
+      }
+
+      console.log('About to call function with session:', {
+        userId: session.user.id,
+        tokenLength: session.access_token.length,
+        tokenPreview: session.access_token.substring(0, 20) + '...'
+      })
+
+      // Prepare headers with detailed logging
+      const headers = {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      };
+      console.log('🔑 Headers being sent:', {
+        hasAuthHeader: 'Authorization' in headers,
+        authHeaderLength: headers.Authorization?.length,
+        authHeaderPreview: headers.Authorization?.substring(0, 50) + '...',
+        allHeaders: Object.keys(headers)
+      });
+
+      // Also log the token parts for debugging
+      const tokenParts = session.access_token.split('.');
+      console.log('🔍 Token structure check:', {
+        tokenParts: tokenParts.length,
+        headerPreview: tokenParts[0] ? atob(tokenParts[0]) : 'invalid',
+        payloadPreview: tokenParts[1] ? JSON.parse(atob(tokenParts[1])) : 'invalid'
+      });
 
       let requestBody: any = {
         title: title.trim(),
@@ -143,9 +192,44 @@ const NotificationTestCenter: React.FC = () => {
         }
       }
 
-      const { data, error } = await supabase.functions.invoke('send-push-notification', {
-        body: requestBody
+      // Add current user ID to the request body so edge function can validate
+      const requestWithUser = {
+        ...requestBody,
+        currentUserId: session.user.id
+      }
+
+      // Try direct fetch with all required headers
+      console.log('🔍 Attempting direct fetch...')
+      
+      // Get the supabase URL and anon key from the client
+      const supabaseUrl = (supabase as any).supabaseUrl
+      const supabaseKey = (supabase as any).supabaseKey
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': supabaseKey,
+          'X-Client-Info': 'supabase-js/2.x'
+        },
+        body: JSON.stringify(requestWithUser)
       })
+      
+      console.log('🔍 Direct fetch response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.log('🔍 Error response body:', errorText)
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      }
+      
+      const data = await response.json()
+      const error = null
 
       if (error) {
         throw error
@@ -160,7 +244,7 @@ const NotificationTestCenter: React.FC = () => {
         // Clear form
         setTitle('')
         setMessage('')
-        setUrl('')
+        setUrl('/dashboard')
         setShouldTriggerEmail(false)
         setSelectedUser('')
       } else {
@@ -271,6 +355,18 @@ const NotificationTestCenter: React.FC = () => {
             <Users className="h-4 w-4" />
             User Segment
           </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            History
+          </TabsTrigger>
+          <TabsTrigger value="quicktest" className="flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            Test with Link
+          </TabsTrigger>
+          <TabsTrigger value="quicktest" className="flex items-center gap-2">
+            <Send className="h-4 w-4" />
+            Quick Test
+          </TabsTrigger>
         </TabsList>
 
         {/* Notification Content Form */}
@@ -303,14 +399,18 @@ const NotificationTestCenter: React.FC = () => {
               />
             </div>
 
-            <div>
-              <Label htmlFor="url" className="block mb-2">URL</Label>
+            <div className="space-y-1">
+              <Label htmlFor="url">URL (optional)</Label>
               <Input
                 id="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="Optional link URL"
+                placeholder="e.g., /settings or /transactions"
+                className="w-full"
               />
+              <p className="text-xs text-muted-foreground">
+                Add a URL to make the notification clickable
+              </p>
             </div>
 
             <div className="flex items-center justify-center space-x-2 p-3 border rounded-lg bg-blue-50 border-blue-200">
@@ -503,6 +603,20 @@ const NotificationTestCenter: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <NotificationHistory />
+        </TabsContent>
+
+        <TabsContent value="quicktest" className="space-y-4">
+          <div className="flex flex-col space-y-4">
+            <h2 className="text-xl font-semibold">Quick Test Notification</h2>
+            <p className="text-sm text-muted-foreground">
+              Create a test notification with a link to verify the "View Details" button appears.
+            </p>
+            <CreateTestNotification />
+          </div>
         </TabsContent>
       </Tabs>
 

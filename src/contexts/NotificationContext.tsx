@@ -119,7 +119,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       // Update local state
       setNotifications(prev => 
         prev.map(notification => 
-          notification.notification_id === notificationId
+          notification.id === notificationId
             ? { ...notification, is_read: true }
             : notification
         )
@@ -127,7 +127,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       
       // Decrement unread count if the notification was unread
       const wasUnread = notifications.find(
-        n => n.notification_id === notificationId && !n.is_read
+        n => n.id === notificationId && !n.is_read
       );
       
       if (wasUnread) {
@@ -161,12 +161,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       
       // Update local state
       setNotifications(prev => 
-        prev.filter(notification => notification.notification_id !== notificationId)
+        prev.filter(notification => notification.id !== notificationId)
       );
       
       // Decrement unread count if the notification was unread
       const wasUnread = notifications.find(
-        n => n.notification_id === notificationId && !n.is_read
+        n => n.id === notificationId && !n.is_read
       );
       
       if (wasUnread) {
@@ -180,7 +180,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   // Function to handle notification click
   const handleNotificationClick = (notification: Notification) => {
     // Mark as read
-    markAsRead(notification.notification_id);
+    markAsRead(notification.id);
     
     // Navigate if link is provided
     if (notification.link) {

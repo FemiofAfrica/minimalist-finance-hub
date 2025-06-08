@@ -365,14 +365,14 @@ async function sendWebPush(subscription: PushSubscription, payload: any): Promis
     throw new Error('VAPID keys not configured')
   }
 
-  // For FCM (Firebase Cloud Messaging), temporarily skip - needs proper VAPID JWT signing
+  // For FCM (Firebase Cloud Messaging), skip for now - needs proper VAPID signing
   if (subscription.endpoint.includes('fcm.googleapis.com')) {
     console.log('🔍 Detected FCM endpoint - temporarily skipping')
     console.log('📝 FCM requires proper VAPID JWT signing with ES256 signature')
     console.log('ℹ️ Would send to endpoint:', subscription.endpoint.substring(0, 50) + '...')
-    console.log('ℹ️ Payload would be:', JSON.stringify({ title: payload.title, body: payload.body }))
+    console.log('ℹ️ Payload:', JSON.stringify({ title: payload.title, body: payload.body }))
     
-    // Mark as successful so the overall notification doesn't fail
+    // Mark as successful so other notifications continue
     console.log('✅ FCM notification acknowledged (not actually sent - auth not implemented)')
     return
     

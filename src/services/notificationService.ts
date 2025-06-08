@@ -91,7 +91,7 @@ export const markNotificationAsRead = async (
     const { error } = await supabase
       .from('notifications')
       .update({ is_read: true })
-      .eq('notification_id', notificationId);
+      .eq('id', notificationId);
     
     if (error) {
       console.error('Error marking notification as read:', error);
@@ -129,7 +129,7 @@ export const dismissNotification = async (
     const { error } = await supabase
       .from('notifications')
       .update({ is_dismissed: true })
-      .eq('notification_id', notificationId);
+      .eq('id', notificationId);
     
     if (error) {
       console.error('Error dismissing notification:', error);
