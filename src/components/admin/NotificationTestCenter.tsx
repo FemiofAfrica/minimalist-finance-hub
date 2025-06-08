@@ -68,6 +68,9 @@ const NotificationTestCenter: React.FC = () => {
         return
       }
 
+      // Debug: Log the raw user data to see what we're getting
+      console.log('Raw user data from RPC:', users)
+      
       // Transform the user data to match our User interface
       const transformedUsers = users?.map(user => ({
         id: user.id,
@@ -86,6 +89,8 @@ const NotificationTestCenter: React.FC = () => {
           is_super_admin: user.is_super_admin
         }
       })) || []
+      
+      console.log('Transformed users:', transformedUsers)
 
       setUsers(transformedUsers)
     } catch (error) {
@@ -207,10 +212,22 @@ const NotificationTestCenter: React.FC = () => {
       setPreviewUsers(users.slice(0, 5))
       setPreviewCount(users.length)
     } else if (segmentType === 'super_admins') {
+      console.log('Checking for super admins. All users:', users)
+      users.forEach(user => {
+        console.log(`User ${user.email}:`, {
+          raw_meta: user.raw_user_meta_data,
+          user_meta: user.user_metadata,
+          is_super_admin_raw: user.raw_user_meta_data?.is_super_admin,
+          is_super_admin_user: user.user_metadata?.is_super_admin
+        })
+      })
+      
       const superAdmins = users.filter(user => 
         user.raw_user_meta_data?.is_super_admin === true || 
         user.user_metadata?.is_super_admin === true
       )
+      
+      console.log('Found super admins:', superAdmins)
       setPreviewUsers(superAdmins.slice(0, 5))
       setPreviewCount(superAdmins.length)
     }
