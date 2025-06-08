@@ -13,15 +13,18 @@ import { User, Users, Send, Bell, RefreshCw } from 'lucide-react'
 interface User {
   id: string
   email: string
+  created_at?: string
   raw_user_meta_data?: {
     full_name?: string
     first_name?: string
     last_name?: string
+    is_super_admin?: boolean
   }
   user_metadata?: {
     full_name?: string
     first_name?: string
     last_name?: string
+    is_super_admin?: boolean
   }
 }
 
@@ -45,6 +48,11 @@ const NotificationTestCenter: React.FC = () => {
   // UI state
   const [sending, setSending] = useState(false)
   const [lastSentType, setLastSentType] = useState<string | null>(null)
+  
+  // Preview state
+  const [previewUsers, setPreviewUsers] = useState<User[]>([])
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewCount, setPreviewCount] = useState(0)
 
   const fetchUsers = async () => {
     try {
@@ -64,15 +72,18 @@ const NotificationTestCenter: React.FC = () => {
       const transformedUsers = users?.map(user => ({
         id: user.id,
         email: user.email || '',
+        created_at: user.created_at,
         raw_user_meta_data: {
           first_name: user.first_name,
           last_name: user.last_name,
-          full_name: user.full_name
+          full_name: user.full_name,
+          is_super_admin: user.is_super_admin
         },
         user_metadata: {
           first_name: user.first_name,
           last_name: user.last_name,
-          full_name: user.full_name
+          full_name: user.full_name,
+          is_super_admin: user.is_super_admin
         }
       })) || []
 
@@ -157,6 +168,62 @@ const NotificationTestCenter: React.FC = () => {
       setSending(false)
     }
   }
+  const previewSegmentUsers = async () => {
+    if (segmentType === 'time_based') {
+      try {
+        setPreviewLoading(true)
+        
+        const now = new Date()
+        let threshold = new Date()
+        
+        switch (durationUnit) {
+          case 'hours':
+            threshold.setHours(now.getHours() - parseInt(duration))
+            break
+          case 'days':
+            threshold.setDate(now.getDate() - parseInt(duration))
+            break
+          case 'weeks':
+            threshold.setDate(now.getDate() - (parseInt(duration) * 7))
+            break
+          case 'months':
+            threshold.setMonth(now.getMonth() - parseInt(duration))
+            break
+        }
+
+        const filteredUsers = users.filter(user => {
+          const userCreatedAt = new Date(user.created_at || 0)
+          return userCreatedAt >= threshold
+        })
+
+        setPreviewUsers(filteredUsers.slice(0, 5))
+        setPreviewCount(filteredUsers.length)
+      } catch (error) {
+        console.error('Error previewing segment:', error)
+      } finally {
+        setPreviewLoading(false)
+      }
+    } else if (segmentType === 'all_users') {
+      setPreviewUsers(users.slice(0, 5))
+      setPreviewCount(users.length)
+    } else if (segmentType === 'super_admins') {
+      const superAdmins = users.filter(user => 
+        user.raw_user_meta_data?.is_super_admin === true || 
+        user.user_metadata?.is_super_admin === true
+      )
+      setPreviewUsers(superAdmins.slice(0, 5))
+      setPreviewCount(superAdmins.length)
+    }
+  }
+
+  // Update preview when segment parameters change
+  useEffect(() => {
+    if (users.length > 0) {
+      previewSegmentUsers()
+    }
+  }, [segmentType, duration, durationUnit, users])
+
+
 
   const getUserDisplayName = (user: User) => {
     const metadata = user.raw_user_meta_data || user.user_metadata || {}
@@ -166,6 +233,8 @@ const NotificationTestCenter: React.FC = () => {
                       metadata.first_name)
     return fullName || user.email?.split('@')[0] || 'Unknown User'
   }
+
+
 
   return (
     <div className="space-y-6">
@@ -364,6 +433,44 @@ const NotificationTestCenter: React.FC = () => {
                   <p className="text-sm text-blue-800">
                     🔐 This will only send notifications to users with super admin privileges.
                   </p>
+                </div>
+              )}
+
+              {/* Segment Preview */}
+              {users.length > 0 && (
+                <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h4 className="font-medium text-green-900 mb-2">📊 Target Preview</h4>
+                  {previewLoading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-green-700">Calculating target users...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-sm text-green-800 font-medium">
+                        📈 {previewCount} user{previewCount !== 1 ? 's' : ''} will receive this notification
+                      </p>
+                      {previewUsers.length > 0 && (
+                        <div className="text-xs text-green-700">
+                          <p className="mb-1">👥 Sample users:</p>
+                          <div className="space-y-1">
+                            {previewUsers.map((user, index) => (
+                              <div key={user.id} className="flex items-center justify-center gap-2">
+                                <span>{getUserDisplayName(user)}</span>
+                                <span className="text-green-600">({user.email})</span>
+                              </div>
+                            ))}
+                            {previewCount > 5 && (
+                              <p className="text-green-600 italic">...and {previewCount - 5} more</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {previewCount === 0 && (
+                        <p className="text-sm text-amber-700">⚠️ No users match the current criteria</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
