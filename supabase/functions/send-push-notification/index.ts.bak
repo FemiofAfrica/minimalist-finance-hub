@@ -211,7 +211,7 @@ async function processNotification(supabaseClient: any, request: PushNotificatio
   return result
 }
 
-async function getTargetUsers(supabaseClient: any, request: PushNotificationRequest): Promise<Array<{id: string, email: string | undefined }>> {
+async function getTargetUsers(supabaseClient: any, request: PushNotificationRequest): Promise<Array<{id: string, email: string}>> {
   if (request.targetType === 'single') {
     if (!request.userId) {
       throw new Error('userId is required for single target type')
@@ -219,7 +219,6 @@ async function getTargetUsers(supabaseClient: any, request: PushNotificationRequ
     
     const { data: user, error } = await supabaseClient.auth.admin.getUserById(request.userId)
     if (error || !user) {
-      console.error(`Failed to fetch target user ${request.userId}:`, error)
       throw new Error('Failed to fetch target user')
     }
     
@@ -238,93 +237,82 @@ async function getTargetUsers(supabaseClient: any, request: PushNotificationRequ
 }
 
 async function getSegmentUsers(
-  supabaseClient: any,
-  segment: string,
-  duration?: number,
+  supabaseClient: any, 
+  segment: string, 
+  duration?: number, 
   durationUnit?: string
-): Promise<Array<{ id: string; email: string | undefined }>> {
-  const allUsers: Array<{ id: string; email: string | undefined; last_sign_in_at: string | undefined; user_metadata: any }> = []
-  let page = 1
-  const perPage = 1000
-
-  console.log('Fetching all users from Supabase Auth with pagination...')
-
-  while (true) {
-    const {
-      data: { users: userBatch },
-      error,
-    } = await supabaseClient.auth.admin.listUsers({ page, perPage })
-
-    if (error) {
-      throw new Error(`Failed to fetch users (page ${page}): ${error.message}`)
-    }
-
-    if (userBatch && userBatch.length > 0) {
-      allUsers.push(...userBatch.map((user) => ({ 
-        id: user.id, 
-        email: user.email,
-        last_sign_in_at: user.last_sign_in_at,
-        user_metadata: user.user_metadata || {}
-      })))
-    }
-
-    if (!userBatch || userBatch.length < perPage) {
-      break
-    }
-
-    page += 1
-  }
-
-  console.log(`Successfully fetched a total of ${allUsers.length} users.`)
-
+): Promise<Array<{id: string, email: string}>> {
+  
   if (segment === 'all_users') {
-    return allUsers.map(({ id, email }) => ({ id, email }))
+    const { data: users, error } = await supabaseClient.auth.admin.listUsers()
+    if (error) {
+      throw new Error('Failed to fetch all users')
+    }
+    
+    return users.users.map((user: any) => ({ id: user.id, email: user.email }))
   }
 
   if (segment === 'super_admins') {
-    console.log('Filtering for super admins...')
-    const superAdmins = allUsers.filter(user => user.user_metadata?.is_super_admin === true)
-    console.log(`Found ${superAdmins.length} super admins.`)
-    return superAdmins.map(({ id, email }) => ({ id, email }))
+    const { data: users, error } = await supabaseClient.auth.admin.listUsers()
+    if (error) {
+      throw new Error('Failed to fetch users for super admin segment')
+    }
+    
+    return users.users
+      .filter((user: any) => 
+        user.user_metadata?.is_super_admin === true || 
+        user.raw_user_meta_data?.is_super_admin === true
+      )
+      .map((user: any) => ({ id: user.id, email: user.email }))
   }
 
   if (segment === 'time_based') {
-    if (!duration || !durationUnit) {
-      throw new Error('duration and durationUnit are required for time_based segment')
+    // Time-based targeting logic
+    const cutoffDate = new Date()
+    switch (durationUnit) {
+      case 'hours':
+        cutoffDate.setHours(cutoffDate.getHours() - (duration || 24))
+        break
+      case 'days':
+        cutoffDate.setDate(cutoffDate.getDate() - (duration || 1))
+        break
+      case 'weeks':
+        cutoffDate.setDate(cutoffDate.getDate() - (duration || 1) * 7)
+        break
+      case 'months':
+        cutoffDate.setMonth(cutoffDate.getMonth() - (duration || 1))
+        break
     }
 
-    const thresholdDate = new Date()
-    if (durationUnit === 'hours') thresholdDate.setHours(thresholdDate.getHours() - duration)
-    if (durationUnit === 'days') thresholdDate.setDate(thresholdDate.getDate() - duration)
-    if (durationUnit === 'weeks') thresholdDate.setDate(thresholdDate.getDate() - duration * 7)
-    if (durationUnit === 'months') thresholdDate.setMonth(thresholdDate.getMonth() - duration)
-
-    console.log(`Filtering for users active since ${thresholdDate.toISOString()}`)
+    const { data: users, error } = await supabaseClient.auth.admin.listUsers()
+    if (error) {
+      throw new Error('Failed to fetch users for time-based segment')
+    }
     
-    const activeUsers = allUsers.filter(user => 
-      user.last_sign_in_at && new Date(user.last_sign_in_at) > thresholdDate
-    )
-    
-    console.log(`Found ${activeUsers.length} active users in the time-based segment.`)
-    return activeUsers.map(({ id, email }) => ({ id, email }))
+    return users.users
+      .filter((user: any) => new Date(user.created_at) >= cutoffDate)
+      .map((user: any) => ({ id: user.id, email: user.email }))
   }
 
-  throw new Error(`Invalid segment: ${segment}`)
+  throw new Error('Invalid segment type')
 }
 
 async function sendPushNotifications(
-  supabaseClient: any,
-  targetUsers: Array<{ id: string; email: string | undefined }>,
+  supabaseClient: any, 
+  targetUsers: Array<{id: string, email: string}>, 
   request: PushNotificationRequest
 ): Promise<Array<{ success: boolean; endpoint: string; error?: string }>> {
-  const allResults: Array<{ success: boolean; endpoint: string; error?: string }> = []
+  const results: Array<{ success: boolean; endpoint: string; error?: string }> = []
 
   for (const user of targetUsers) {
-    if (!user.id) {
-      console.error('Skipping user with undefined id in sendPushNotifications')
-      continue
-    }
     try {
+      // Check if user ID is valid before querying
+      if (!user.id) {
+        console.error('Failed to fetch push subscriptions for user: undefined')
+        continue
+      }
+      
+      // Get push subscriptions for this user
       const { data: subscriptions, error } = await supabaseClient
         .from('push_subscriptions')
         .select('*')
@@ -332,42 +320,48 @@ async function sendPushNotifications(
         .eq('is_active', true)
 
       if (error) {
-        console.error(`Failed to fetch push subscriptions for user: ${user.id}`, error)
-        // Add errors to results for this user
-        allResults.push({ success: false, endpoint: 'unknown', error: `Subscription fetch failed for user ${user.id}` })
+        console.error('Failed to fetch push subscriptions for user:', user.id, error)
         continue
       }
 
-      console.log(`Found ${subscriptions.length} subscriptions for user ${user.id}`)
+      if (!subscriptions || subscriptions.length === 0) {
+        console.log('No push subscriptions found for user:', user.email || 'unknown email')
+        continue
+      }
 
-      const payload = JSON.stringify({
-        title: request.title,
-        body: request.message,
-        data: { url: request.url || '/' },
-      })
+      // Send to each subscription
+      for (const subscription of subscriptions) {
+        try {
+          await sendWebPush(subscription, {
+            title: request.title,
+            body: request.message,
+            icon: '/icon-192x192.png',
+            badge: '/icon-192x192.png',
+            data: {
+              url: request.url || '/',
+              timestamp: Date.now()
+            }
+          })
+          
+          results.push({ success: true, endpoint: subscription.endpoint })
+          console.log('✅ Push notification sent to:', subscription.endpoint.substring(0, 50) + '...')
 
-      const pushPromises = subscriptions.map((sub: PushSubscription) =>
-        sendWebPush(sub, payload)
-          .then(() => ({
-            success: true,
-            endpoint: sub.endpoint
-          }))
-          .catch((e: any) => ({
-            success: false,
-            endpoint: sub.endpoint,
-            error: e.message,
-          }))
-      )
+        } catch (error) {
+          console.error('Failed to send push notification:', error)
+          results.push({ 
+            success: false, 
+            endpoint: subscription.endpoint, 
+            error: error instanceof Error ? error.message : 'Unknown error'
+          })
+        }
+      }
 
-      const results = await Promise.all(pushPromises)
-      allResults.push(...results)
-    } catch (e: any) {
-      console.error(`Error processing push notifications for user ${user.id}:`, e)
-      allResults.push({ success: false, endpoint: 'unknown', error: `Processing failed for user ${user.id}` })
+    } catch (error) {
+      console.error('Error processing push notifications for user:', user.id, error)
     }
   }
 
-  return allResults
+  return results
 }
 
 async function sendWebPush(subscription: PushSubscription, payload: any): Promise<void> {
@@ -418,145 +412,112 @@ async function sendWebPush(subscription: PushSubscription, payload: any): Promis
 }
 
 async function sendEmailNotifications(
-  targetUsers: Array<{id: string, email: string | undefined}>, 
+  targetUsers: Array<{id: string, email: string}>, 
   request: PushNotificationRequest
 ): Promise<Array<{ success: boolean; email: string; error?: string }>> {
-  
-  const emailPromises = targetUsers.map(async (user) => {
-    if (!user.email) {
-      console.log(`User ${user.id} has no email, skipping.`)
-      return { success: false, email: 'unknown', error: `User ${user.id} has no email.` }
-    }
-    
+  const results: Array<{ success: boolean; email: string; error?: string }> = []
+
+  if (!BREVO_API_KEY) {
+    throw new Error('Brevo API key not configured')
+  }
+
+  for (const user of targetUsers) {
     try {
-      console.log(`Sending email to: ${user.email}`)
-      const { data: { user: fullUser }, error: userError } = await createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!).auth.admin.getUserById(user.id)
-      
-      if(userError || !fullUser) {
-        console.error(`Failed to get full user details for ${user.id}:`, userError)
-        return { success: false, email: user.email, error: 'Failed to fetch full user details.' }
+      // Check if email is valid before sending
+      if (!user.email) {
+        console.error('Error sending email to: undefined')
+        results.push({ 
+          success: false, 
+          email: 'undefined', 
+          error: 'Missing email address' 
+        })
+        continue
       }
-
-      const firstName = fullUser.user_metadata?.first_name || fullUser.email?.split('@')[0] || 'there'
-      const emailContent = createEmailContent(request, firstName)
-
-      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      
+      const emailContent = createEmailContent(request)
+      
+      // Get display name safely from email
+      const displayName = user.email.includes('@') ? user.email.split('@')[0] : 'User'
+      
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
-          'api-key': BREVO_API_KEY!,
-          'Content-Type': 'application/json'
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'api-key': BREVO_API_KEY
         },
         body: JSON.stringify({
           sender: {
-            name: 'FinTrack',
-            email: 'team@notifications.fintrack.app'
+            name: 'kpege',
+            email: 'noreply@kpege.com'
           },
           to: [{
             email: user.email,
-            name: firstName
+            name: displayName
           }],
-          subject: request.title,
+          subject: `📱 ${request.title}`,
           htmlContent: emailContent
         })
       })
 
-      if (!res.ok) {
-        const errorBody = await res.json()
-        throw new Error(`Brevo API Error: ${res.status} ${JSON.stringify(errorBody)}`)
+      if (response.ok) {
+        results.push({ success: true, email: user.email })
+        console.log('✅ Email sent to:', user.email)
+      } else {
+        const errorText = await response.text()
+        console.error('Failed to send email:', response.status, errorText)
+        results.push({ 
+          success: false, 
+          email: user.email, 
+          error: `HTTP ${response.status}: ${errorText}` 
+        })
       }
 
-      console.log(`Email sent successfully to ${user.email}`)
-      return { success: true, email: user.email }
-      
-    } catch (e: any) {
-      console.error(`Error sending email to: ${user.email}`, e)
-      return { success: false, email: user.email, error: e.message }
+    } catch (error) {
+      console.error('Error sending email to:', user.email, error)
+      results.push({ 
+        success: false, 
+        email: user.email, 
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
     }
-  })
-  
-  return Promise.all(emailPromises)
+  }
+
+  return results
 }
 
-function createEmailContent(request: PushNotificationRequest, firstName: string): string {
-  // Enhanced email template with better styling and personalization
+function createEmailContent(request: PushNotificationRequest): string {
+  const actionButton = request.url ? 
+    `<div style="text-align: center; margin: 30px 0;">
+       <a href="${request.url}" style="background-color: #4ade80; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">
+         View Details
+       </a>
+     </div>` : ''
+
   return `
     <!DOCTYPE html>
-    <html lang="en">
+    <html>
     <head>
-      <meta charset="UTF-8">
+      <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>${request.title}</title>
-      <style>
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-          background-color: #f2f2f7;
-          color: #1c1c1e;
-          margin: 0;
-          padding: 0;
-        }
-        .container {
-          max-width: 600px;
-          margin: 20px auto;
-          background-color: #ffffff;
-          border-radius: 12px;
-          overflow: hidden;
-          border: 1px solid #e5e5ea;
-        }
-        .header {
-          background-color: #e8f1df;
-          padding: 30px;
-          text-align: center;
-        }
-        .header h1 {
-          color: #000;
-          margin: 0;
-          font-size: 28px;
-        }
-        .content {
-          padding: 30px;
-          line-height: 1.6;
-        }
-        .content p {
-          margin: 0 0 15px;
-        }
-        .button-container {
-          text-align: center;
-          margin-top: 30px;
-        }
-        .button {
-          background-color: #007aff;
-          color: #ffffff !important;
-          text-decoration: none;
-          padding: 14px 24px;
-          border-radius: 8px;
-          font-weight: bold;
-          display: inline-block;
-        }
-        .footer {
-          background-color: #f2f2f7;
-          text-align: center;
-          padding: 20px;
-          font-size: 12px;
-          color: #8a8a8e;
-        }
-      </style>
     </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>FinTrack</h1>
+    <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #e8f1df;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 8px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%); padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700;">
+            📱 ${request.title}
+          </h1>
         </div>
-        <div class="content">
-          <p>Hi ${firstName},</p>
-          <p>${request.message.replace(/\n/g, '<br>')}</p>
-          ${request.url ? `
-            <div class="button-container">
-              <a href="${request.url}" class="button">View Details</a>
-            </div>
-          ` : ''}
-        </div>
-        <div class="footer">
-          You received this email because you are a user of FinTrack.
+        <div style="padding: 30px;">
+          <div style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+            ${request.message.replace(/\n/g, '<br>')}
+          </div>
+          ${actionButton}
+          <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 30px; color: #6b7280; font-size: 14px; text-align: center;">
+            <p style="margin: 0;">Sent from <strong>kpege</strong> - Your Personal Finance Hub</p>
+            <p style="margin: 5px 0 0 0;">This is an automated notification. Please do not reply to this email.</p>
+          </div>
         </div>
       </div>
     </body>
