@@ -9,9 +9,18 @@ export const fetchUserNotifications = async (
   includeDismissed = false
 ): Promise<Notification[]> => {
   try {
+    // Get the current user's ID
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error('No authenticated user found');
+      return [];
+    }
+    
     let query = supabase
       .from('notifications')
       .select('*')
+      .eq('user_id', user.id) // Filter by the current user's ID
       .order('created_at', { ascending: false })
       .limit(limit)
       .range(offset, offset + limit - 1);
@@ -46,10 +55,19 @@ export const fetchUserNotifications = async (
 // Get notification summary for the user (unread count and recent notifications)
 export const getNotificationSummary = async (limit = 5): Promise<NotificationSummary> => {
   try {
+    // Get the current user's ID
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error('No authenticated user found');
+      return { unread: 0, recent: [] };
+    }
+    
     // Get unread count
     const { count: unreadCount, error: countError } = await supabase
       .from('notifications')
       .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id) // Filter by the current user's ID
       .eq('is_read', false)
       .eq('is_dismissed', false)
       .or('expires_at.is.null,expires_at.gt.now()');
@@ -63,6 +81,7 @@ export const getNotificationSummary = async (limit = 5): Promise<NotificationSum
     const { data: recentNotifications, error: fetchError } = await supabase
       .from('notifications')
       .select('*')
+      .eq('user_id', user.id) // Filter by the current user's ID
       .eq('is_dismissed', false)
       .or('expires_at.is.null,expires_at.gt.now()')
       .order('created_at', { ascending: false })
@@ -106,9 +125,18 @@ export const markNotificationAsRead = async (
 // Mark all notifications as read
 export const markAllNotificationsAsRead = async (): Promise<void> => {
   try {
+    // Get the current user's ID
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error('No authenticated user found');
+      return;
+    }
+    
     const { error } = await supabase
       .from('notifications')
       .update({ is_read: true })
+      .eq('user_id', user.id) // Filter by the current user's ID
       .eq('is_read', false);
     
     if (error) {
