@@ -1,107 +1,92 @@
-// Service Worker for handling push notifications
-const CACHE_NAME = 'kpege-v1'
+// Service Worker for Push Notifications
+console.log('🚀 Push Notification Service Worker loaded');
 
-// Install event
-self.addEventListener('install', (event) => {
-  console.log('Service Worker installing...')
-  self.skipWaiting()
-})
+self.addEventListener('install', function(event) {
+  console.log('📥 Service Worker installing');
+  self.skipWaiting();
+});
 
-// Activate event
-self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating...')
-  event.waitUntil(self.clients.claim())
-})
+self.addEventListener('activate', function(event) {
+  console.log('✅ Service Worker activating');
+  event.waitUntil(self.clients.claim());
+});
 
-// Push event - handle incoming push notifications
-self.addEventListener('push', (event) => {
-  console.log('Push event received:', event)
+self.addEventListener('push', function(event) {
+  console.log('📱 Push event received:', event);
   
-  let notificationData = {
-    title: 'New Notification',
-    body: 'You have a new notification',
-    icon: '/icon-192x192.png',
-    badge: '/icon-192x192.png',
-    data: {
-      url: '/',
-      timestamp: Date.now()
-    }
-  }
-
-  // Parse notification data if available
+  let data = {};
   if (event.data) {
     try {
-      const data = event.data.json()
-      notificationData = {
-        ...notificationData,
-        ...data
-      }
+      data = event.data.json();
+      console.log('📋 Push data parsed:', data);
     } catch (e) {
-      console.warn('Failed to parse push data:', e)
-      notificationData.body = event.data.text() || notificationData.body
+      console.error('❌ Error parsing push data:', e);
+      data = {
+        title: 'Notification',
+        body: event.data.text() || 'You have a new notification'
+      };
     }
+  } else {
+    console.log('ℹ️ No push data received');
+    data = {
+      title: 'Notification',
+      body: 'You have a new notification'
+    };
   }
 
   const options = {
-    body: notificationData.body,
-    icon: notificationData.icon,
-    badge: notificationData.badge,
-    data: notificationData.data,
-    actions: notificationData.actions || [],
+    body: data.body || data.message || 'You have a new notification',
+    icon: data.icon || '/icon-192x192.png',
+    badge: data.badge || '/icon-192x192.png',
+    data: { 
+      url: data.url || '/',
+      clickAction: data.url || '/'
+    },
     requireInteraction: false,
-    silent: false,
-    vibrate: [200, 100, 200],
-    tag: 'kpege-notification'
-  }
+    actions: data.actions || [],
+    tag: data.tag || 'default-notification'
+  };
+
+  console.log('🔔 Showing notification:', data.title, options);
 
   event.waitUntil(
-    self.registration.showNotification(notificationData.title, options)
-  )
-})
+    self.registration.showNotification(data.title || 'Notification', options)
+  );
+});
 
-// Notification click event
-self.addEventListener('notificationclick', (event) => {
-  console.log('Notification clicked:', event)
+self.addEventListener('notificationclick', function(event) {
+  console.log('👆 Notification clicked:', event.notification);
   
-  event.notification.close()
-
-  const targetUrl = event.notification.data?.url || '/'
+  event.notification.close();
+  
+  const urlToOpen = event.notification.data?.url || event.notification.data?.clickAction || '/';
+  console.log('🔗 Opening URL:', urlToOpen);
   
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
       // Check if there's already a window/tab open with the target URL
-      for (const client of clientList) {
-        if (client.url === targetUrl && 'focus' in client) {
-          return client.focus()
+      for (let i = 0; i < clientList.length; i++) {
+        const client = clientList[i];
+        if (client.url.includes(urlToOpen) && 'focus' in client) {
+          return client.focus();
         }
       }
       
-      // If no existing window, open a new one
+      // If no existing window/tab, open a new one
       if (self.clients.openWindow) {
-        return self.clients.openWindow(targetUrl)
+        return self.clients.openWindow(urlToOpen);
       }
     })
-  )
-})
+  );
+});
 
-// Background sync (optional, for offline capabilities)
-self.addEventListener('sync', (event) => {
-  console.log('Background sync:', event.tag)
-  
-  if (event.tag === 'background-sync') {
-    event.waitUntil(
-      // Handle background sync tasks
-      Promise.resolve()
-    )
-  }
-})
+self.addEventListener('notificationclose', function(event) {
+  console.log('❌ Notification closed:', event.notification);
+});
 
-// Handle errors
-self.addEventListener('error', (event) => {
-  console.error('Service Worker error:', event)
-})
+// Handle background sync if needed
+self.addEventListener('sync', function(event) {
+  console.log('🔄 Background sync:', event.tag);
+});
 
-// Handle unhandled promise rejections
-self.addEventListener('unhandledrejection', (event) => {
-  console.error('Service Worker unhandled rejection:', event)
-}) 
+console.log('✅ Service Worker setup complete'); 
