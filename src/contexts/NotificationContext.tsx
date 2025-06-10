@@ -76,8 +76,23 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         table: 'notifications',
         filter: `user_id=eq.${user?.id}`,
       }, payload => {
-        // Handle new notification
-        const newNotification = payload.new as Notification;
+        // Handle new notification - map database row to interface
+        const dbRow = payload.new;
+        const newNotification: Notification = {
+          id: dbRow.id,
+          user_id: dbRow.user_id,
+          title: dbRow.title,
+          message: dbRow.message,
+          type: 'info', // Default type
+          link: dbRow.url, // Map url to link
+          is_read: dbRow.status === 'sent', // Map status to is_read
+          is_dismissed: false,
+          source: 'system',
+          related_id: null,
+          created_at: dbRow.created_at,
+          expires_at: null
+        };
+        
         setNotifications(prev => [newNotification, ...prev]);
         setUnreadCount(prev => prev + 1);
         

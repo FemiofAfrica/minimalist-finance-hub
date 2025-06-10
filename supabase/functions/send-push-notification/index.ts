@@ -358,7 +358,7 @@ async function processNotification(supabaseClient: any, request: PushNotificatio
     }
 
     // Log notification to database
-    await logNotification(supabaseClient, request, result)
+    await logNotification(supabaseClient, request, result, targetUsers)
 
   } catch (error) {
     console.error('❌ Error processing notification:', error)
@@ -691,41 +691,70 @@ async function sendEmailNotifications(
 async function logNotification(
   supabaseClient: any, 
   request: PushNotificationRequest, 
-  result: NotificationResult
+  result: NotificationResult,
+  targetUsers: Array<{id: string, email: string | undefined}>
 ): Promise<void> {
   try {
-    // Determine notification type
-    const notificationType = request.shouldTriggerEmail ? 'both' : 'push'
+    console.log('📝 Logging notification for target users:', targetUsers.length)
     
-    // Create notification log entry
-    const { error } = await supabaseClient
+    // Create individual notification records for each target user
+    const notificationRecords = targetUsers.map(user => ({
+      user_id: user.id,
+      title: request.title,
+      message: request.message,
+      url: request.url,
+      notification_type: 'push', // Use correct database column
+      status: 'sent', // Use correct database column
+      sent_at: new Date().toISOString(),
+      created_at: new Date().toISOString()
+    }))
+    
+    console.log('🔍 Creating notification records for users:', notificationRecords.map(n => ({ user_id: n.user_id, title: n.title })))
+    
+    // Insert individual notifications for each user
+    const { error: notificationError } = await supabaseClient
       .from('notifications')
-      .insert({
-        title: request.title,
-        message: request.message,
-        url: request.url,
-        notification_type: notificationType,
-        status: result.success ? 'sent' : 'failed',
-        sent_at: result.success ? new Date().toISOString() : null,
-        error_message: result.errors.length > 0 ? result.errors.join('; ') : null,
-        metadata: {
-          targetType: request.targetType,
-          segment: request.segment,
-          totalTargeted: result.totalTargeted,
-          totalSent: result.totalSent,
-          pushResults: result.pushResults?.length || 0,
-          emailResults: result.emailResults?.length || 0
-        }
-      })
+      .insert(notificationRecords)
 
-    if (error) {
-      console.error('Failed to log notification:', error)
+    if (notificationError) {
+      console.error('❌ Failed to create user notifications:', notificationError)
     } else {
-      console.log('✅ Notification logged to database')
+      console.log(`✅ Created ${notificationRecords.length} individual user notifications`)
+    }
+    
+    // Also create a system log entry for admin tracking
+    const systemLogEntry = {
+      title: `[SYSTEM] ${request.title}`,
+      message: `Notification sent to ${result.totalTargeted} users. ${result.totalSent} successful.`,
+      url: null,
+      notification_type: 'push',
+      status: 'sent',
+      sent_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      metadata: {
+        targetType: request.targetType,
+        segment: request.segment,
+        totalTargeted: result.totalTargeted,
+        totalSent: result.totalSent,
+        pushResults: result.pushResults?.length || 0,
+        emailResults: result.emailResults?.length || 0,
+        errors: result.errors
+      }
+    }
+    
+    // Insert system log (this can be user_id null for system notifications)
+    const { error: systemError } = await supabaseClient
+      .from('notifications')
+      .insert(systemLogEntry)
+
+    if (systemError) {
+      console.error('❌ Failed to create system log entry:', systemError)
+    } else {
+      console.log('✅ System log entry created')
     }
 
   } catch (error) {
-    console.error('Error logging notification:', error)
+    console.error('❌ Error logging notification:', error)
   }
 }
 

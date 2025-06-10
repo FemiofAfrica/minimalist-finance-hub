@@ -1,6 +1,37 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Notification, NotificationSummary, NotificationType } from '@/types/notification';
 
+// Helper function to map database row to TypeScript interface
+const mapDbNotificationToInterface = (dbRow: any): Notification => {
+  return {
+    id: dbRow.id,
+    user_id: dbRow.user_id,
+    title: dbRow.title,
+    message: dbRow.message,
+    type: mapDbTypeToInterface(dbRow.notification_type) as NotificationType,
+    link: dbRow.url,
+    is_read: dbRow.status === 'sent', // Map status to is_read (sent = read)
+    is_dismissed: false, // Default since this field doesn't exist in DB
+    source: 'system', // Default since this field doesn't exist in DB
+    related_id: null, // Default since this field doesn't exist in DB
+    created_at: dbRow.created_at,
+    expires_at: null // Default since this field doesn't exist in DB
+  };
+};
+
+// Helper function to map database notification_type to interface type
+const mapDbTypeToInterface = (dbType: string): NotificationType => {
+  // Map database notification_type to interface NotificationType
+  switch (dbType) {
+    case 'push':
+    case 'email':
+    case 'both':
+      return 'info'; // Default to info for these types
+    default:
+      return 'info';
+  }
+};
+
 // Fetch all user notifications
 export const fetchUserNotifications = async (
   limit = 50,
@@ -25,18 +56,12 @@ export const fetchUserNotifications = async (
       .limit(limit)
       .range(offset, offset + limit - 1);
     
-    // Filter by read status if required
+    // Filter by read status if required (map to database status field)
     if (!includeRead) {
-      query = query.eq('is_read', false);
+      query = query.neq('status', 'sent'); // Only show non-sent (unread) notifications
     }
     
-    // Filter by dismissed status if required
-    if (!includeDismissed) {
-      query = query.eq('is_dismissed', false);
-    }
-    
-    // Filter expired notifications
-    query = query.or('expires_at.is.null,expires_at.gt.now()');
+    // Skip dismissed filter since column doesn't exist in DB
     
     const { data, error } = await query;
     
@@ -45,7 +70,8 @@ export const fetchUserNotifications = async (
       throw error;
     }
     
-    return (data || []) as Notification[];
+    // Map database rows to TypeScript interface
+    return (data || []).map(mapDbNotificationToInterface);
   } catch (error) {
     console.error('Error in fetchUserNotifications:', error);
     throw error;
@@ -63,14 +89,12 @@ export const getNotificationSummary = async (limit = 5): Promise<NotificationSum
       return { unread: 0, recent: [] };
     }
     
-    // Get unread count
+    // Get unread count (map to database status field)
     const { count: unreadCount, error: countError } = await supabase
       .from('notifications')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id) // Filter by the current user's ID
-      .eq('is_read', false)
-      .eq('is_dismissed', false)
-      .or('expires_at.is.null,expires_at.gt.now()');
+      .neq('status', 'sent'); // Count non-sent (unread) notifications
     
     if (countError) {
       console.error('Error fetching notification count:', countError);
@@ -82,8 +106,6 @@ export const getNotificationSummary = async (limit = 5): Promise<NotificationSum
       .from('notifications')
       .select('*')
       .eq('user_id', user.id) // Filter by the current user's ID
-      .eq('is_dismissed', false)
-      .or('expires_at.is.null,expires_at.gt.now()')
       .order('created_at', { ascending: false })
       .limit(limit);
     
@@ -92,9 +114,10 @@ export const getNotificationSummary = async (limit = 5): Promise<NotificationSum
       throw fetchError;
     }
     
+    // Map database rows to TypeScript interface
     return {
       unread: unreadCount || 0,
-      recent: (recentNotifications || []) as Notification[],
+      recent: (recentNotifications || []).map(mapDbNotificationToInterface),
     };
   } catch (error) {
     console.error('Error in getNotificationSummary:', error);
@@ -102,14 +125,14 @@ export const getNotificationSummary = async (limit = 5): Promise<NotificationSum
   }
 };
 
-// Mark notification as read
+// Mark notification as read (update database status field)
 export const markNotificationAsRead = async (
   notificationId: string
 ): Promise<void> => {
   try {
     const { error } = await supabase
       .from('notifications')
-      .update({ is_read: true })
+      .update({ status: 'sent' }) // Map is_read=true to status='sent'
       .eq('id', notificationId);
     
     if (error) {
@@ -122,7 +145,7 @@ export const markNotificationAsRead = async (
   }
 };
 
-// Mark all notifications as read
+// Mark all notifications as read (update database status field)
 export const markAllNotificationsAsRead = async (): Promise<void> => {
   try {
     // Get the current user's ID
@@ -135,9 +158,9 @@ export const markAllNotificationsAsRead = async (): Promise<void> => {
     
     const { error } = await supabase
       .from('notifications')
-      .update({ is_read: true })
+      .update({ status: 'sent' }) // Map is_read=true to status='sent'
       .eq('user_id', user.id) // Filter by the current user's ID
-      .eq('is_read', false);
+      .neq('status', 'sent'); // Only update unread notifications
     
     if (error) {
       console.error('Error marking all notifications as read:', error);
@@ -149,14 +172,15 @@ export const markAllNotificationsAsRead = async (): Promise<void> => {
   }
 };
 
-// Mark notification as dismissed (hide it)
+// Mark notification as dismissed (since column doesn't exist, we'll delete it)
 export const dismissNotification = async (
   notificationId: string
 ): Promise<void> => {
   try {
+    // Since is_dismissed column doesn't exist, we'll delete the notification
     const { error } = await supabase
       .from('notifications')
-      .update({ is_dismissed: true })
+      .delete()
       .eq('id', notificationId);
     
     if (error) {
@@ -180,24 +204,15 @@ export const createNotification = async (
   expiresIn?: number // days
 ): Promise<Notification> => {
   try {
-    // Calculate expiry date if provided
-    let expiresAt = null;
-    if (expiresIn) {
-      const date = new Date();
-      date.setDate(date.getDate() + expiresIn);
-      expiresAt = date.toISOString();
-    }
-    
+    // Map interface fields to database fields
     const { data, error } = await supabase
       .from('notifications')
       .insert({
         title,
         message,
-        type,
-        link,
-        source,
-        related_id: relatedId,
-        expires_at: expiresAt
+        url: link, // Map link to url
+        notification_type: 'push', // Map type to notification_type (use push as default)
+        status: 'pending' // Default status
       })
       .select()
       .single();
@@ -207,7 +222,8 @@ export const createNotification = async (
       throw error;
     }
     
-    return data as Notification;
+    // Map database row back to TypeScript interface
+    return mapDbNotificationToInterface(data);
   } catch (error) {
     console.error('Error in createNotification:', error);
     throw error;
