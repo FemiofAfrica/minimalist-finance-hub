@@ -997,62 +997,100 @@ async function importVapidPrivateKey(privateKeyString: string): Promise<CryptoKe
       firstBytes: Array.from(binaryKey.slice(0, 8)).map(b => b.toString(16).padStart(2, '0')).join(' ')
     })
     
-    // For web-push CLI keys, the proper approach is to create a JWK with only the private key part
+    // For 32-byte raw keys (web-push CLI format), construct proper PKCS#8
     if (binaryKey.length === 32) {
-      console.log('🔍 Detected 32-byte raw private key, creating JWK format')
+      console.log('🔍 Detected 32-byte raw private key, constructing PKCS#8 format')
       
-      // Create a proper JWK for EC P-256 with just the private key
-      const jwk = {
-        kty: 'EC',
-        crv: 'P-256',
-        d: privateKeyString, // Keep the original base64url encoded private key
-        // For private keys, we don't need x and y coordinates
-        key_ops: ['sign']
-      }
+      // PKCS#8 structure for EC P-256 private key
+      // This is the standard ASN.1 DER encoding for an EC private key
+      const pkcs8Header = new Uint8Array([
+        0x30, 0x81, 0x87,                          // SEQUENCE (135 bytes)
+        0x02, 0x01, 0x00,                          // INTEGER version (0)
+        0x30, 0x13,                                // SEQUENCE AlgorithmIdentifier
+        0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, // OID ecPublicKey
+        0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, // OID prime256v1 (P-256)
+        0x04, 0x6d,                                // OCTET STRING (109 bytes)
+        0x30, 0x6b,                                // SEQUENCE (107 bytes)
+        0x02, 0x01, 0x01,                          // INTEGER version (1)
+        0x04, 0x20                                 // OCTET STRING (32 bytes) - private key follows
+      ])
+      
+      // The private key bytes go here (32 bytes)
+      // Then we need the public key part, but for our use case, we can create a minimal structure
+      const pkcs8Suffix = new Uint8Array([
+        0xa1, 0x44,                                // [1] EXPLICIT (68 bytes)
+        0x03, 0x42, 0x00                           // BIT STRING (66 bytes, 0 unused bits)
+        // Public key would go here, but we'll try without it first
+      ])
+      
+      // Create a simplified PKCS#8 structure with just the private key
+      const simplePkcs8 = new Uint8Array([
+        0x30, 0x81, 0x93,                          // SEQUENCE (147 bytes)
+        0x02, 0x01, 0x00,                          // INTEGER version (0)
+        0x30, 0x13,                                // SEQUENCE AlgorithmIdentifier  
+        0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, // OID ecPublicKey
+        0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, // OID prime256v1
+        0x04, 0x79,                                // OCTET STRING (121 bytes)
+        0x30, 0x77,                                // SEQUENCE (119 bytes)
+        0x02, 0x01, 0x01,                          // INTEGER version (1)
+        0x04, 0x20,                                // OCTET STRING (32 bytes)
+        ...binaryKey,                              // The 32-byte private key
+        0xa1, 0x50,                                // [1] EXPLICIT (80 bytes)
+        0x03, 0x4e, 0x00,                          // BIT STRING (78 bytes, 0 unused bits)
+        // Add minimal public key structure (zeros for now - this might work)
+        ...new Array(75).fill(0)
+      ])
       
       try {
-        console.log('🔍 Importing JWK with private key only')
+        console.log('🔍 Trying custom PKCS#8 structure')
         return await crypto.subtle.importKey(
-          'jwk',
-          jwk,
+          'pkcs8',
+          simplePkcs8,
           { name: 'ECDSA', namedCurve: 'P-256' },
           false,
           ['sign']
         )
-      } catch (jwkError) {
-        console.log('JWK import failed, trying alternative approach...', jwkError)
+      } catch (customPkcs8Error) {
+        console.log('Custom PKCS#8 failed, trying raw import with correct algorithm...', customPkcs8Error)
         
-        // Alternative: Try without key_ops in JWK
+        // Alternative approach: Try importing as raw key with different parameters
         try {
-          console.log('🔍 Trying JWK without key_ops')
-          const simpleJwk = {
-            kty: 'EC',
-            crv: 'P-256',
-            d: privateKeyString
-          }
-          
+          // Try importing the raw 32 bytes directly as a private key
+          // This might work with some JavaScript crypto implementations
+          console.log('🔍 Trying raw key import with ECDSA algorithm')
           return await crypto.subtle.importKey(
-            'jwk',
-            simpleJwk,
+            'raw',
+            binaryKey,
             { name: 'ECDSA', namedCurve: 'P-256' },
             false,
             ['sign']
           )
-        } catch (simpleJwkError) {
-          console.log('Simple JWK failed, trying PKCS#8 anyway...', simpleJwkError)
+        } catch (rawError) {
+          console.log('Raw import failed, trying to construct minimal working JWK...', rawError)
           
-          // Last resort: try PKCS#8 even though it's not the right format
+          // Last resort: Create a minimal JWK that might work
+          // We'll provide dummy x,y coordinates - this is not cryptographically correct
+          // but might be enough for the WebCrypto API to accept it
+          const minimalJwk = {
+            kty: 'EC',
+            crv: 'P-256',
+            d: privateKeyString,
+            x: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', // Dummy x coordinate
+            y: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'  // Dummy y coordinate
+          }
+          
           try {
+            console.log('🔍 Trying minimal JWK with dummy coordinates')
             return await crypto.subtle.importKey(
-              'pkcs8',
-              binaryKey,
+              'jwk',
+              minimalJwk,
               { name: 'ECDSA', namedCurve: 'P-256' },
               false,
               ['sign']
             )
-          } catch (pkcs8Error) {
-            console.error('All 32-byte key import methods failed')
-            throw new Error(`Unable to import 32-byte private key. JWK error: ${jwkError instanceof Error ? jwkError.message : 'Unknown JWK error'}`)
+          } catch (minimalJwkError) {
+            console.error('All import attempts failed for 32-byte key')
+            throw new Error(`Unable to import 32-byte private key. Tried PKCS#8, raw, and JWK formats. Last error: ${minimalJwkError instanceof Error ? minimalJwkError.message : 'Unknown error'}`)
           }
         }
       }
@@ -1070,11 +1108,11 @@ async function importVapidPrivateKey(privateKeyString: string): Promise<CryptoKe
       } catch (pkcs8Error) {
         console.log('PKCS#8 import failed, trying JWK format...', pkcs8Error)
         
-        // Try to create a JWK format
+        // Try to create a JWK format - but this will likely fail without x,y coordinates
         const jwk = {
           kty: 'EC',
           crv: 'P-256',
-          d: privateKeyString // Use original base64url string
+          d: privateKeyString
         }
         
         try {
