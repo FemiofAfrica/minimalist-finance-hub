@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 import PublicLayout from '@/components/PublicLayout';
 import { Eye, EyeOff } from 'lucide-react';
@@ -20,6 +21,7 @@ const ResetPassword = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
 
   const isDev = import.meta.env.DEV;
 
@@ -329,7 +331,15 @@ const ResetPassword = () => {
 
       if (updateError) {
         console.error('[ResetPassword] Password update error:', updateError);
-        throw new Error(updateError.message || 'Failed to update password');
+        
+        // Handle specific error cases with better messages
+        if (updateError.message?.includes('New password should be different from the old password')) {
+          throw new Error('Your new password must be different from your current password. Please choose a different password.');
+        } else if (updateError.message?.includes('Password should be at least')) {
+          throw new Error('Password must be at least 6 characters long.');
+        } else {
+          throw new Error(updateError.message || 'Failed to update password');
+        }
       }
 
       console.log('[ResetPassword] Password updated successfully');
@@ -474,6 +484,9 @@ const ResetPassword = () => {
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
+                {password.length > 0 && password.length < 6 && (
+                  <p className="text-xs text-orange-600 mt-1">Password must be at least 6 characters long</p>
+                )}
               </div>
               
               <div>
@@ -498,7 +511,16 @@ const ResetPassword = () => {
                     {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
+                {confirmPassword.length > 0 && password !== confirmPassword && (
+                  <p className="text-xs text-red-600 mt-1">Passwords do not match</p>
+                )}
               </div>
+            </div>
+            
+            {/* Warning about choosing a different password */}
+            <div className="bg-yellow-50 text-yellow-800 p-3 rounded-md text-sm">
+              <p className="font-medium">💡 Important:</p>
+              <p>Your new password must be different from your current password. Please choose a new, secure password.</p>
             </div>
 
             <Button 
