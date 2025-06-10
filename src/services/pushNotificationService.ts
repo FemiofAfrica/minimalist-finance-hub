@@ -228,6 +228,35 @@ class PushNotificationService {
       throw error
     }
   }
+
+  // Force re-registration with new VAPID key
+  async forceReRegistration(): Promise<PushSubscription | null> {
+    try {
+      console.log('🔄 Starting forced re-registration with new VAPID key...')
+      
+      // First, unsubscribe from existing subscription
+      const unsubscribed = await this.unsubscribe()
+      console.log('🔄 Unsubscribed from old subscription:', unsubscribed)
+      
+      // Wait a moment for cleanup
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Now subscribe with the new VAPID key
+      const newSubscription = await this.subscribe()
+      
+      if (newSubscription) {
+        console.log('✅ Successfully re-registered with new VAPID key!')
+        console.log('🔑 New subscription endpoint:', newSubscription.endpoint.substring(0, 50) + '...')
+      } else {
+        console.error('❌ Failed to create new subscription')
+      }
+      
+      return newSubscription
+    } catch (error) {
+      console.error('❌ Failed to force re-registration:', error)
+      return null
+    }
+  }
 }
 
 // Create singleton instance

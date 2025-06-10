@@ -112,16 +112,68 @@ const NotificationSettings: React.FC = () => {
   }
 
   const handleTestNotification = async () => {
+    if (!user) {
+      toast.error('You must be logged in to send test notifications')
+      return
+    }
+
     try {
-      await pushNotificationService.sendTestNotification(
-        'Test Notification',
-        'This is a test push notification from kpege!',
-        window.location.origin
-      )
-      toast.success('Test notification sent!')
+      setIsSendingTest(true)
+      
+      // Get a fresh session to ensure we have valid auth
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError || !session) {
+        toast.error('Please log in again to send test notifications')
+        return
+      }
+
+      // Call the edge function with proper error handling
+      const { data, error } = await supabase.functions.invoke('send-push-notification', {
+        body: {
+          title: 'Test Notification',
+          message: 'This is a test notification from your finance app!',
+          url: '/dashboard',
+          targetType: 'single',
+          userId: user.id,
+          shouldTriggerEmail: true
+        }
+      })
+
+      if (error) {
+        throw error
+      }
+
+      console.log('Test notification response:', data)
+
+      // Properly parse the response
+      const responseData = typeof data === 'string' ? JSON.parse(data) : data
+      
+      if (responseData.success) {
+        const details = responseData.details || {}
+        const totalSent = details.totalSent || 0
+        const errors = details.errors || []
+        
+        if (errors.length > 0) {
+          // Partial success
+          toast.error(`Test notification partially sent: ${errors.slice(0, 2).join('; ')}`)
+        } else {
+          // Full success
+          toast.success(`Test notification sent successfully! (${totalSent} notification${totalSent !== 1 ? 's' : ''} delivered)`)
+        }
+      } else {
+        // Full failure
+        const details = responseData.details || {}
+        const errors = details.errors || []
+        const errorMessage = errors.length > 0 ? errors.join('; ') : 'Unknown error occurred'
+        throw new Error(`Test notification failed: ${errorMessage}`)
+      }
     } catch (error) {
       console.error('Test notification error:', error)
-      toast.error('Failed to send test notification')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send test notification'
+      toast.error(`Test notification failed: ${errorMessage}`)
+    } finally {
+      setIsSendingTest(false)
     }
   }
 
