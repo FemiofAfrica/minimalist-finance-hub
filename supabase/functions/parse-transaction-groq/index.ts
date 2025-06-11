@@ -637,14 +637,14 @@ function parseFallback(text: string): Response {
 // --- Groq API Call Function ---
 // Calls the Groq API to parse the transaction text using an LLM.
 async function callGroqAPI(apiKey: string, text: string, context_amount?: number, context_date?: string, context_narration?: string): Promise<Response> {
-  // Updated prompt with more specific category guidance and examples
+  // Updated prompt with exact database categories and stricter amount validation
   const prompt = `
     You are a transaction parser that outputs ONLY raw JSON.
     Parse the following transaction text strictly into this JSON format:
     {
       "description": "Brief description of the item/service (e.g., 'Groceries from Shoprite', 'Salary for March', 'Transfer between accounts')",
       "amount": 1234.56,
-      "category_name": "Appropriate category (e.g., 'Groceries', 'Salary', 'Transport', 'Dining', 'Utilities', 'Shopping', 'Entertainment', 'Healthcare', 'Education', 'Housing', 'Insurance', 'Gift', 'Transfer', 'Uncategorized')",
+      "category_name": "EXACT category from allowed list",
       "category_type": "INCOME, EXPENSE, or TRANSFER",
       "is_transfer": false,
       "source_account": null,
@@ -652,26 +652,47 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
       "account_name": null
     }
 
+    ALLOWED CATEGORIES (use EXACTLY these names):
+    - "Food & Dining" (restaurants, meals, takeout)
+    - "Transportation" (bus, taxi, uber, bolt, fuel, parking)
+    - "Entertainment" (movies, games, music, streaming like Netflix)
+    - "Utilities" (electricity, water, gas, internet, phone bills, AIRTIME, DATA)
+    - "Housing" (rent, mortgage, property maintenance)
+    - "Health" (medical, pharmacy, hospital, insurance)
+    - "Shopping" (clothes, electronics, general purchases)
+    - "Education" (school fees, books, courses)
+    - "Income" (general income, freelance, business)
+    - "Salary" (employment salary, wages)
+    - "Transfer" (money movement between accounts)
+    - "Groceries" (food shopping, supermarket, market)
+
+    CRITICAL CATEGORY RULES:
+    - AIRTIME, RECHARGE, DATA, PHONE BILLS → ALWAYS use "Utilities"
+    - MTN, GLO, AIRTEL, 9MOBILE airtime/data → ALWAYS use "Utilities"
+    - Electricity, Water, Gas bills → "Utilities"
+    - Bus, Taxi, Uber, Bolt → "Transportation"
+    - Restaurant, Food delivery → "Food & Dining"
+    - Supermarket, Market shopping → "Groceries"
+    - Salary, Employment income → "Salary"
+    - General income sources → "Income"
+
     RULES:
-    1. Output ONLY the JSON object. No introductory text, explanations, apologies, or markdown code blocks (like \`\`\`json).
-    2. 'amount' MUST be a positive number (integer or float). Do not include currency symbols.
-    3. 'category_type' MUST be exactly "INCOME", "EXPENSE", or "TRANSFER". 
+    1. Output ONLY the JSON object. No introductory text, explanations, apologies, or markdown code blocks.
+    2. 'amount' MUST be a positive number (integer or float). NEVER return null, undefined, or 0 unless explicitly stated as 0.
+    3. If you cannot extract amount from text, use context_amount: ${context_amount || 100}
+    4. 'category_type' MUST be exactly "INCOME", "EXPENSE", or "TRANSFER".
        - Use "TRANSFER" for moving money between accounts.
        - Use "INCOME" for receiving money, salary, etc.
        - Use "EXPENSE" for spending money.
-    4. For transfers:
+    5. For transfers:
        - Set "is_transfer" to true
        - Set "category_name" to "Transfer"
        - Extract "source_account" and "destination_account" from the text if available
-       - Example: "I transferred 5000 from my savings account to my checking account" should extract "savings" as source_account and "checking" as destination_account
-    5. For regular transactions (not transfers):
+    6. For regular transactions (not transfers):
        - Extract "account_name" if a specific account is mentioned
-       - Example: "Spent 50 from my credit card on food" should extract "credit card" as account_name
-       - Example: "Received 100 in my checking account" should extract "checking" as account_name
-    6. 'category_name' should be one of the suggested categories if possible. Use 'Transfer' for money movements between accounts.
-    7. 'description' should be concise. For transfers, indicate the source and destination when possible.
-    8. If the text contains a field like 'Narration:' or 'Purpose:', use its value as the description.
-    9. For the date, look for explicit fields like 'Transaction Date:' or 'Date:' and use their value if present, otherwise use your best guess.
+    7. 'category_name' MUST be one of the ALLOWED CATEGORIES exactly as listed.
+    8. 'description' should be concise and descriptive.
+    9. If the text contains 'Narration:' or 'Purpose:', use its value as the description.
     10. DO NOT include a 'date' field in the JSON output.
 
     CRITICAL INSTRUCTIONS FOR NARRATION:
@@ -684,16 +705,14 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
     - If the text mentions both a sender and recipient/beneficiary, it's likely a transfer
     - Look for bank names (like Providus, Moniepoint, Stanbic, Access Bank) to help identify transfers between accounts
 
-    CATEGORY DETECTION RULES:
-    - If the narration/description is "Bus", "Taxi", "Uber", "Bolt", "Ride", or any other transportation-related term, categorize as "Transport" with type "EXPENSE"
-    - If it mentions "water", "electricity", "gas", "power", "internet", "wifi", or "bill", categorize as "Utilities" with type "EXPENSE"
-    - If it mentions "food", "restaurant", "cafe", "dinner", "lunch", or "meal", categorize as "Dining" with type "EXPENSE"
-    - If it mentions "grocery", "supermarket", "market", or "store", categorize as "Groceries" with type "EXPENSE"
-    - If it mentions "salary", "paycheck", "income", "deposit", or "allowance", categorize as "Salary" with type "INCOME"
-    - If it mentions "transfer", "sent", "remittance", or clearly shows money moving between accounts, categorize as "Transfer" with type "TRANSFER" and set is_transfer to true
+    AMOUNT EXTRACTION PRIORITY:
+    1. Look for explicit amount fields like "Amount:", "NGN", "₦"
+    2. Extract numeric values with currency symbols
+    3. Use context_amount as fallback: ${context_amount || 100}
+    4. NEVER return undefined, null, or 0 for amount unless explicitly 0
 
     If you cannot confidently extract information from the text, use the following as a fallback:
-    - amount: ${context_amount ?? 'N/A'}
+    - amount: ${context_amount ?? 100}
     - date: ${context_date ?? 'N/A'}
     ${context_narration ? `- narration: "${context_narration}" (Use this as the description, and use it to help determine the category)` : ''}
 
@@ -701,35 +720,26 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
     Text: "Payment for Netflix subscription yesterday"
     JSON: { "description": "Netflix subscription", "amount": 15.00, "category_name": "Entertainment", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
 
+    Text: "MTN airtime recharge"
+    JSON: { "description": "MTN airtime recharge", "amount": 500.00, "category_name": "Utilities", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
+
+    Text: "GLO data bundle purchase"
+    JSON: { "description": "GLO data bundle", "amount": 1000.00, "category_name": "Utilities", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
+
     Text: "Received ₦500,000 salary for May from Work Inc"
     JSON: { "description": "Salary for May from Work Inc", "amount": 500000.00, "category_name": "Salary", "category_type": "INCOME", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
 
     Text: "I transferred 5000 from my savings account to my checking account"
     JSON: { "description": "Transfer from savings to checking", "amount": 5000.00, "category_name": "Transfer", "category_type": "TRANSFER", "is_transfer": true, "source_account": "savings", "destination_account": "checking", "account_name": null }
 
-    Text: "Moved 2500 from my Stanbic account to Providus account"
-    JSON: { "description": "Transfer from Stanbic to Providus", "amount": 2500.00, "category_name": "Transfer", "category_type": "TRANSFER", "is_transfer": true, "source_account": "Stanbic", "destination_account": "Providus", "account_name": null }
-    
-    Text: "Spent 100 from my credit card on groceries"
-    JSON: { "description": "Groceries", "amount": 100.00, "category_name": "Groceries", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": "credit card" }
-
-    Text: "Received 200 in my savings account for birthday gift"
-    JSON: { "description": "Birthday gift", "amount": 200.00, "category_name": "Gift", "category_type": "INCOME", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": "savings" }
+    Text: "NARRATION Bus"
+    JSON: { "description": "Bus", "amount": 200.00, "category_name": "Transportation", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
 
     Text: "NARRATION Annual Water Bill Notice"
-    JSON: { "description": "Annual Water Bill", "amount": 150.00, "category_name": "Utilities", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
+    JSON: { "description": "Annual Water Bill", "amount": 5000.00, "category_name": "Utilities", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
 
-    Text: "NARRATION Bus"
-    JSON: { "description": "Bus", "amount": 50.00, "category_name": "Transport", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
-
-    Text: "TRANSACTION NGN 24000.00 BENEFICIARY Access Bank Plc (Diamond) SENDER FEMI EMMANUEL FAKAYEJO Stanbic IBTC Bank"
-    JSON: { "description": "Transfer to Access Bank", "amount": 24000.00, "category_name": "Transfer", "category_type": "TRANSFER", "is_transfer": true, "source_account": "Stanbic IBTC Bank", "destination_account": "Access Bank Plc", "account_name": null }
-
-    Text: "Moniepoint DEBIT N10,000.00 Transaction Type TRANSFER Beneficiary FAKAYEJO FRANCIS DAYO"
-    JSON: { "description": "Transfer to FAKAYEJO FRANCIS DAYO", "amount": 10000.00, "category_name": "Transfer", "category_type": "TRANSFER", "is_transfer": true, "source_account": "Moniepoint", "destination_account": "FAKAYEJO FRANCIS DAYO", "account_name": null }
-
-    Text: "Amount: NGN 30,000.00 Session ID: 000023250501103632004152108368 Narration: Allowance"
-    JSON: { "description": "Allowance", "amount": 30000.00, "category_name": "Salary", "category_type": "INCOME", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
+    Text: "Shoprite groceries purchase"
+    JSON: { "description": "Shoprite groceries", "amount": 15000.00, "category_name": "Groceries", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
 
     Transaction Text: "${text}"
   `;
@@ -818,10 +828,10 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
         // Validate Amount: Check if number or string, parse if string, ensure positive
         let validatedAmount = 0;
         console.log(`Groq Parser - Checking amount: Type=${typeof parsedData.amount}, Value=${parsedData.amount}`); // DEBUG LOG
-        if (typeof parsedData.amount === 'number') {
+        if (typeof parsedData.amount === 'number' && !isNaN(parsedData.amount)) {
             validatedAmount = Math.abs(parsedData.amount); // Ensure positive
             console.log("Groq Parser - Amount validated (Number):", validatedAmount); // DEBUG LOG
-        } else if (typeof parsedData.amount === 'string') {
+        } else if (typeof parsedData.amount === 'string' && parsedData.amount.trim()) {
             console.log("Groq Parser - Amount is string, attempting parse:", parsedData.amount); // DEBUG LOG
             // *** FIX START ***
             // Assign to a new variable after type check to ensure TS narrows the type correctly.
@@ -830,14 +840,16 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
             const numericString = amountString.replace(/,/g, ''); // Remove commas
             // *** FIX END ***
             const parsedFloat = parseFloat(numericString);
-            if (!isNaN(parsedFloat)) {
+            if (!isNaN(parsedFloat) && parsedFloat > 0) {
                 validatedAmount = Math.abs(parsedFloat); // Ensure positive
                 console.log("Groq Parser - Amount validated (String Parsed):", validatedAmount); // DEBUG LOG
             }
         }
-        // If parsing failed or type was wrong, validatedAmount remains 0
-        if (validatedAmount === 0 && parsedData.amount !== 0) {
-             console.warn("Groq Parser - Amount validation failed or resulted in 0, original was:", parsedData.amount); // DEBUG LOG
+        
+        // If parsing failed or amount is 0/undefined, use context_amount fallback
+        if (validatedAmount === 0) {
+             console.warn("Groq Parser - Amount validation failed or resulted in 0, using context fallback:", context_amount); // DEBUG LOG
+             validatedAmount = context_amount || 100; // Use context_amount or default to 100
         }
 
         // Validate description and apply sentence case
