@@ -10,7 +10,8 @@ import {
   Wallet,
   PiggyBank,
   Moon,
-  Sun
+  Sun,
+  Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -22,6 +23,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { BANNER_HEIGHT } from "@/components/ui/SupportBanner";
+import AddTransactionModal from "@/components/AddTransactionModal";
 
 const links = [
   { 
@@ -71,6 +73,7 @@ export function DashboardSidebar() {
   const { toast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isBannerVisible, setIsBannerVisible] = useState(true);
+  const [addTransactionModalOpen, setAddTransactionModalOpen] = useState(false);
   
   // Listen for banner visibility changes
   useEffect(() => {
@@ -132,6 +135,20 @@ export function DashboardSidebar() {
         </div>
       )}
       <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Prominent Add Transaction Button */}
+        <div className="px-4 py-4 border-b border-slate-200 dark:border-neutral-700">
+          <Button 
+            onClick={() => setAddTransactionModalOpen(true)}
+            className={cn(
+              "w-full justify-center bg-primary hover:bg-primary/90 text-primary-foreground",
+              isMobile ? "h-10 text-base py-2 rounded-lg" : "h-9 text-sm py-2 rounded-md"
+            )}
+            size={isMobile ? "default" : "sm"}
+          >
+            <Plus className={cn("mr-2", isMobile ? "h-5 w-5" : "h-4 w-4")} />
+            <span className="font-semibold">Add Transaction</span>
+          </Button>
+        </div>
         <ScrollArea className="flex-1 px-6 pb-4">
           <nav className="flex flex-col gap-1">
             {links.map((link) => (
@@ -194,25 +211,42 @@ export function DashboardSidebar() {
     </div>
   );
   
+  const handleTransactionAdded = () => {
+    // Optionally trigger any refresh or notification
+    toast({
+      title: "Success",
+      description: "Transaction added successfully!",
+    });
+  };
+
   return (
-    <div style={{ 
-      position: 'relative', 
-      zIndex: 40 
-    }}>
-      <Sidebar>
-        {navigation}
-      </Sidebar>
-      {/* Add CSS to adjust sidebar position */}
-      <style>{`
-        /* For Mobile Sidebar (SheetContent) */
-        [data-sidebar="sidebar"][data-mobile="true"],
-        /* For Desktop Sidebar (the fixed panel inside the data-state container) */
-        div[data-state][data-variant="sidebar"] > div.fixed.inset-y-0 {
-          top: ${isBannerVisible ? `${BANNER_HEIGHT}px` : '0'} !important;
-          height: ${isBannerVisible ? `calc(100svh - ${BANNER_HEIGHT}px)` : '100svh'} !important;
-          transition: top 0.2s ease-in-out, height 0.2s ease-in-out !important;
-        }
-      `}</style>
-    </div>
+    <>
+      <div style={{ 
+        position: 'relative', 
+        zIndex: 40 
+      }}>
+        <Sidebar>
+          {navigation}
+        </Sidebar>
+        {/* Add CSS to adjust sidebar position */}
+        <style>{`
+          /* For Mobile Sidebar (SheetContent) */
+          [data-sidebar="sidebar"][data-mobile="true"],
+          /* For Desktop Sidebar (the fixed panel inside the data-state container) */
+          div[data-state][data-variant="sidebar"] > div.fixed.inset-y-0 {
+            top: ${isBannerVisible ? `${BANNER_HEIGHT}px` : '0'} !important;
+            height: ${isBannerVisible ? `calc(100svh - ${BANNER_HEIGHT}px)` : '100svh'} !important;
+            transition: top 0.2s ease-in-out, height 0.2s ease-in-out !important;
+          }
+        `}</style>
+      </div>
+      
+      {/* Add Transaction Modal */}
+      <AddTransactionModal
+        open={addTransactionModalOpen}
+        onOpenChange={setAddTransactionModalOpen}
+        onTransactionAdded={handleTransactionAdded}
+      />
+    </>
   );
 }

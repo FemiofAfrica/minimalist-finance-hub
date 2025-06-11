@@ -5,19 +5,31 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Add a check for development mode at the beginning of the file and skip auth check
 
-// Skip auth check in development
+// Skip auth check in development - detect local Supabase environment
 const isDevelopment = Deno.env.get("ENVIRONMENT") === "development" || 
                       Deno.env.get("SUPABASE_URL")?.includes("localhost") ||
-                      Deno.env.get("SUPABASE_URL") === undefined;
+                      Deno.env.get("SUPABASE_URL")?.includes("127.0.0.1") ||
+                      Deno.env.get("SUPABASE_URL") === undefined ||
+                      // Default to development if no production indicators
+                      !Deno.env.get("SUPABASE_URL")?.includes("supabase.co");
+
+console.log("Development mode check:", { 
+  environment: Deno.env.get("ENVIRONMENT"),
+  supabaseUrl: Deno.env.get("SUPABASE_URL"),
+  isDevelopment 
+});
 
 // Define standard CORS headers for responses
 const corsHeaders = {
   "Access-Control-Allow-Origin": isDevelopment ? "http://localhost:5173" : "https://www.kpege.com", // Allow kpege.com in production
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type", // Allowed headers
+    "authorization, x-client-info, apikey, content-type, x-requested-with", // Allowed headers
+  "Access-Control-Max-Age": "86400", // Cache preflight for 24 hours
   "Content-Type": "application/json", // Default content type for responses
 };
+
+console.log("CORS headers being set:", corsHeaders);
 
 // Initialize Supabase client with service role key (for user lookup)
 const supabaseClient = createClient(
@@ -428,7 +440,7 @@ function parseFallback(text: string): Response {
   // --- Regex Patterns for Extraction ---
   const patterns = {
     // Capture amount, allowing for currency symbols (optional) and commas/dots
-    amount: /(\d+(?:\.\d{1,2})?)/, // Simplified pattern - focusing on digits and optional dot+digits
+    amount: /(?:^|\s|[^\d])(\d+(?:,\d{3})*(?:\.\d{1,2})?)(?:\s|$|[^\d])/g, // More comprehensive pattern to capture amounts
     // Keywords indicating income
     income: /(?:received|earned|got paid|salary|bonus|gift|refund|income|deposit)/i,
     // Keywords indicating expense (used if income keywords aren't found)
@@ -488,15 +500,29 @@ function parseFallback(text: string): Response {
   }
 
   // --- Extraction Logic ---
-  // Extract Amount
-  const amountMatch = text.match(patterns.amount);
-  console.log("Fallback Parser - Amount Match:", amountMatch); // DEBUG LOG
-  if (amountMatch && amountMatch[1]) {
-    // Remove commas and parse as float, ensure positive
-    fallbackData.amount = Math.abs(parseFloat(amountMatch[1].replace(/,/g, "")));
-    console.log("Fallback Parser - Extracted Amount:", fallbackData.amount); // DEBUG LOG
+  // Extract Amount - Find all potential amounts and use the largest one
+  const amountMatches = Array.from(text.matchAll(patterns.amount));
+  console.log("Fallback Parser - Amount Matches:", amountMatches); // DEBUG LOG
+  
+  if (amountMatches && amountMatches.length > 0) {
+    // Extract all potential amounts and find the largest reasonable one
+    const potentialAmounts = amountMatches
+      .map(match => match[1]) // Get the captured group
+      .filter(amount => amount && amount.length > 0) // Filter out empty matches
+      .map(amount => parseFloat(amount.replace(/,/g, ""))) // Parse to numbers
+      .filter(amount => !isNaN(amount) && amount > 0); // Filter valid positive numbers
+    
+    console.log("Fallback Parser - Potential Amounts:", potentialAmounts); // DEBUG LOG
+    
+    if (potentialAmounts.length > 0) {
+      // Use the largest amount (typically the transaction amount rather than account numbers)
+      fallbackData.amount = Math.max(...potentialAmounts);
+      console.log("Fallback Parser - Extracted Amount:", fallbackData.amount); // DEBUG LOG
+    } else {
+      console.log("Fallback Parser - No valid amounts found after parsing.");
+    }
   } else {
-    console.log("Fallback Parser - Amount pattern did not match or capture group 1 was empty.");
+    console.log("Fallback Parser - Amount pattern did not match.");
   }
 
   // Determine Category Type (Income/Expense/Transfer)
@@ -533,10 +559,14 @@ function parseFallback(text: string): Response {
   let textWithoutAmountAndDate = text;
   let matchedDateKeyword = "";
 
-  // Remove Amount
-  if (amountMatch && amountMatch[0]) {
-    textWithoutAmountAndDate = textWithoutAmountAndDate.replace(amountMatch[0], "").trim();
-    console.log("Fallback Parser - Text after removing amount:", textWithoutAmountAndDate); // DEBUG LOG
+  // Remove Amount - remove all found amounts for description cleaning
+  if (amountMatches && amountMatches.length > 0) {
+    for (const match of amountMatches) {
+      if (match[0]) {
+        textWithoutAmountAndDate = textWithoutAmountAndDate.replace(match[0].trim(), "").trim();
+      }
+    }
+    console.log("Fallback Parser - Text after removing amounts:", textWithoutAmountAndDate); // DEBUG LOG
   }
 
   // Identify and Remove Date Keyword
@@ -909,9 +939,13 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
 
 // --- Main Request Handler ---
 async function serve(req: Request): Promise<Response> {
-  // Handle CORS preflight requests
+  // Handle CORS preflight requests first, before any other processing
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    console.log("Handling OPTIONS preflight request");
+    return new Response(null, { 
+      status: 200,
+      headers: corsHeaders 
+    });
   }
 
   // Log headers for debugging
@@ -950,8 +984,16 @@ async function serve(req: Request): Promise<Response> {
   }
   // --- END AUTHENTICATION CHECK ---
 
-  // Read API Key from environment variables (secure method)
-  const apiKey = Deno.env.get("GROQ_API_KEY");
+  // Read API Key from environment variables (secure method) - try both common names
+  const apiKey = Deno.env.get("GROQ_API_KEY") || Deno.env.get("GROQ_OCR_KEY");
+  
+  // Debug: Log environment variable status (without exposing the actual key)
+  console.log("Environment variables check:", {
+    hasGroqApiKey: !!Deno.env.get("GROQ_API_KEY"),
+    hasGroqOcrKey: !!Deno.env.get("GROQ_OCR_KEY"),
+    finalApiKeyFound: !!apiKey,
+    apiKeyPrefix: apiKey ? `${apiKey.substring(0, 5)}...` : 'none'
+  });
 
   let text: string | undefined; // Define text variable outside try block
 

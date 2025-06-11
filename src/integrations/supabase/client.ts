@@ -182,12 +182,18 @@ export async function callEdgeFunction(
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseKey}`,
+          'apikey': supabaseKey,
         };
+        
+        console.log('Local Supabase headers:', headers);
+        console.log('Current domain:', currentDomain);
         
         const response = await fetch(url, {
           method: 'POST',
           headers,
           body: JSON.stringify(payload),
+          mode: 'cors',
+          credentials: 'omit',
         });
 
         console.log(`Local Supabase response status: ${response.status}`);
