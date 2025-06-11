@@ -639,10 +639,10 @@ const Login = () => {
 
             {/* Cloudflare Turnstile Captcha */}
             <div className="flex justify-center mb-4">
-              {import.meta.env.TURNSTILE_SITE_KEY ? (
+              {import.meta.env.VITE_TURNSTILE_SITE_KEY ? (
                 <Turnstile
                   ref={setTurnstileRef}
-                  siteKey={import.meta.env.TURNSTILE_SITE_KEY}
+                  siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
                   onSuccess={handleCaptchaSuccess}
                   onError={handleCaptchaError}
                   onExpire={() => {
@@ -757,11 +757,11 @@ const Login = () => {
                       Security verification required
                     </div>
                     
-                    {import.meta.env.TURNSTILE_SITE_KEY ? (
+                    {import.meta.env.VITE_TURNSTILE_SITE_KEY ? (
                       <div className="flex justify-center">
                         <Turnstile
                           ref={setResetTurnstileRef}
-                          siteKey={import.meta.env.TURNSTILE_SITE_KEY}
+                          siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
                           onSuccess={handleResetCaptchaSuccess}
                           onError={handleResetCaptchaError}
                           onExpire={() => {

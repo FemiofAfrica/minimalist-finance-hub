@@ -55,10 +55,10 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   // Initialize rates relative to BASE_CURRENCY_CODE (USD)
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ [BASE_CURRENCY_CODE]: 1 }); 
   
-  // Initialize live conversion preference from localStorage or default (false)
+  // Initialize live conversion preference from localStorage or default (true)
   const [isLiveConversionEnabled, setIsLiveConversionEnabled] = useState<boolean>(() => {
       const storedValue = localStorage.getItem(LIVE_CONVERSION_STORAGE_KEY);
-      return storedValue === 'true'; // Default to false if not found or not 'true'
+      return storedValue !== null ? storedValue === 'true' : true; // Default to true if not found
   });
 
   // Fetch rates relative to BASE_CURRENCY_CODE on initial load

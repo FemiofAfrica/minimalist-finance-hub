@@ -59,6 +59,17 @@ const ResetPassword = () => {
     }
   };
 
+  // Helper function to clear debug information on successful password reset
+  const clearDebugInfo = () => {
+    try {
+      localStorage.removeItem('kpege_password_reset_last_issue');
+      localStorage.removeItem('kpege_page_load_url');
+      console.log('[ResetPassword] Debug info cleared on successful password reset');
+    } catch (e) {
+      console.warn('[ResetPassword] Could not clear debug info:', e);
+    }
+  };
+
   useEffect(() => {
     const initializeResetPage = async () => {
       console.log('[ResetPassword] Initializing reset page...');

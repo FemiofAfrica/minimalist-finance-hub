@@ -8,8 +8,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // Skip auth check in development
 const isDevelopment = Deno.env.get("ENVIRONMENT") === "development" || 
                       Deno.env.get("SUPABASE_URL")?.includes("localhost") ||
-                      Deno.env.get("SUPABASE_URL") === undefined ||
-                      true; // IMPORTANT: Force development mode for local testing
+                      Deno.env.get("SUPABASE_URL") === undefined;
 
 // Define standard CORS headers for responses
 const corsHeaders = {
