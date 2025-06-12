@@ -276,7 +276,7 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
       }
 
       const credentials = await this.getRegisteredCredentials();
-      console.log('Stored credentials:', credentials.map(c => ({ id: c.id, idLength: c.id.length, hasPassword: !!c.encryptedCredentials.encryptedPassword })));
+      console.log('Stored credentials:', credentials.map(c => ({ id: c.id, idLength: c.id.length, hasPassword: !!c.encryptedCredentials?.encryptedPassword })));
       
       if (credentials.length === 0) {
         return { success: false, error: 'No biometric credentials registered. Please set up biometric authentication first.' };
@@ -345,7 +345,7 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
       console.log('Stored credentials:', credentials.map(c => ({ 
         id: c.id, 
         idLength: c.id.length, 
-        hasPassword: !!c.encryptedCredentials.encryptedPassword,
+        hasPassword: !!c.encryptedCredentials?.encryptedPassword,
         isValidBase64: /^[A-Za-z0-9+/]*={0,2}$/.test(c.id)
       })));
       
@@ -394,13 +394,13 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
         await this.updateCredential(usedCredential);
         
         // Check if we have encrypted credentials for passwordless login
-        if (usedCredential.encryptedCredentials.encryptedPassword && usedCredential.encryptedCredentials.salt) {
+        if (usedCredential.encryptedCredentials?.encryptedPassword && usedCredential.encryptedCredentials?.salt) {
           try {
             // Decrypt the password using the device secret
             const deviceSecret = usedCredential.id + usedCredential.created_at;
-            const decryptedPassword = await this.decryptPassword(
-              usedCredential.encryptedCredentials.encryptedPassword,
-              usedCredential.encryptedCredentials.salt,
+                          const decryptedPassword = await this.decryptPassword(
+                usedCredential.encryptedCredentials.encryptedPassword,
+                usedCredential.encryptedCredentials.salt,
               deviceSecret
             );
 
@@ -460,7 +460,35 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
       if (!stored) return [];
       
       const credentials = JSON.parse(stored) as BiometricCredential[];
-      return Array.isArray(credentials) ? credentials : [];
+      if (!Array.isArray(credentials)) return [];
+      
+      // Migrate old credentials that might not have encryptedCredentials property
+      const migratedCredentials = credentials.map(credential => {
+        if (!credential.encryptedCredentials) {
+          console.log('Migrating old credential:', credential.id);
+          return {
+            ...credential,
+            encryptedCredentials: {
+              email: credential.user_email || '',
+              encryptedPassword: '',
+              salt: '',
+            }
+          };
+        }
+        return credential;
+      });
+      
+      // Save migrated credentials back to localStorage if migration occurred
+      const needsMigration = migratedCredentials.some((cred, index) => 
+        !credentials[index].encryptedCredentials
+      );
+      
+      if (needsMigration) {
+        localStorage.setItem(this.storageKey, JSON.stringify(migratedCredentials));
+        console.log('Migrated', migratedCredentials.length, 'biometric credentials');
+      }
+      
+      return migratedCredentials;
     } catch (error) {
       console.error('Failed to get credentials:', error);
       return [];
@@ -622,13 +650,6 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
     );
 
     return decoder.decode(decrypted);
-  }
-
-  /**
-   * Clear all stored biometric credentials (for debugging)
-   */
-  async clearAllCredentials(): Promise<void> {
-    localStorage.removeItem(this.storageKey);
   }
 }
 

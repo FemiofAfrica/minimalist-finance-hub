@@ -234,7 +234,7 @@ export function BiometricSettings() {
                         </div>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant="secondary" className="text-xs">
-                            {credential.encryptedCredentials.encryptedPassword ? 'Passwordless' : 'Auto-fill only'}
+                            {credential.encryptedCredentials?.encryptedPassword ? 'Passwordless' : 'Auto-fill only'}
                           </Badge>
                         </div>
                       </div>
