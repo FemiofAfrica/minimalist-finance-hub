@@ -3,6 +3,7 @@ import { SpeedInsights } from "@vercel/speed-insights/react"
 
 import { MixpanelService } from '@/integrations/mixpanel';
 import initializeClientEnvironment from '@/utils/env';
+import errorNotificationService from '@/services/errorNotificationService';
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
@@ -39,6 +40,15 @@ try {
   console.log('Client environment initialized successfully');
 } catch (error) {
   console.error('Failed to initialize client environment:', error);
+}
+
+// Initialize error reporting service
+try {
+  // This will start capturing global errors
+  errorNotificationService.getInstance();
+  console.log('Error notification service initialized successfully');
+} catch (error) {
+  console.error('Failed to initialize error notification service:', error);
 }
 
 // Error boundary wrapper for analytics components

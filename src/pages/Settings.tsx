@@ -23,6 +23,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { SupportBanner } from '@/components/ui/SupportBanner';
 import NotificationTestCenter from '@/components/admin/NotificationTestCenter';
 import ErrorLogsViewer from '@/components/admin/ErrorLogsViewer';
+import { BiometricSettings } from '@/components/settings/BiometricSettings';
+import errorNotificationService from '@/services/errorNotificationService';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -295,43 +297,72 @@ export default function Settings() {
     if (!notificationTitle || !notificationMessage) {
       toast({
         title: "Error",
-        description: "Please provide both title and message",
+        description: "Please enter both title and message",
         variant: "destructive",
       });
       return;
     }
-    
+
+    setIsSending(true);
     try {
-      setIsSending(true);
-      
-      const count = await sendNotificationToAllUsers(
-        notificationTitle,
-        notificationMessage,
-        notificationType,
-        notificationLink || undefined,
-        expiryDays
-      );
-      
+      const { data, error } = await supabase.functions.invoke('send-push-notification', {
+        body: {
+          title: notificationTitle,
+          message: notificationMessage,
+          targetType: 'segment',
+          segment: 'all_users'
+        }
+      });
+
+      if (error) throw error;
+
       toast({
         title: "Success",
-        description: `Sent notification to ${count} users`,
+        description: "Notification sent to all users",
       });
       
-      // Reset form
-      setNotificationTitle("");
-      setNotificationMessage("");
-      setNotificationType("info");
-      setNotificationLink("");
-      setExpiryDays(7);
+      setNotificationTitle('');
+      setNotificationMessage('');
     } catch (error) {
       console.error('Error sending notification:', error);
       toast({
         title: "Error",
-        description: "Failed to send notification. Make sure you have admin privileges.",
+        description: "Failed to send notification",
         variant: "destructive",
       });
     } finally {
       setIsSending(false);
+    }
+  };
+  
+  // Test error function for development/testing
+  const testErrorLogging = async () => {
+    try {
+      // Test different types of errors
+      await errorNotificationService.reportError({
+        message: 'Test error from Settings page',
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+        errorType: 'react',
+        severity: 'medium',
+        additionalContext: {
+          component: 'Settings',
+          action: 'Test Error Button',
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      toast({
+        title: "Test error logged",
+        description: "Check the Error Logs tab to see the test error",
+      });
+    } catch (error) {
+      console.error('Failed to log test error:', error);
+      toast({
+        title: "Test failed",
+        description: "Could not log test error",
+        variant: "destructive",
+      });
     }
   };
   
@@ -497,45 +528,59 @@ export default function Settings() {
           
             {/* Security Tab */}
             <TabsContent value="security" className="p-4 md:p-8">
-              <div className="max-w-3xl mx-auto">
-                <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-6 md:mb-8 text-center">Change Password</h2>
-                <div className="grid gap-y-4 md:gap-y-6 mb-8 md:mb-10">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
-                    <Label htmlFor="currentPassword" className="font-medium text-sm md:text-base sm:w-1/3 text-center">Current Password</Label>
-                    <Input 
-                      id="currentPassword" 
-                      type="password" 
-                      placeholder="Enter your current password"
-                      className="bg-background sm:w-2/3 text-sm md:text-base"
-                    />
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
-                    <Label htmlFor="newPassword" className="font-medium text-sm md:text-base sm:w-1/3 text-center">New Password</Label>
-                    <Input 
-                      id="newPassword" 
-                      type="password" 
-                      placeholder="Enter your new password"
-                      className="bg-background sm:w-2/3 text-sm md:text-base"
-                    />
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
-                    <Label htmlFor="confirmPassword" className="font-medium text-sm md:text-base sm:w-1/3 text-center">Confirm New Password</Label>
-                    <Input 
-                      id="confirmPassword" 
-                      type="password" 
-                      placeholder="Confirm your new password"
-                      className="bg-background sm:w-2/3 text-sm md:text-base"
-                    />
-                  </div>
-                </div>
+              <div className="max-w-4xl mx-auto space-y-8">
                 
-                <div className="flex justify-center border-t pt-4 md:pt-6 mt-6 md:mt-8">
-                  <Button className="px-6 md:px-8 py-2 h-10 md:h-11 text-sm md:text-base">
-                    Change Password
-                  </Button>
-                </div>
+                {/* Biometric Authentication */}
+                <BiometricSettings />
+                
+                {/* Password Change */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Change Password</CardTitle>
+                    <CardDescription>
+                      Update your account password for enhanced security
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-y-4 md:gap-y-6 mb-8 md:mb-10">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
+                        <Label htmlFor="currentPassword" className="font-medium text-sm md:text-base sm:w-1/3 text-center">Current Password</Label>
+                        <Input 
+                          id="currentPassword" 
+                          type="password" 
+                          placeholder="Enter your current password"
+                          className="bg-background sm:w-2/3 text-sm md:text-base"
+                        />
+                      </div>
+                      
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
+                        <Label htmlFor="newPassword" className="font-medium text-sm md:text-base sm:w-1/3 text-center">New Password</Label>
+                        <Input 
+                          id="newPassword" 
+                          type="password" 
+                          placeholder="Enter your new password"
+                          className="bg-background sm:w-2/3 text-sm md:text-base"
+                        />
+                      </div>
+                      
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
+                        <Label htmlFor="confirmPassword" className="font-medium text-sm md:text-base sm:w-1/3 text-center">Confirm New Password</Label>
+                        <Input 
+                          id="confirmPassword" 
+                          type="password" 
+                          placeholder="Confirm your new password"
+                          className="bg-background sm:w-2/3 text-sm md:text-base"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-center border-t pt-4 md:pt-6 mt-6 md:mt-8">
+                      <Button className="px-6 md:px-8 py-2 h-10 md:h-11 text-sm md:text-base">
+                        Change Password
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </TabsContent>
             

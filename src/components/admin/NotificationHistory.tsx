@@ -35,7 +35,7 @@ interface Notification {
     totalSent: number
     pushResults: number
     emailResults: number
-  }
+  } | null
 }
 
 const NotificationHistory: React.FC = () => {
@@ -106,6 +106,14 @@ const NotificationHistory: React.FC = () => {
   }
 
   const getTargetInfo = (metadata: Notification['metadata']) => {
+    // Handle null or undefined metadata
+    if (!metadata) {
+      return {
+        icon: <Users className="w-4 h-4" />,
+        text: 'Unknown Target'
+      }
+    }
+
     if (metadata.targetType === 'single') {
       return {
         icon: <User className="w-4 h-4" />,
@@ -215,7 +223,7 @@ const NotificationHistory: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <Users className="w-4 h-4" />
                         <span className="text-muted-foreground">
-                          {notification.metadata.totalSent}/{notification.metadata.totalTargeted} sent
+                          {notification.metadata?.totalSent || 0}/{notification.metadata?.totalTargeted || 0} sent
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -233,15 +241,15 @@ const NotificationHistory: React.FC = () => {
                     </div>
 
                     {/* Results breakdown */}
-                    {(notification.metadata.pushResults > 0 || notification.metadata.emailResults > 0) && (
+                    {(notification.metadata?.pushResults > 0 || notification.metadata?.emailResults > 0) && (
                       <div className="flex gap-4 text-sm">
-                        {notification.metadata.pushResults > 0 && (
+                        {notification.metadata?.pushResults > 0 && (
                           <div className="flex items-center gap-1">
                             <Smartphone className="w-3 h-3" />
                             <span className="text-muted-foreground">{notification.metadata.pushResults} push</span>
                           </div>
                         )}
-                        {notification.metadata.emailResults > 0 && (
+                        {notification.metadata?.emailResults > 0 && (
                           <div className="flex items-center gap-1">
                             <Mail className="w-3 h-3" />
                             <span className="text-muted-foreground">{notification.metadata.emailResults} email</span>
