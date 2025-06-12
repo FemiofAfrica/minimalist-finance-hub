@@ -724,13 +724,9 @@ const Login = () => {
             {!isSignUp && (
               <BiometricLogin 
                 onSuccess={() => {
-                  toast({
-                    title: "Biometric authentication ready! 🔐",
-                    description: "Your biometric authentication was successful. You can now log in with your credentials.",
-                  });
-                  // Focus on password field as user might want to complete login
-                  const passwordField = document.getElementById('password');
-                  passwordField?.focus();
+                  // User is already logged in via biometric authentication
+                  // BiometricLogin component handles redirect to dashboard
+                  console.log('Biometric login successful - user authenticated');
                 }}
                 className="mt-4"
               />

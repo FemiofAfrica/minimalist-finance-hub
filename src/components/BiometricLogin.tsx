@@ -4,6 +4,7 @@ import { Fingerprint, Eye, FaceIcon as Face, Shield, Loader2 } from 'lucide-reac
 import { biometricAuthService } from '@/services/biometricAuth';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface BiometricLoginProps {
   onSuccess?: () => void;
@@ -19,6 +20,7 @@ export function BiometricLogin({ onSuccess, className = '' }: BiometricLoginProp
   
   const { signIn } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const checkBiometricSupport = async () => {
@@ -55,23 +57,38 @@ export function BiometricLogin({ onSuccess, className = '' }: BiometricLoginProp
     setIsLoading(true);
     
     try {
-      const result = await biometricAuthService.authenticate();
+      const result = await biometricAuthService.authenticateAndSignIn();
       
-      if (result.success) {
-        toast({
-          title: 'Biometric authentication successful! 🎉',
-          description: 'You have been logged in securely.',
-        });
-        
-        // Note: In a real implementation, you would validate the biometric authentication
-        // with your backend and get a proper session token
-        // For now, we'll show a success message and let the user continue with normal login
-        
-        onSuccess?.();
+      if (result.success && result.credential) {
+        // Check if this was a true passwordless login (has encrypted password)
+        if (result.credential.encryptedCredentials.encryptedPassword) {
+          // True passwordless login - user is already signed in via Supabase
+          toast({
+            title: 'Biometric login successful! 🎉',
+            description: 'Welcome back! Redirecting to your dashboard...',
+          });
+          
+          // Call onSuccess callback if provided
+          onSuccess?.();
+          
+          // Redirect to dashboard
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 1000);
+        } else {
+          // Fallback to auto-fill mode for credentials without stored password
+          toast({
+            title: 'Email auto-filled! 🔐',
+            description: 'Enter your password and click "Sign In" to continue.',
+          });
+          
+          // This would be handled by parent component for auto-fill
+          // But since we want passwordless, this shouldn't happen
+        }
       } else {
         toast({
           title: 'Biometric authentication failed',
-          description: result.error || 'Please try again or use password login.',
+          description: result.error || 'Please try again or use manual login.',
           variant: 'destructive',
         });
       }
@@ -79,7 +96,7 @@ export function BiometricLogin({ onSuccess, className = '' }: BiometricLoginProp
       console.error('Biometric login error:', error);
       toast({
         title: 'Authentication error',
-        description: 'Something went wrong. Please try again or use password login.',
+        description: 'Something went wrong. Please try again or use manual login.',
         variant: 'destructive',
       });
     } finally {
@@ -98,11 +115,7 @@ export function BiometricLogin({ onSuccess, className = '' }: BiometricLoginProp
   };
 
   const getBiometricText = () => {
-    if (deviceType === 'mobile') {
-      return 'Use biometric login';
-    } else {
-      return 'Use biometric login';
-    }
+    return 'Sign in with biometrics';
   };
 
   // Don't render if biometric authentication is not supported or available
@@ -143,7 +156,7 @@ export function BiometricLogin({ onSuccess, className = '' }: BiometricLoginProp
         {isLoading ? (
           <>
             <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-            Authenticating...
+            Signing in...
           </>
         ) : (
           <>
@@ -154,7 +167,7 @@ export function BiometricLogin({ onSuccess, className = '' }: BiometricLoginProp
       </Button>
       
       <p className="text-xs text-center text-muted-foreground">
-        Use your fingerprint, face, or device security to sign in quickly and securely
+        Use your fingerprint, face, or device security to sign in instantly
       </p>
     </div>
   );

@@ -1,111 +1,138 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { 
-  Fingerprint, 
-  Shield, 
-  Trash2, 
-  Plus, 
-  CheckCircle, 
-  XCircle, 
-  AlertTriangle,
-  Loader2 
-} from 'lucide-react';
-import { biometricAuthService, BiometricCredential } from '@/services/biometricAuth';
+import { Fingerprint, Shield, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { biometricAuthService, type BiometricCredential } from '@/services/biometricAuth';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { useAuth } from '@/contexts/AuthContext';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 export function BiometricSettings() {
   const [isSupported, setIsSupported] = useState(false);
   const [isAvailable, setIsAvailable] = useState(false);
   const [credentials, setCredentials] = useState<BiometricCredential[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isEnabling, setIsEnabling] = useState(false);
+  const [deviceInfo, setDeviceInfo] = useState<{ type: string; method: string }>({ type: 'unknown', method: 'biometric' });
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [passwordForRegistration, setPasswordForRegistration] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
-    checkBiometricCapabilities();
-    loadCredentials();
-  }, []);
+    const checkSupport = async () => {
+      const supported = biometricAuthService.isSupported();
+      const available = supported ? await biometricAuthService.isAvailable() : false;
+      
+      setIsSupported(supported);
+      setIsAvailable(available);
+      
+      // Detect device type and biometric method
+      const userAgent = navigator.userAgent;
+      if (/iPhone|iPad/.test(userAgent)) {
+        setDeviceInfo({ type: 'iOS', method: 'Touch ID or Face ID' });
+      } else if (/Android/.test(userAgent)) {
+        setDeviceInfo({ type: 'Android', method: 'fingerprint or face unlock' });
+      } else if (/Mac/.test(userAgent)) {
+        setDeviceInfo({ type: 'Mac', method: 'Touch ID' });
+      } else if (/Windows/.test(userAgent)) {
+        setDeviceInfo({ type: 'Windows', method: 'Windows Hello' });
+      } else {
+        setDeviceInfo({ type: 'Desktop', method: 'biometric authentication' });
+      }
+    };
 
-  const checkBiometricCapabilities = async () => {
-    const supported = biometricAuthService.isSupported();
-    const available = supported ? await biometricAuthService.isAvailable() : false;
-    
-    setIsSupported(supported);
-    setIsAvailable(available);
-  };
+    checkSupport();
+    if (isSupported && isAvailable) {
+      loadCredentials();
+    }
+  }, [isSupported, isAvailable]);
 
   const loadCredentials = async () => {
-    setIsLoading(true);
     try {
       const creds = await biometricAuthService.getRegisteredCredentials();
       setCredentials(creds);
     } catch (error) {
-      console.error('Failed to load credentials:', error);
+      console.error('Failed to load biometric credentials:', error);
+    }
+  };
+
+  const handleEnableBiometric = () => {
+    if (!user?.email) {
+      toast({
+        title: 'Error',
+        description: 'User email not available. Please sign in again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setShowPasswordDialog(true);
+  };
+
+  const handlePasswordSubmit = async () => {
+    if (!passwordForRegistration || !user?.email) {
+      toast({
+        title: 'Error',
+        description: 'Please enter your password.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const result = await biometricAuthService.registerWithPassword(
+        user.email,
+        passwordForRegistration,
+        `${deviceInfo.type} Device`
+      );
+      
+      if (result.success) {
+        toast({
+          title: 'Biometric login enabled! 🎉',
+          description: 'You can now use biometric authentication to sign in instantly without entering your password.',
+        });
+        setShowPasswordDialog(false);
+        setPasswordForRegistration('');
+        await loadCredentials();
+      } else {
+        toast({
+          title: 'Setup failed',
+          description: result.error || 'Failed to enable biometric authentication',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Biometric registration error:', error);
+      toast({
+        title: 'Setup error',
+        description: 'An unexpected error occurred. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleEnableBiometric = async () => {
-    setIsEnabling(true);
-    
-    try {
-      const result = await biometricAuthService.register('Primary Device');
-      
-      if (result.success) {
-        toast({
-          title: 'Biometric authentication enabled! 🎉',
-          description: 'You can now use biometric login for quick and secure access.',
-        });
-        await loadCredentials();
-      } else {
-        toast({
-          title: 'Failed to enable biometric authentication',
-          description: result.error || 'Please try again or check your device settings.',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Failed to enable biometric auth:', error);
-      toast({
-        title: 'Error',
-        description: 'Something went wrong. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsEnabling(false);
-    }
-  };
-
-  const handleRemoveCredential = async (credentialId: string, credentialName: string) => {
+  const handleRemoveCredential = async (credentialId: string) => {
     try {
       const success = await biometricAuthService.removeCredential(credentialId);
-      
       if (success) {
         toast({
-          title: 'Biometric credential removed',
-          description: `${credentialName} has been removed from your account.`,
+          title: 'Device removed',
+          description: 'Biometric credential has been removed successfully.',
         });
         await loadCredentials();
       } else {
         toast({
-          title: 'Failed to remove credential',
-          description: 'Please try again.',
+          title: 'Removal failed',
+          description: 'Failed to remove biometric credential. Please try again.',
           variant: 'destructive',
         });
       }
@@ -113,38 +140,11 @@ export function BiometricSettings() {
       console.error('Failed to remove credential:', error);
       toast({
         title: 'Error',
-        description: 'Something went wrong. Please try again.',
+        description: 'An error occurred while removing the credential.',
         variant: 'destructive',
       });
     }
   };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getDeviceInfo = () => {
-    const userAgent = navigator.userAgent;
-    if (/iPhone|iPad|iPod/i.test(userAgent)) {
-      return { type: 'iOS', icon: '📱', method: 'Face ID or Touch ID' };
-    } else if (/Android/i.test(userAgent)) {
-      return { type: 'Android', icon: '📱', method: 'Fingerprint or Face Unlock' };
-    } else if (/Windows/i.test(userAgent)) {
-      return { type: 'Windows', icon: '💻', method: 'Windows Hello' };
-    } else if (/Mac/i.test(userAgent)) {
-      return { type: 'macOS', icon: '💻', method: 'Touch ID' };
-    } else {
-      return { type: 'Desktop', icon: '🖥️', method: 'Biometric Authentication' };
-    }
-  };
-
-  const deviceInfo = getDeviceInfo();
 
   if (!isSupported) {
     return (
@@ -155,18 +155,13 @@ export function BiometricSettings() {
             Biometric Authentication
           </CardTitle>
           <CardDescription>
-            Secure your account with biometric authentication
+            Biometric authentication is not supported on this device.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
-            <XCircle className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="font-medium">Not Available</p>
-              <p className="text-sm text-muted-foreground">
-                Biometric authentication is not supported on this device or browser.
-              </p>
-            </div>
+        <CardContent>
+          <div className="text-sm text-muted-foreground">
+            <AlertTriangle className="h-4 w-4 inline mr-1" />
+            This device doesn't support WebAuthn or biometric authentication.
           </div>
         </CardContent>
       </Card>
@@ -182,18 +177,13 @@ export function BiometricSettings() {
             Biometric Authentication
           </CardTitle>
           <CardDescription>
-            Secure your account with biometric authentication
+            Biometric authentication is not available on this device.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
-            <AlertTriangle className="h-5 w-5 text-yellow-500" />
-            <div>
-              <p className="font-medium">Device Setup Required</p>
-              <p className="text-sm text-muted-foreground">
-                Please set up {deviceInfo.method} on your device to use biometric authentication.
-              </p>
-            </div>
+        <CardContent>
+          <div className="text-sm text-muted-foreground">
+            <AlertTriangle className="h-4 w-4 inline mr-1" />
+            Please ensure your device has biometric sensors set up and enabled.
           </div>
         </CardContent>
       </Card>
@@ -201,157 +191,135 @@ export function BiometricSettings() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Shield className="h-5 w-5" />
-          Biometric Authentication
-        </CardTitle>
-        <CardDescription>
-          Secure your account with {deviceInfo.method} for quick and secure access
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Status */}
-        <div className="flex items-center justify-between p-4 border rounded-lg">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-full">
-              <Fingerprint className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="font-medium">
-                {deviceInfo.icon} {deviceInfo.type} Biometric Login
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {credentials.length > 0 
-                  ? `${credentials.length} device${credentials.length === 1 ? '' : 's'} registered`
-                  : 'Not set up'
-                }
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {credentials.length > 0 ? (
-              <Badge variant="secondary" className="bg-green-100 text-green-700">
-                <CheckCircle className="h-3 w-3 mr-1" />
-                Active
-              </Badge>
-            ) : (
-              <Badge variant="secondary">
-                <XCircle className="h-3 w-3 mr-1" />
-                Inactive
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        {/* Enable/Add Button */}
-        {credentials.length === 0 ? (
-          <Button 
-            onClick={handleEnableBiometric}
-            disabled={isEnabling}
-            className="w-full"
-          >
-            {isEnabling ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Setting up...
-              </>
-            ) : (
-              <>
-                <Plus className="h-4 w-4 mr-2" />
-                Enable Biometric Login
-              </>
-            )}
-          </Button>
-        ) : (
-          <Button 
-            onClick={handleEnableBiometric}
-            disabled={isEnabling}
-            variant="outline"
-            className="w-full"
-          >
-            {isEnabling ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Adding...
-              </>
-            ) : (
-              <>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Another Device
-              </>
-            )}
-          </Button>
-        )}
-
-        {/* Registered Devices */}
-        {credentials.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="font-medium text-sm">Registered Devices</h4>
-            {isLoading ? (
-              <div className="flex items-center justify-center p-4">
-                <Loader2 className="h-5 w-5 animate-spin" />
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Fingerprint className="h-5 w-5" />
+            Biometric Authentication
+          </CardTitle>
+          <CardDescription>
+            Use your device's biometric authentication to sign in instantly without entering your password.
+            Your password is encrypted and stored securely on this device only.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {credentials.length === 0 ? (
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                No biometric credentials registered for this account.
               </div>
-            ) : (
-              credentials.map((credential) => (
-                <div key={credential.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Fingerprint className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium text-sm">{credential.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Added {formatDate(credential.created_at)}
-                        {credential.last_used_at && (
-                          <span> • Last used {formatDate(credential.last_used_at)}</span>
-                        )}
-                      </p>
+              <Button onClick={handleEnableBiometric} disabled={isLoading}>
+                <Fingerprint className="h-4 w-4 mr-2" />
+                Enable Biometric Login
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Registered Devices</h4>
+                {credentials.map((credential) => (
+                  <div key={credential.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Fingerprint className="h-4 w-4" />
+                      <div>
+                        <div className="font-medium">{credential.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Created: {new Date(credential.created_at).toLocaleDateString()}
+                          {credential.last_used_at && (
+                            <span className="ml-2">
+                              • Last used: {new Date(credential.last_used_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="secondary" className="text-xs">
+                            {credential.encryptedCredentials.encryptedPassword ? 'Passwordless' : 'Auto-fill only'}
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRemoveCredential(credential.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                  
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Remove biometric credential?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will remove "{credential.name}" from your account. You won't be able to use this device for biometric login anymore.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleRemoveCredential(credential.id, credential.name)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Remove
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              ))
-            )}
-          </div>
-        )}
+                ))}
+              </div>
+              
+              <Button onClick={handleEnableBiometric} variant="outline" disabled={isLoading}>
+                <Fingerprint className="h-4 w-4 mr-2" />
+                Add Another Device
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Info */}
-        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <div className="flex gap-3">
-            <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-medium text-blue-900">Secure & Private</p>
-              <p className="text-sm text-blue-700">
-                Your biometric data never leaves your device. We only store an encrypted key that works with your biometric authentication.
-              </p>
+      {/* Password Collection Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enable Biometric Login</DialogTitle>
+            <DialogDescription>
+              To enable passwordless biometric login, please enter your current password. 
+              It will be encrypted and stored securely on this device only.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="biometric-password">Current Password</Label>
+              <div className="relative">
+                <Input
+                  id="biometric-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={passwordForRegistration}
+                  onChange={(e) => setPasswordForRegistration(e.target.value)}
+                  placeholder="Enter your current password"
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+            
+            <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded-lg">
+              <Shield className="h-4 w-4 inline mr-1" />
+              Your password will be encrypted with device-specific keys and never transmitted or stored in plain text.
             </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowPasswordDialog(false);
+                setPasswordForRegistration('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handlePasswordSubmit} 
+              disabled={isLoading || !passwordForRegistration}
+            >
+              {isLoading ? 'Setting up...' : 'Enable Biometric Login'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 } 
