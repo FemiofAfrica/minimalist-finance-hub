@@ -1,19 +1,41 @@
 {
-  "name": "Kpege - AI-powered financial insights",
+  "name": "Kpege - Personal Finance Tracker",
   "short_name": "Kpege",
+  "description": "Track expenses, manage finances, and gain financial clarity with AI-powered insights",
+  "start_url": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay"],
+  "theme_color": "#12805D",
+  "background_color": "#ffffff",
+  "categories": ["finance", "productivity", "utilities"],
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/android-chrome-512x512.png", 
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
-  "display": "standalone"
+  "shortcuts": [
+    {
+      "name": "Add Transaction",
+      "short_name": "Add",
+      "description": "Quickly add a new transaction",
+      "url": "/dashboard",
+      "icons": [{ "src": "/android-chrome-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "View Subscriptions", 
+      "short_name": "Subs",
+      "description": "Manage your subscriptions",
+      "url": "/subscriptions",
+      "icons": [{ "src": "/android-chrome-192x192.png", "sizes": "192x192" }]
+    }
+  ]
 }

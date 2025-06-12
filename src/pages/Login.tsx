@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { verifyTurnstileToken, getTurnstileErrorMessage } from '@/utils/turnstileVerification';
 import { captchaSession } from '@/utils/captchaSession';
 import { Turnstile } from '@marsidev/react-turnstile';
+import { BiometricLogin } from '@/components/BiometricLogin';
 
 import { FinanceEvents } from '@/integrations/mixpanel/events';
 
@@ -681,6 +682,22 @@ const Login = () => {
             >
               {isProcessing ? 'Processing...' : isSignUp ? 'Sign Up' : 'Sign In'}
             </Button>
+
+            {/* Biometric Login - only show for sign in */}
+            {!isSignUp && (
+              <BiometricLogin 
+                onSuccess={() => {
+                  toast({
+                    title: "Biometric authentication ready! 🔐",
+                    description: "Your biometric authentication was successful. You can now log in with your credentials.",
+                  });
+                  // Focus on password field as user might want to complete login
+                  const passwordField = document.getElementById('password');
+                  passwordField?.focus();
+                }}
+                className="mt-4"
+              />
+            )}
 
             <div className="text-center space-y-2">
               <button

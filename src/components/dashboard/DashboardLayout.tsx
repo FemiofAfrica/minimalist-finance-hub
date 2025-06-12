@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { SupportBanner, BANNER_HEIGHT } from "@/components/ui/SupportBanner";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -62,6 +63,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </div>
         </div>
       </SidebarProvider>
+      
+      {/* Install prompt for mobile app functionality */}
+      <InstallPrompt />
     </div>
   );
 };
