@@ -672,25 +672,25 @@ const Login = () => {
                       Debug: Turnstile Site Key: {import.meta.env.VITE_TURNSTILE_SITE_KEY.substring(0, 10)}...
                     </div>
                   )}
-                  <Turnstile
-                    ref={setTurnstileRef}
+                <Turnstile
+                  ref={setTurnstileRef}
                     siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
-                    onSuccess={handleCaptchaSuccess}
-                    onError={handleCaptchaError}
-                    onExpire={() => {
-                      console.log('[Turnstile] Token expired');
-                      resetCaptcha();
-                    }}
-                    onTimeout={() => {
-                      console.warn('[Turnstile] Timeout');
-                      resetCaptcha();
-                    }}
-                    options={{
-                      theme: 'light',
-                      size: 'normal',
-                      tabIndex: 0
-                    }}
-                  />
+                  onSuccess={handleCaptchaSuccess}
+                  onError={handleCaptchaError}
+                  onExpire={() => {
+                    console.log('[Turnstile] Token expired');
+                    resetCaptcha();
+                  }}
+                  onTimeout={() => {
+                    console.warn('[Turnstile] Timeout');
+                    resetCaptcha();
+                  }}
+                  options={{
+                    theme: 'light',
+                    size: 'normal',
+                    tabIndex: 0
+                  }}
+                />
                 </>
               ) : (
                 <div className="text-sm text-red-600 bg-red-50 p-3 rounded">

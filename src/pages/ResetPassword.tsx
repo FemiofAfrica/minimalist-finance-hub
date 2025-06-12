@@ -349,7 +349,7 @@ const ResetPassword = () => {
         } else if (updateError.message?.includes('Password should be at least')) {
           throw new Error('Password must be at least 6 characters long.');
         } else {
-          throw new Error(updateError.message || 'Failed to update password');
+        throw new Error(updateError.message || 'Failed to update password');
         }
       }
 

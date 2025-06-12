@@ -63,11 +63,11 @@ export function BiometricLogin({ onSuccess, className = '' }: BiometricLoginProp
         // Check if this was a true passwordless login (has encrypted password)
         if (result.credential.encryptedCredentials?.encryptedPassword) {
           // True passwordless login - user is already signed in via Supabase
-          toast({
+        toast({
             title: 'Biometric login successful! 🎉',
             description: 'Welcome back! Redirecting to your dashboard...',
-          });
-          
+        });
+        
           // Call onSuccess callback if provided
           onSuccess?.();
           

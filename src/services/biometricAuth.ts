@@ -65,6 +65,12 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
 
     try {
       // Check if platform authenticator is available (biometric sensors)
+      // Add extra checks for browser compatibility
+      if (!window.PublicKeyCredential || !PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+        console.warn('PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable not available');
+        return false;
+      }
+      
       const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
       return available;
     } catch (error) {
@@ -464,7 +470,7 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
       
       // Migrate old credentials that might not have encryptedCredentials property
       const migratedCredentials = credentials.map(credential => {
-        if (!credential.encryptedCredentials) {
+        if (!credential.encryptedCredentials || typeof credential.encryptedCredentials !== 'object') {
           console.log('Migrating old credential:', credential.id);
           return {
             ...credential,
@@ -474,6 +480,16 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
               salt: '',
             }
           };
+        }
+        // Ensure all required properties exist
+        if (!credential.encryptedCredentials.email) {
+          credential.encryptedCredentials.email = credential.user_email || '';
+        }
+        if (!credential.encryptedCredentials.encryptedPassword) {
+          credential.encryptedCredentials.encryptedPassword = '';
+        }
+        if (!credential.encryptedCredentials.salt) {
+          credential.encryptedCredentials.salt = '';
         }
         return credential;
       });
@@ -573,12 +589,12 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
         base64 = btoa(base64);
       }
       
-      const binaryString = window.atob(base64);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      return bytes.buffer;
+    const binaryString = window.atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
     } catch (error) {
       console.error('Failed to convert base64 to ArrayBuffer:', error, 'Input:', base64);
       throw error;

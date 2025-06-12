@@ -302,7 +302,7 @@ export default function Settings() {
       });
       return;
     }
-
+    
     setIsSending(true);
     try {
       const { data, error } = await supabase.functions.invoke('send-push-notification', {
@@ -315,7 +315,7 @@ export default function Settings() {
       });
 
       if (error) throw error;
-
+      
       toast({
         title: "Success",
         description: "Notification sent to all users",

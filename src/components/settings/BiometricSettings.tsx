@@ -25,11 +25,11 @@ export function BiometricSettings() {
 
   useEffect(() => {
     const checkSupport = async () => {
-      const supported = biometricAuthService.isSupported();
-      const available = supported ? await biometricAuthService.isAvailable() : false;
-      
-      setIsSupported(supported);
-      setIsAvailable(available);
+    const supported = biometricAuthService.isSupported();
+    const available = supported ? await biometricAuthService.isAvailable() : false;
+    
+    setIsSupported(supported);
+    setIsAvailable(available);
       
       // Detect device type and biometric method
       const userAgent = navigator.userAgent;
@@ -55,9 +55,19 @@ export function BiometricSettings() {
   const loadCredentials = async () => {
     try {
       const creds = await biometricAuthService.getRegisteredCredentials();
-      setCredentials(creds);
+      // Ensure all credentials have proper structure
+      const sanitizedCreds = creds.map(cred => ({
+        ...cred,
+        encryptedCredentials: cred.encryptedCredentials || {
+          email: cred.user_email || '',
+          encryptedPassword: '',
+          salt: '',
+        }
+      }));
+      setCredentials(sanitizedCreds);
     } catch (error) {
       console.error('Failed to load biometric credentials:', error);
+      setCredentials([]); // Fallback to empty array
     }
   };
 
@@ -192,49 +202,52 @@ export function BiometricSettings() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
             <Fingerprint className="h-5 w-5" />
-            Biometric Authentication
-          </CardTitle>
-          <CardDescription>
+          Biometric Authentication
+        </CardTitle>
+        <CardDescription>
             Use your device's biometric authentication to sign in instantly without entering your password.
             Your password is encrypted and stored securely on this device only.
-          </CardDescription>
-        </CardHeader>
+        </CardDescription>
+      </CardHeader>
         <CardContent className="space-y-4">
           {credentials.length === 0 ? (
             <div className="space-y-4">
               <div className="text-sm text-muted-foreground">
                 No biometric credentials registered for this account.
-              </div>
+            </div>
               <Button onClick={handleEnableBiometric} disabled={isLoading}>
                 <Fingerprint className="h-4 w-4 mr-2" />
                 Enable Biometric Login
-              </Button>
-            </div>
-          ) : (
+          </Button>
+              </div>
+            ) : (
             <div className="space-y-4">
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">Registered Devices</h4>
                 {credentials.map((credential) => (
-                  <div key={credential.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
+                <div key={credential.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
                       <Fingerprint className="h-4 w-4" />
-                      <div>
+                    <div>
                         <div className="font-medium">{credential.name}</div>
                         <div className="text-sm text-muted-foreground">
                           Created: {new Date(credential.created_at).toLocaleDateString()}
-                          {credential.last_used_at && (
+                        {credential.last_used_at && (
                             <span className="ml-2">
                               • Last used: {new Date(credential.last_used_at).toLocaleDateString()}
                             </span>
-                          )}
+                        )}
                         </div>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant="secondary" className="text-xs">
-                            {credential.encryptedCredentials?.encryptedPassword ? 'Passwordless' : 'Auto-fill only'}
+                            {credential.encryptedCredentials && 
+                             credential.encryptedCredentials.encryptedPassword && 
+                             credential.encryptedCredentials.encryptedPassword.length > 0 
+                             ? 'Passwordless' : 'Auto-fill only'}
                           </Badge>
                         </div>
                       </div>
@@ -249,14 +262,14 @@ export function BiometricSettings() {
                     </Button>
                   </div>
                 ))}
-              </div>
-              
+                  </div>
+                  
               <Button onClick={handleEnableBiometric} variant="outline" disabled={isLoading}>
                 <Fingerprint className="h-4 w-4 mr-2" />
                 Add Another Device
-              </Button>
-            </div>
-          )}
+                      </Button>
+          </div>
+        )}
         </CardContent>
       </Card>
 
