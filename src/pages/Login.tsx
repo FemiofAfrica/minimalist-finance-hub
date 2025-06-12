@@ -142,6 +142,9 @@ const Login = () => {
 
   const handleCaptchaError = (error: unknown) => {
     console.warn('[Turnstile] Error:', error);
+    console.warn('[Turnstile] User Agent:', navigator.userAgent);
+    console.warn('[Turnstile] Current Domain:', window.location.hostname);
+    console.warn('[Turnstile] Site Key:', import.meta.env.VITE_TURNSTILE_SITE_KEY?.substring(0, 10) + '...');
     resetCaptcha();
   };
 
@@ -470,6 +473,28 @@ const Login = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Debug Turnstile loading
+  useEffect(() => {
+    console.log('[Turnstile Debug] Environment check:', {
+      siteKey: import.meta.env.VITE_TURNSTILE_SITE_KEY ? 'Present' : 'Missing',
+      siteKeyFirst10: import.meta.env.VITE_TURNSTILE_SITE_KEY?.substring(0, 10),
+      hostname: window.location.hostname,
+      protocol: window.location.protocol,
+      userAgent: navigator.userAgent.includes('Dia') ? 'Dia Browser' : 'Other Browser'
+    });
+
+    // Check if Turnstile script loads
+    const checkTurnstileScript = () => {
+      const scripts = document.querySelectorAll('script[src*="turnstile"]');
+      console.log('[Turnstile Debug] Script elements found:', scripts.length);
+      scripts.forEach((script, index) => {
+        console.log(`[Turnstile Debug] Script ${index}:`, script.src);
+      });
+    };
+
+    setTimeout(checkTurnstileScript, 2000); // Check after 2 seconds
+  }, []);
+
   return (
     <PublicLayout>
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#e8f1df] w-screen h-screen m-0 p-0 overflow-auto auth-page">
@@ -641,28 +666,40 @@ const Login = () => {
             {/* Cloudflare Turnstile Captcha */}
             <div className="flex justify-center mb-4">
               {import.meta.env.VITE_TURNSTILE_SITE_KEY ? (
-                <Turnstile
-                  ref={setTurnstileRef}
-                  siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
-                  onSuccess={handleCaptchaSuccess}
-                  onError={handleCaptchaError}
-                  onExpire={() => {
-                    console.log('[Turnstile] Token expired');
-                    resetCaptcha();
-                  }}
-                  onTimeout={() => {
-                    console.warn('[Turnstile] Timeout');
-                    resetCaptcha();
-                  }}
-                  options={{
-                    theme: 'light',
-                    size: 'normal',
-                    tabIndex: 0
-                  }}
-                />
+                <>
+                  {isDev && (
+                    <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded mb-2 text-center">
+                      Debug: Turnstile Site Key: {import.meta.env.VITE_TURNSTILE_SITE_KEY.substring(0, 10)}...
+                    </div>
+                  )}
+                  <Turnstile
+                    ref={setTurnstileRef}
+                    siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                    onSuccess={handleCaptchaSuccess}
+                    onError={handleCaptchaError}
+                    onExpire={() => {
+                      console.log('[Turnstile] Token expired');
+                      resetCaptcha();
+                    }}
+                    onTimeout={() => {
+                      console.warn('[Turnstile] Timeout');
+                      resetCaptcha();
+                    }}
+                    options={{
+                      theme: 'light',
+                      size: 'normal',
+                      tabIndex: 0
+                    }}
+                  />
+                </>
               ) : (
                 <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
                   Captcha configuration missing. Please contact support.
+                  {isDev && (
+                    <div className="text-xs mt-1">
+                      Debug: VITE_TURNSTILE_SITE_KEY = {String(import.meta.env.VITE_TURNSTILE_SITE_KEY)}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

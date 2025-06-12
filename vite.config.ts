@@ -60,7 +60,8 @@ export default defineConfig(({ mode }) => {
         name: 'vite-plugin-env-compat',
         config: () => ({
           define: {
-            'process.env': env
+            'process.env': env,
+            'import.meta.env.VITE_TURNSTILE_SITE_KEY': JSON.stringify(env.VITE_TURNSTILE_SITE_KEY),
           }
         })
       }

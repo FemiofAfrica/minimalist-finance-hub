@@ -48,7 +48,7 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       // Expose specific environment variables to the client
-      'import.meta.env.TURNSTILE_SITE_KEY': JSON.stringify(env.TURNSTILE_SITE_KEY),
+      'import.meta.env.VITE_TURNSTILE_SITE_KEY': JSON.stringify(env.VITE_TURNSTILE_SITE_KEY),
       'import.meta.env.MIXPANEL_PROD_TOKEN': JSON.stringify(env.MIXPANEL_PROD_TOKEN),
       'import.meta.env.MIXPANEL_DEV_TOKEN': JSON.stringify(env.MIXPANEL_DEV_TOKEN),
     },
