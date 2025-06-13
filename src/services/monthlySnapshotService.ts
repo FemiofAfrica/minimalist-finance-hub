@@ -1,4 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
+import { getComparativeInsights } from './comparativeAnalysisService';
+import type { ComparativeInsights } from '@/types/comparativeData';
+import type { MonthlySnapshotWithComparative, CurrentMonthDataWithComparative } from '@/types/chartData';
 
 export interface MonthlySnapshot {
   snapshot_id: string;
@@ -111,6 +114,177 @@ export const getMonthlySnapshots = async (limit: number = 12): Promise<MonthlySn
   }
 
   return data || [];
+};
+
+/**
+ * Get monthly snapshot with comparative insights
+ */
+export const getMonthlySnapshotWithComparative = async (
+  year: number, 
+  month: number
+): Promise<MonthlySnapshotWithComparative | null> => {
+  const snapshot = await getMonthlySnapshot(year, month);
+  if (!snapshot) return null;
+
+  try {
+    // Get comparative insights for this month
+    const comparative = await getComparativeInsights(year, month);
+    
+    return {
+      ...snapshot,
+      comparative
+    };
+  } catch (error) {
+    console.warn('Failed to get comparative insights for snapshot:', error);
+    // Return snapshot without comparative data if calculation fails
+    return snapshot;
+  }
+};
+
+/**
+ * Get monthly snapshots with comparative insights for the last N months
+ */
+export const getMonthlySnapshotsWithComparative = async (
+  limit: number = 12
+): Promise<MonthlySnapshotWithComparative[]> => {
+  const snapshots = await getMonthlySnapshots(limit);
+  
+  // Add comparative insights to each snapshot
+  const snapshotsWithComparative = await Promise.allSettled(
+    snapshots.map(async (snapshot): Promise<MonthlySnapshotWithComparative> => {
+      try {
+        const comparative = await getComparativeInsights(snapshot.year, snapshot.month);
+        return {
+          ...snapshot,
+          comparative
+        };
+      } catch (error) {
+        console.warn(`Failed to get comparative insights for ${snapshot.year}-${snapshot.month}:`, error);
+        // Return snapshot without comparative data if calculation fails
+        return snapshot;
+      }
+    })
+  );
+
+  // Extract successful results and maintain order
+  return snapshotsWithComparative
+    .map((result, index) => 
+      result.status === 'fulfilled' ? result.value : snapshots[index]
+    );
+};
+
+/**
+ * Get historical monthly snapshots with comparative insights
+ */
+export const getHistoricalMonthlySnapshotsWithComparative = async (
+  limit: number = 12
+): Promise<MonthlySnapshotWithComparative[]> => {
+  const snapshots = await getHistoricalMonthlySnapshots(limit);
+  
+  // Add comparative insights to each snapshot
+  const snapshotsWithComparative = await Promise.allSettled(
+    snapshots.map(async (snapshot): Promise<MonthlySnapshotWithComparative> => {
+      try {
+        const comparative = await getComparativeInsights(snapshot.year, snapshot.month);
+        return {
+          ...snapshot,
+          comparative
+        };
+      } catch (error) {
+        console.warn(`Failed to get comparative insights for ${snapshot.year}-${snapshot.month}:`, error);
+        // Return snapshot without comparative data if calculation fails
+        return snapshot;
+      }
+    })
+  );
+
+  // Extract successful results and maintain order
+  return snapshotsWithComparative
+    .map((result, index) => 
+      result.status === 'fulfilled' ? result.value : snapshots[index]
+    );
+};
+
+/**
+ * Get current month data with comparative insights
+ */
+export const getCurrentMonthDataWithComparative = async (): Promise<CurrentMonthDataWithComparative> => {
+  const currentData = await getCurrentMonthData();
+  
+  try {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    
+    // Get comparative insights for current month
+    const comparative = await getComparativeInsights(currentYear, currentMonth);
+    
+    return {
+      ...currentData,
+      comparative
+    };
+  } catch (error) {
+    console.warn('Failed to get comparative insights for current month:', error);
+    // Return current data without comparative insights if calculation fails
+    return currentData;
+  }
+};
+
+/**
+ * Cache for comparative insights to avoid repeated calculations
+ */
+const comparativeCache = new Map<string, { data: ComparativeInsights; timestamp: number }>();
+const COMPARATIVE_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+const getComparativeCacheKey = (year: number, month: number): string => {
+  return `comparative_${year}_${month}`;
+};
+
+const isCacheValid = (timestamp: number): boolean => {
+  return Date.now() - timestamp < COMPARATIVE_CACHE_TTL;
+};
+
+/**
+ * Get comparative insights with caching
+ */
+const getCachedComparativeInsights = async (
+  year: number, 
+  month: number
+): Promise<ComparativeInsights> => {
+  const cacheKey = getComparativeCacheKey(year, month);
+  const cached = comparativeCache.get(cacheKey);
+  
+  if (cached && isCacheValid(cached.timestamp)) {
+    return cached.data;
+  }
+  
+  // Calculate fresh insights
+  const insights = await getComparativeInsights(year, month);
+  
+  // Cache the results
+  comparativeCache.set(cacheKey, {
+    data: insights,
+    timestamp: Date.now()
+  });
+  
+  return insights;
+};
+
+/**
+ * Clear comparative insights cache
+ */
+export const clearComparativeCache = (): void => {
+  comparativeCache.clear();
+};
+
+/**
+ * Get cache statistics for debugging
+ */
+export const getComparativeCacheStats = (): { size: number; keys: string[] } => {
+  return {
+    size: comparativeCache.size,
+    keys: Array.from(comparativeCache.keys())
+  };
 };
 
 /**

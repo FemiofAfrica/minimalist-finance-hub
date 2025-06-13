@@ -7,6 +7,25 @@ export type {
   TimePeriod
 } from '@/services/chartDataService';
 
+// Re-export monthly snapshot types
+export type {
+  MonthlySnapshot,
+  CurrentMonthData
+} from '@/services/monthlySnapshotService';
+
+// Import comparative data types
+import type { ComparativeInsights } from '@/types/comparativeData';
+
+// Extended monthly snapshot interface with comparative data
+export interface MonthlySnapshotWithComparative extends MonthlySnapshot {
+  comparative?: ComparativeInsights;
+}
+
+// Extended current month data with comparative insights
+export interface CurrentMonthDataWithComparative extends CurrentMonthData {
+  comparative?: ComparativeInsights;
+}
+
 // Additional chart-specific types
 export interface ChartColors {
   primary: string;
