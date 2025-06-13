@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { getMonthlySnapshots, MonthlySnapshot } from './monthlySnapshotService';
+import { getHistoricalMonthlySnapshots, MonthlySnapshot } from './monthlySnapshotService';
 
 // Base currency for the application (all amounts in database are stored in NGN)
 const APP_BASE_CURRENCY = "NGN";
@@ -160,7 +160,7 @@ export class ChartDataService {
     if (cached) return cached;
 
     try {
-      const snapshots = await getMonthlySnapshots(timePeriod);
+      const snapshots = await getHistoricalMonthlySnapshots(timePeriod);
       
       if (!snapshots || snapshots.length === 0) {
         return [];
@@ -222,7 +222,7 @@ export class ChartDataService {
     if (cached) return cached;
 
     try {
-      const snapshots = await getMonthlySnapshots(timePeriod);
+      const snapshots = await getHistoricalMonthlySnapshots(timePeriod);
       
       if (!snapshots || snapshots.length === 0) {
         return [];
@@ -284,7 +284,7 @@ export class ChartDataService {
     if (cached) return cached;
 
     try {
-      const snapshots = await getMonthlySnapshots(timePeriod);
+      const snapshots = await getHistoricalMonthlySnapshots(timePeriod);
       
       if (!snapshots || snapshots.length === 0) {
         return [];

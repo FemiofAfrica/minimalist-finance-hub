@@ -8,14 +8,14 @@ import {
   getCategorySpendingData,
   clearChartDataCache
 } from '@/services/chartDataService';
-import { getMonthlySnapshots } from '@/services/monthlySnapshotService';
+import { getHistoricalMonthlySnapshots } from '@/services/monthlySnapshotService';
 import { supabase } from '@/integrations/supabase/client';
 
 // Mock dependencies
 vi.mock('@/services/monthlySnapshotService');
 vi.mock('@/integrations/supabase/client');
 
-const mockGetMonthlySnapshots = vi.mocked(getMonthlySnapshots);
+const mockGetHistoricalMonthlySnapshots = vi.mocked(getHistoricalMonthlySnapshots);
 const mockSupabase = vi.mocked(supabase);
 
 // Mock data
@@ -97,7 +97,7 @@ describe('ChartDataService', () => {
     chartDataService.clearCache();
     
     // Setup default mocks
-    mockGetMonthlySnapshots.mockResolvedValue(mockMonthlySnapshots);
+    mockGetHistoricalMonthlySnapshots.mockResolvedValue(mockMonthlySnapshots);
     
     mockSupabase.auth.getUser.mockResolvedValue({
       data: { user: { id: 'user1' } },
@@ -156,7 +156,7 @@ describe('ChartDataService', () => {
 
     it('should sort data chronologically', async () => {
       const unsortedData = [...mockMonthlySnapshots].reverse();
-      mockGetMonthlySnapshots.mockResolvedValueOnce(unsortedData);
+      mockGetHistoricalMonthlySnapshots.mockResolvedValueOnce(unsortedData);
       
       const result = await chartDataService.getBalanceTrendData(TIME_PERIODS.THREE_MONTHS, mockExchangeRates);
       
@@ -166,7 +166,7 @@ describe('ChartDataService', () => {
     });
 
     it('should return empty array when no snapshots available', async () => {
-      mockGetMonthlySnapshots.mockResolvedValueOnce([]);
+      mockGetHistoricalMonthlySnapshots.mockResolvedValueOnce([]);
       
       const result = await chartDataService.getBalanceTrendData(TIME_PERIODS.THREE_MONTHS, mockExchangeRates);
       
@@ -181,7 +181,7 @@ describe('ChartDataService', () => {
     });
 
     it('should throw error when monthly snapshots service fails', async () => {
-      mockGetMonthlySnapshots.mockRejectedValueOnce(new Error('Database error'));
+      mockGetHistoricalMonthlySnapshots.mockRejectedValueOnce(new Error('Database error'));
       
       await expect(chartDataService.getBalanceTrendData(TIME_PERIODS.THREE_MONTHS, mockExchangeRates))
         .rejects.toThrow('Failed to fetch balance trend data');
@@ -330,7 +330,7 @@ describe('ChartDataService', () => {
       const result2 = await chartDataService.getBalanceTrendData(TIME_PERIODS.THREE_MONTHS, mockExchangeRates);
       
       expect(result1).toEqual(result2);
-      expect(mockGetMonthlySnapshots).toHaveBeenCalledTimes(1); // Should only call service once
+      expect(mockGetHistoricalMonthlySnapshots).toHaveBeenCalledTimes(1); // Should only call service once
     });
 
     it('should clear cache when requested', () => {
@@ -369,7 +369,7 @@ describe('ChartDataService', () => {
 
   describe('Error handling', () => {
     it('should handle network errors gracefully', async () => {
-      mockGetMonthlySnapshots.mockRejectedValueOnce(new Error('Network error'));
+      mockGetHistoricalMonthlySnapshots.mockRejectedValueOnce(new Error('Network error'));
       
       await expect(chartDataService.getBalanceTrendData(TIME_PERIODS.THREE_MONTHS, mockExchangeRates))
         .rejects.toThrow('Failed to fetch balance trend data');
