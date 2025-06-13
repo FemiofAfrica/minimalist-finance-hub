@@ -75,8 +75,6 @@ const Reports = () => {
         <Skeleton className={`${isMobile ? 'h-64' : 'h-96'} w-full`} />
       </div>
       <Skeleton className={`${isMobile ? 'h-64' : 'h-96'} w-full`} />
-      {/* Comparative insights skeleton */}
-      <Skeleton className={`${isMobile ? 'h-64' : 'h-96'} w-full`} />
     </div>
   );
 
@@ -219,14 +217,9 @@ const Reports = () => {
             </Card>
           </div>
 
-          {/* Comparative Insights Section */}
-          <ComparisonMetrics 
-            showCurrentMonth={true}
-            showDetailed={!isMobile}
-            className="w-full"
-          />
+
             
-          {/* Future Reports Section */}
+            {/* Future Reports Section */}
           <Card 
             className={`text-center bg-gradient-to-r from-green-50 to-blue-50 border-green-200`}
             style={{ padding: `${isMobile ? '1.5rem' : '2rem'} ${isMobile ? '1.5rem' : '2rem'}` }}
@@ -271,4 +264,4 @@ const Reports = () => {
   );
 };
 
-export default Reports; 
+export default Reports;

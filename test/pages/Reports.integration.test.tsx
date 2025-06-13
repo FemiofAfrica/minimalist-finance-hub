@@ -5,10 +5,13 @@ import Reports from '@/pages/Reports';
 import { hasMultipleMonthsOfData } from '@/services/monthlySnapshotService';
 import { chartDataService } from '@/services/chartDataService';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { CurrencyProvider } from '@/contexts/CurrencyContext';
+import * as monthlySnapshotService from '@/services/monthlySnapshotService';
 
 // Mock the services and contexts
 vi.mock('@/services/monthlySnapshotService', () => ({
-  hasMultipleMonthsOfData: vi.fn()
+  hasMultipleMonthsOfData: vi.fn(),
+  getMonthlySnapshotWithComparative: vi.fn()
 }));
 
 vi.mock('@/services/chartDataService', () => ({
@@ -86,12 +89,58 @@ vi.mock('lucide-react', () => ({
   PieChart: () => <div data-testid="pie-chart-icon">PieChart</div>
 }));
 
+// Mock the ComparisonMetrics component
+vi.mock('@/components/dashboard/ComparisonMetrics', () => ({
+  default: ({ showCurrentMonth, showDetailed, className }: any) => (
+    <div 
+      data-testid="comparison-metrics" 
+      data-current-month={showCurrentMonth}
+      data-detailed={showDetailed}
+      className={className}
+    >
+      Comparison Metrics Component
+    </div>
+  )
+}));
+
+// Mock hooks
+vi.mock('@/hooks/useTimePeriodData', () => ({
+  useTimePeriodData: () => ({
+    currentPeriod: 3,
+    availableData: { months: 3, years: 1 },
+    loading: false,
+    setPeriod: vi.fn()
+  })
+}));
+
+vi.mock('@/hooks/useResponsive', () => ({
+  useResponsive: () => ({
+    isMobile: false,
+    getResponsiveSpacing: () => ({
+      cardGap: '1rem',
+      containerPadding: '1rem'
+    })
+  })
+}));
+
+vi.mock('@/utils/performance', () => ({
+  usePerformanceMetrics: () => ({
+    startMeasurement: vi.fn(),
+    endMeasurement: vi.fn()
+  })
+}));
+
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
-  <BrowserRouter>{children}</BrowserRouter>
+  <BrowserRouter>
+    <CurrencyProvider>
+      {children}
+    </CurrencyProvider>
+  </BrowserRouter>
 );
 
 describe('Reports Page Integration', () => {
-  const mockHasMultipleMonthsOfData = hasMultipleMonthsOfData as any;
+  const mockHasMultipleMonthsOfData = vi.mocked(monthlySnapshotService.hasMultipleMonthsOfData);
+  const mockGetMonthlySnapshotWithComparative = vi.mocked(monthlySnapshotService.getMonthlySnapshotWithComparative);
   const mockChartDataService = chartDataService as any;
   const mockUseCurrency = useCurrency as any;
 
@@ -132,76 +181,178 @@ describe('Reports Page Integration', () => {
   });
 
   describe('Enhanced Reports Layout', () => {
-    it('renders all chart components when user has multiple months of data', async () => {
+    beforeEach(() => {
       mockHasMultipleMonthsOfData.mockResolvedValue(true);
-      
+      mockGetMonthlySnapshotWithComparative.mockResolvedValue({
+        id: '1',
+        user_id: 'user1',
+        year: 2025,
+        month: 1,
+        total_income: 5000,
+        total_expenses: 3000,
+        net_balance: 2000,
+        transaction_count: 25,
+        created_at: '2025-01-27T00:00:00Z',
+        updated_at: '2025-01-27T00:00:00Z',
+        comparative: {
+          monthOverMonth: {
+            income: {
+              current: 5000,
+              previous: 4000,
+              absoluteDifference: 1000,
+              percentageChange: 25,
+              trend: 'up',
+              dataAvailable: true
+            },
+            expenses: {
+              current: 3000,
+              previous: 3500,
+              absoluteDifference: -500,
+              percentageChange: -14.3,
+              trend: 'down',
+              dataAvailable: true
+            },
+            balance: {
+              current: 2000,
+              previous: 500,
+              absoluteDifference: 1500,
+              percentageChange: 300,
+              trend: 'up',
+              dataAvailable: true
+            }
+          }
+        }
+      });
+    });
+
+    it('should render all chart components including ComparisonMetrics', async () => {
       render(
         <TestWrapper>
           <Reports />
         </TestWrapper>
       );
-      
+
       await waitFor(() => {
         expect(screen.getByText('Financial Reports')).toBeInTheDocument();
       });
-      
-      // Check all chart components are rendered
+
+      // Check that all chart components are rendered
       expect(screen.getByTestId('balance-trend-chart')).toBeInTheDocument();
       expect(screen.getByTestId('income-expense-chart')).toBeInTheDocument();
       expect(screen.getByTestId('monthly-totals-chart')).toBeInTheDocument();
-      expect(screen.getByTestId('monthly-history-viewer')).toBeInTheDocument();
+      
+      // Check that ComparisonMetrics is rendered
+      expect(screen.getByTestId('comparison-metrics')).toBeInTheDocument();
     });
 
-    it('renders time period filter when data is available', async () => {
-      mockHasMultipleMonthsOfData.mockResolvedValue(true);
-      
+    it('should pass correct props to ComparisonMetrics component', async () => {
       render(
         <TestWrapper>
           <Reports />
         </TestWrapper>
       );
-      
+
       await waitFor(() => {
-        expect(screen.getByTestId('time-period-filter')).toBeInTheDocument();
+        const comparisonMetrics = screen.getByTestId('comparison-metrics');
+        expect(comparisonMetrics).toBeInTheDocument();
+        expect(comparisonMetrics).toHaveAttribute('data-current-month', 'true');
+        expect(comparisonMetrics).toHaveAttribute('data-detailed', 'true'); // Not mobile
+        expect(comparisonMetrics).toHaveClass('w-full');
       });
     });
 
-    it('displays proper section headers and descriptions', async () => {
-      mockHasMultipleMonthsOfData.mockResolvedValue(true);
-      
+    it('should render ComparisonMetrics between charts and future reports section', async () => {
       render(
         <TestWrapper>
           <Reports />
         </TestWrapper>
       );
-      
+
       await waitFor(() => {
+        const chartsContainer = screen.getByTestId('charts-container');
+        expect(chartsContainer).toBeInTheDocument();
+        
+        // Check that ComparisonMetrics is within the charts container
+        const comparisonMetrics = screen.getByTestId('comparison-metrics');
+        expect(chartsContainer).toContainElement(comparisonMetrics);
+        
+        // Check that "More Analytics Coming Soon" section is also present
+        expect(screen.getByText('More Analytics Coming Soon!')).toBeInTheDocument();
+      });
+    });
+
+    it('should maintain proper layout structure with ComparisonMetrics', async () => {
+      render(
+        <TestWrapper>
+          <Reports />
+        </TestWrapper>
+      );
+
+      await waitFor(() => {
+        // Check header
+        expect(screen.getByText('Financial Reports')).toBeInTheDocument();
+        expect(screen.getByText('Comprehensive visual analytics of your financial data')).toBeInTheDocument();
+        
+        // Check all sections are present
         expect(screen.getByText('Balance Trend')).toBeInTheDocument();
         expect(screen.getByText('Income vs Expenses')).toBeInTheDocument();
         expect(screen.getByText('Monthly Breakdown')).toBeInTheDocument();
-        expect(screen.getByText('Monthly History Details')).toBeInTheDocument();
+        expect(screen.getByTestId('comparison-metrics')).toBeInTheDocument();
+        expect(screen.getByText('More Analytics Coming Soon!')).toBeInTheDocument();
       });
-      
-      // Check descriptions
-      expect(screen.getByText('Track your account balance progression over time')).toBeInTheDocument();
-      expect(screen.getByText('Compare income and expense trends with detailed analysis')).toBeInTheDocument();
-      expect(screen.getByText('Monthly income and expense totals with summary statistics')).toBeInTheDocument();
+    });
+  });
+
+  describe('Basic Reports Layout', () => {
+    beforeEach(() => {
+      mockHasMultipleMonthsOfData.mockResolvedValue(false);
     });
 
-    it('renders icons for each chart section', async () => {
-      mockHasMultipleMonthsOfData.mockResolvedValue(true);
-      
+    it('should not render ComparisonMetrics when no historical data', async () => {
       render(
         <TestWrapper>
           <Reports />
         </TestWrapper>
       );
-      
+
       await waitFor(() => {
-        expect(screen.getByTestId('line-chart-icon')).toBeInTheDocument();
-        expect(screen.getByTestId('trending-up-icon')).toBeInTheDocument();
-        expect(screen.getByTestId('bar-chart-icon')).toBeInTheDocument();
-        expect(screen.getByTestId('pie-chart-icon')).toBeInTheDocument();
+        expect(screen.getByText('No Historical Data Yet')).toBeInTheDocument();
+      });
+
+      // ComparisonMetrics should not be rendered
+      expect(screen.queryByTestId('comparison-metrics')).not.toBeInTheDocument();
+      
+      // Charts should not be rendered either
+      expect(screen.queryByTestId('balance-trend-chart')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('income-expense-chart')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('monthly-totals-chart')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Loading States', () => {
+    it('should include ComparisonMetrics skeleton in loading state', async () => {
+      mockHasMultipleMonthsOfData.mockResolvedValue(true);
+      
+      // Mock the useTimePeriodData hook to return loading state
+      vi.doMock('@/hooks/useTimePeriodData', () => ({
+        useTimePeriodData: () => ({
+          currentPeriod: 3,
+          availableData: { months: 3, years: 1 },
+          loading: true, // Loading state
+          setPeriod: vi.fn()
+        })
+      }));
+
+      render(
+        <TestWrapper>
+          <Reports />
+        </TestWrapper>
+      );
+
+      await waitFor(() => {
+        // Should show loading skeletons
+        const skeletons = screen.getAllByTestId('skeleton');
+        expect(skeletons.length).toBeGreaterThan(3); // Should include skeleton for ComparisonMetrics
       });
     });
   });

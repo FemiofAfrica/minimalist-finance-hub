@@ -12,7 +12,7 @@ This document lists all tasks associated with PBI 2.
 | 2-2     | [Design and implement trend indicator components](./2-2.md) | Done | Create reusable UI components for displaying trend arrows, colors, and percentages |
 | 2-3     | [Extend monthly snapshot data model](./2-3.md) | Done | Add comparative metrics to existing monthly snapshot calculations |
 | 2-4     | [Create comparison metrics display component](./2-4.md) | Done | Build main component to display all comparative insights with visual indicators |
-| 2-5     | [Integrate comparative insights into Reports page](./2-5.md) | Proposed | Add comparative insights section to existing Reports layout |
+| 2-5     | [Integrate comparative insights into Reports page](./2-5.md) | Done | Add comparative insights section to existing Reports layout |
 | 2-6     | [Implement contextual explanations system](./2-6.md) | Proposed | Add intelligent explanations for significant changes and trends |
 | 2-7     | [Add responsive design and accessibility](./2-7.md) | Proposed | Ensure comparative insights work across all devices and meet accessibility standards |
 | 2-8     | [Handle edge cases and data validation](./2-8.md) | Proposed | Implement proper handling for missing data, zero values, and insufficient history |
