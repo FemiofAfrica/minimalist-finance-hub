@@ -317,7 +317,7 @@ const MonthlyTotalsBarChart = memo(({
                       </div>
                       <div className="flex justify-between items-center border-t pt-2">
                         <span className="text-sm font-medium">Net:</span>
-                        <span className={`font-bold ${data.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <span className={`font-bold ${data.net >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
                           {netUsd !== null ? formatPossiblyConvertedCurrency(netUsd) : "N/A"}
                         </span>
                       </div>
@@ -388,7 +388,7 @@ const MonthlyTotalsBarChart = memo(({
               {processedData.map((entry, index) => (
                 <Cell 
                   key={`net-${index}`} 
-                  fill={entry.net >= 0 ? "#22c55e" : "#ef4444"}
+                  fill={entry.net >= 0 ? "#8b5cf6" : "#ef4444"}
                 />
               ))}
             </Bar>
