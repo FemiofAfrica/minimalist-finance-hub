@@ -16,4 +16,4 @@ This document lists all tasks associated with PBI 2.
 | 2-6     | [Implement contextual explanations system](./2-6.md) | Done | Add intelligent explanations for significant changes and trends |
 | 2-7     | [Add responsive design and accessibility](./2-7.md) | Done | Ensure comparative insights work across all devices and meet accessibility standards |
 | 2-8     | [Handle edge cases and data validation](./2-8.md) | Done | Implement proper handling for missing data, zero values, and insufficient history |
-| 2-9     | [E2E CoS Test for Comparative Insights](./2-9.md) | Proposed | Comprehensive end-to-end testing to verify all acceptance criteria are met | 
+| 2-9     | [E2E CoS Test for Comparative Insights](./2-9.md) | Done | Comprehensive end-to-end testing to verify all acceptance criteria are met | 
