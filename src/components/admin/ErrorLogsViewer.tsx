@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { RefreshCw, Calendar, AlertTriangle, CheckCircle, XCircle, Bug } from 'lucide-react'
+import { RefreshCw, Calendar, AlertTriangle, CheckCircle, XCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import errorNotificationService from '@/services/errorNotificationService'
@@ -122,28 +122,7 @@ const ErrorLogsViewer: React.FC = () => {
     }
   }
 
-  // Test error function for development/testing
-  const testErrorLogging = async () => {
-    try {
-      await errorNotificationService.reportError({
-        message: 'Test error from Error Logs Viewer',
-        url: window.location.href,
-        userAgent: navigator.userAgent,
-        errorType: 'react',
-        severity: 'medium',
-        additionalContext: {
-          component: 'ErrorLogsViewer',
-          action: 'Test Error Button',
-          timestamp: new Date().toISOString()
-        }
-      });
 
-      toast.success('Test error logged successfully! Refresh to see it.');
-    } catch (error) {
-      console.error('Failed to log test error:', error);
-      toast.error('Failed to log test error');
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -152,13 +131,13 @@ const ErrorLogsViewer: React.FC = () => {
         <h2 className="text-2xl font-bold mb-2">🚨 Error Logs</h2>
         <p className="text-muted-foreground">Monitor and manage application errors</p>
         <div className="flex justify-center gap-2 mt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={testErrorLogging}
+          <Button 
+            variant="outline" 
+            onClick={fetchErrorLogs}
+            className="flex items-center gap-2"
           >
-            <Bug className="h-4 w-4 mr-2" />
-            Test Error Logging
+            <RefreshCw className="h-4 w-4" />
+            Refresh
           </Button>
         </div>
       </div>

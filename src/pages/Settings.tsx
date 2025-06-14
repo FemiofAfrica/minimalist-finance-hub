@@ -335,36 +335,7 @@ export default function Settings() {
     }
   };
   
-  // Test error function for development/testing
-  const testErrorLogging = async () => {
-    try {
-      // Test different types of errors
-      await errorNotificationService.reportError({
-        message: 'Test error from Settings page',
-        url: window.location.href,
-        userAgent: navigator.userAgent,
-        errorType: 'react',
-        severity: 'medium',
-        additionalContext: {
-          component: 'Settings',
-          action: 'Test Error Button',
-          timestamp: new Date().toISOString()
-        }
-      });
 
-      toast({
-        title: "Test error logged",
-        description: "Check the Error Logs tab to see the test error",
-      });
-    } catch (error) {
-      console.error('Failed to log test error:', error);
-      toast({
-        title: "Test failed",
-        description: "Could not log test error",
-        variant: "destructive",
-      });
-    }
-  };
   
   return (
     <DashboardLayout>
