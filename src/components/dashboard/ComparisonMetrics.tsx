@@ -4,12 +4,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Calendar, TrendingUp } from "lucide-react";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { useResponsive } from "@/hooks/useResponsive";
+import { cn } from "@/lib/utils";
 import { getMonthlySnapshotWithComparative } from '@/services/monthlySnapshotService';
-import type { MonthlySnapshotWithComparative } from '@/types/chartData';
+import { explanationService, createExplanationContext } from '@/services/explanationService';
+import { isValidNumber, sanitizeNumber, validateComparativeData } from '@/utils/dataValidation';
+import { formatCurrencySafe, formatPercentageSafe } from '@/utils/currencyUtils';
+import type { MonthlySnapshotWithComparative, FinancialExplanation } from '@/types/chartData';
 import type { ComparativeInsights } from '@/types/comparativeData';
 import MetricCard from './MetricCard';
 import ComparisonPeriod from './ComparisonPeriod';
 import DataAvailability from './DataAvailability';
+import ExplanationCard from './ExplanationCard';
 
 interface ComparisonMetricsProps {
   /** Year to display comparative metrics for */
@@ -22,6 +28,8 @@ interface ComparisonMetricsProps {
   className?: string;
   /** Whether to show detailed breakdown */
   showDetailed?: boolean;
+  /** Whether to show explanations */
+  showExplanations?: boolean;
 }
 
 const ComparisonMetrics: React.FC<ComparisonMetricsProps> = ({
@@ -29,12 +37,15 @@ const ComparisonMetrics: React.FC<ComparisonMetricsProps> = ({
   month,
   showCurrentMonth = true,
   className = '',
-  showDetailed = true
+  showDetailed = true,
+  showExplanations = true
 }) => {
   const [data, setData] = useState<MonthlySnapshotWithComparative | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [explanations, setExplanations] = useState<FinancialExplanation[]>([]);
   const { formatPossiblyConvertedCurrency } = useCurrency();
+  const { isMobile, isTablet } = useResponsive();
 
   // Determine target year and month
   const targetDate = useMemo(() => {
@@ -47,6 +58,14 @@ const ComparisonMetrics: React.FC<ComparisonMetricsProps> = ({
       month: month || new Date().getMonth() + 1 
     };
   }, [showCurrentMonth, year, month]);
+
+  // Generate month names for context
+  const getMonthName = (year: number, month: number) => {
+    return new Date(year, month - 1).toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long' 
+    });
+  };
 
   // Fetch comparative data
   useEffect(() => {
@@ -61,16 +80,43 @@ const ComparisonMetrics: React.FC<ComparisonMetricsProps> = ({
         );
         
         setData(snapshot);
+
+        // Generate explanations if comparative data is available
+        if (snapshot?.comparative && showExplanations) {
+          const currentMonth = getMonthName(targetDate.year, targetDate.month);
+          const previousMonth = getMonthName(
+            targetDate.month === 1 ? targetDate.year - 1 : targetDate.year,
+            targetDate.month === 1 ? 12 : targetDate.month - 1
+          );
+
+          // Create explanation context
+          const context = createExplanationContext(
+            currentMonth,
+            previousMonth,
+            6 // Assume 6 months of data for now - could be made dynamic
+          );
+
+          // Generate explanations
+          const generatedExplanations = explanationService.generateExplanations(
+            snapshot.comparative,
+            context
+          );
+
+          setExplanations(generatedExplanations);
+        } else {
+          setExplanations([]);
+        }
       } catch (err) {
         console.error('Failed to fetch comparative metrics:', err);
         setError('Failed to load comparative insights. Please try again.');
+        setExplanations([]);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [targetDate.year, targetDate.month]);
+  }, [targetDate.year, targetDate.month, showExplanations]);
 
   // Loading state
   if (isLoading) {
@@ -89,6 +135,7 @@ const ComparisonMetrics: React.FC<ComparisonMetricsProps> = ({
               <Skeleton key={i} className="h-32" />
             ))}
           </div>
+          {showExplanations && <Skeleton className="h-40 w-full" />}
         </CardContent>
       </Card>
     );
@@ -167,14 +214,30 @@ const ComparisonMetrics: React.FC<ComparisonMetricsProps> = ({
         <ComparisonPeriod year={targetDate.year} month={targetDate.month} />
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Explanations Section */}
+        {showExplanations && explanations.length > 0 && (
+          <ExplanationCard
+            explanations={explanations}
+            title="What This Means"
+            defaultExpanded={false}
+            showConfidence={false}
+            maxVisible={2}
+            className="mb-6"
+          />
+        )}
+
         {/* Month-over-Month Comparisons */}
         {comparative.monthOverMonth && (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
+            <h3 className="text-lg font-semibold flex items-center gap-2" id="month-over-month-heading">
+              <Calendar className="w-4 h-4" aria-hidden="true" />
               Month-over-Month Changes
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div 
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+              role="region"
+              aria-labelledby="month-over-month-heading"
+            >
               <MetricCard
                 title="Income Change"
                 value={formatPossiblyConvertedCurrency(comparative.monthOverMonth.income.absoluteDifference)}

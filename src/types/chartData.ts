@@ -198,6 +198,49 @@ export type ChartError =
   | 'NETWORK_ERROR'
   | 'AUTHENTICATION_ERROR';
 
+// Explanation system types
+export type ExplanationType = 'positive' | 'negative' | 'neutral' | 'warning';
+
+export type ChangeSignificance = 'minor' | 'moderate' | 'significant' | 'major';
+
+export interface FinancialExplanation {
+  id: string;
+  type: ExplanationType;
+  significance: ChangeSignificance;
+  title: string;
+  description: string;
+  recommendation?: string;
+  confidence: number; // 0-1 scale
+  category: 'income' | 'expenses' | 'balance' | 'trend';
+  metadata?: {
+    changePercentage?: number;
+    previousValue?: number;
+    currentValue?: number;
+    timeframe?: string;
+    relatedCategories?: string[];
+  };
+}
+
+export interface ExplanationContext {
+  currentMonth: string;
+  previousMonth: string;
+  hasHistoricalData: boolean;
+  dataQuality: 'excellent' | 'good' | 'limited' | 'poor';
+  availableMonths: number;
+}
+
+export interface ExplanationConfig {
+  significanceThresholds: {
+    minor: number;    // 5%
+    moderate: number; // 15%
+    significant: number; // 25%
+    major: number;    // 50%
+  };
+  minimumConfidence: number; // 0.7
+  maxExplanationsPerMetric: number; // 3
+  enableRecommendations: boolean;
+}
+
 export interface ChartErrorInfo {
   type: ChartError;
   message: string;

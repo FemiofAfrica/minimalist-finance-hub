@@ -13,22 +13,34 @@ import {
   TrendThresholds,
   DEFAULT_TREND_THRESHOLDS
 } from '@/types/comparativeData';
+import { 
+  safePercentageChange, 
+  safeAbsoluteDifference, 
+  safeTrendDirection,
+  safeComparativeCalculation,
+  safeCurrencyFormat
+} from '@/utils/safeCalculations';
+import { 
+  isValidNumber, 
+  sanitizeNumber, 
+  validateFinancialData,
+  hasSufficientDataForComparison 
+} from '@/utils/dataValidation';
 
 /**
- * Calculate percentage change between two values
+ * Calculate percentage change between two values using safe calculations
  */
 export const getPercentageChange = (current: number, previous: number): number => {
-  if (previous === 0) {
-    return current === 0 ? 0 : 100; // 100% increase from zero, 0% if both are zero
-  }
-  return ((current - previous) / Math.abs(previous)) * 100;
+  const result = safePercentageChange(current, previous);
+  return result.value;
 };
 
 /**
- * Calculate absolute difference between two values
+ * Calculate absolute difference between two values using safe calculations
  */
 export const getAbsoluteDifference = (current: number, previous: number): number => {
-  return current - previous;
+  const result = safeAbsoluteDifference(current, previous);
+  return result.value;
 };
 
 /**
@@ -38,6 +50,11 @@ export const calculateTrendDirection = (
   changePercentage: number, 
   thresholds: TrendThresholds = DEFAULT_TREND_THRESHOLDS
 ): TrendDirection => {
+  // Validate input
+  if (!isValidNumber(changePercentage)) {
+    return { direction: 'neutral', strength: 'minimal', confidence: 'low' };
+  }
+
   const absChange = Math.abs(changePercentage);
   
   let direction: 'up' | 'down' | 'neutral';
@@ -72,23 +89,31 @@ export const calculateTrendDirection = (
 };
 
 /**
- * Create comparison metrics for a specific financial metric
+ * Create comparison metrics for a specific financial metric with safe calculations
  */
 const createComparisonMetrics = (
   current: number, 
   previous: number, 
   thresholds?: TrendThresholds
 ): ComparisonMetrics => {
-  const absoluteChange = getAbsoluteDifference(current, previous);
-  const percentageChange = getPercentageChange(current, previous);
-  const trend = calculateTrendDirection(percentageChange, thresholds);
+  // Sanitize inputs
+  const sanitizedCurrent = sanitizeNumber(current, 0);
+  const sanitizedPrevious = sanitizeNumber(previous, 0);
+
+  // Use safe calculations
+  const calculation = safeComparativeCalculation(sanitizedCurrent, sanitizedPrevious);
+  
+  // Calculate trend with validation
+  const trend = calculateTrendDirection(calculation.percentageChange, thresholds);
 
   return {
-    current,
-    previous,
-    absoluteChange,
-    percentageChange,
-    trend
+    current: calculation.current,
+    previous: calculation.previous,
+    absoluteChange: calculation.absoluteDifference,
+    percentageChange: calculation.percentageChange,
+    trend,
+    dataAvailable: calculation.dataAvailable,
+    calculationErrors: calculation.calculationErrors
   };
 };
 
