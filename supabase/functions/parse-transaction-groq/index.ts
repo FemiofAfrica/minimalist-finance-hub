@@ -517,8 +517,8 @@ function parseFallback(text: string): Response {
     if (potentialAmounts.length > 0) {
       // Use the largest amount (typically the transaction amount rather than account numbers)
       fallbackData.amount = Math.max(...potentialAmounts);
-      console.log("Fallback Parser - Extracted Amount:", fallbackData.amount); // DEBUG LOG
-    } else {
+    console.log("Fallback Parser - Extracted Amount:", fallbackData.amount); // DEBUG LOG
+  } else {
       console.log("Fallback Parser - No valid amounts found after parsing.");
     }
   } else {
@@ -653,18 +653,28 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
     }
 
     ALLOWED CATEGORIES (use EXACTLY these names):
-    - "Food & Dining" (restaurants, meals, takeout)
-    - "Transportation" (bus, taxi, uber, bolt, fuel, parking)
-    - "Entertainment" (movies, games, music, streaming like Netflix)
+    - "Food & Dining" (restaurants, meals, takeout, fast food)
+    - "Transportation" (bus, taxi, uber, bolt, fuel, parking, car maintenance)
+    - "Entertainment" (movies, games, music, streaming like Netflix, concerts)
     - "Utilities" (electricity, water, gas, internet, phone bills, AIRTIME, DATA)
-    - "Housing" (rent, mortgage, property maintenance)
-    - "Health" (medical, pharmacy, hospital, insurance)
-    - "Shopping" (clothes, electronics, general purchases)
-    - "Education" (school fees, books, courses)
-    - "Income" (general income, freelance, business)
-    - "Salary" (employment salary, wages)
+    - "Housing" (rent, mortgage, property maintenance, home repairs)
+    - "Health" (medical, pharmacy, hospital, insurance, doctor visits)
+    - "Shopping" (clothes, electronics, general purchases, retail)
+    - "Education" (school fees, books, courses, training, workshops)
+    - "Personal Care" (laundry, dry cleaning, haircut, beauty, spa, barber)
+    - "Household Services" (cleaning services, repairs, maintenance, gardening)
+    - "Professional Services" (legal, accounting, consulting, professional fees)
+    - "Travel" (flights, hotels, vacation, trips, travel expenses)
+    - "Fitness" (gym, sports, exercise equipment, fitness classes)
+    - "Insurance" (life, car, health, property insurance premiums)
+    - "Taxes" (income tax, property tax, government fees)
+    - "Investments" (stocks, bonds, mutual funds, investment fees)
+    - "Debt Payment" (loan payments, credit card payments, interest)
+    - "Charity" (donations, charitable giving, tithes)
+    - "Income" (general income, freelance, business, side income)
+    - "Salary" (employment salary, wages, bonuses)
     - "Transfer" (money movement between accounts)
-    - "Groceries" (food shopping, supermarket, market)
+    - "Groceries" (food shopping, supermarket, market, provisions)
 
     CRITICAL CATEGORY RULES:
     - AIRTIME, RECHARGE, DATA, PHONE BILLS → ALWAYS use "Utilities"
@@ -675,6 +685,16 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
     - Supermarket, Market shopping → "Groceries"
     - Salary, Employment income → "Salary"
     - General income sources → "Income"
+    - Laundry, Dry cleaning, Washing → "Personal Care"
+    - Haircut, Barber, Beauty salon, Spa → "Personal Care"
+    - Gym, Fitness, Exercise → "Fitness"
+    - Hotel, Flight, Travel → "Travel"
+    - Legal fees, Accounting, Professional consultation → "Professional Services"
+    - Cleaning service, Home repairs, Gardening → "Household Services"
+    - Insurance premiums → "Insurance"
+    - Tax payments → "Taxes"
+    - Loan payments, Credit card payments → "Debt Payment"
+    - Donations, Charity, Tithe → "Charity"
 
     RULES:
     1. Output ONLY the JSON object. No introductory text, explanations, apologies, or markdown code blocks.
@@ -740,6 +760,12 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
 
     Text: "Shoprite groceries purchase"
     JSON: { "description": "Shoprite groceries", "amount": 15000.00, "category_name": "Groceries", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
+
+    Text: "I paid 12000 for laundry"
+    JSON: { "description": "Laundry service", "amount": 12000.00, "category_name": "Personal Care", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
+
+    Text: "Gym membership fee"
+    JSON: { "description": "Gym membership", "amount": 5000.00, "category_name": "Fitness", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
 
     Transaction Text: "${text}"
   `;

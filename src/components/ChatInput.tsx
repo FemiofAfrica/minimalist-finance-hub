@@ -33,6 +33,65 @@ interface ChatInputProps {
   onTransactionAdded?: () => void; // Optional callback after successful addition
 }
 
+// Function to calculate string similarity (Levenshtein distance based)
+const calculateSimilarity = (str1: string, str2: string): number => {
+  const s1 = str1.toLowerCase();
+  const s2 = str2.toLowerCase();
+  
+  if (s1 === s2) return 1.0;
+  
+  const longer = s1.length > s2.length ? s1 : s2;
+  const shorter = s1.length > s2.length ? s2 : s1;
+  
+  if (longer.length === 0) return 1.0;
+  
+  const distance = levenshteinDistance(longer, shorter);
+  return (longer.length - distance) / longer.length;
+};
+
+// Levenshtein distance calculation
+const levenshteinDistance = (str1: string, str2: string): number => {
+  const matrix = Array.from({ length: str2.length + 1 }, (_, i) => [i]);
+  
+  for (let i = 0; i <= str1.length; i++) {
+    matrix[0][i] = i;
+  }
+  
+  for (let j = 1; j <= str2.length; j++) {
+    for (let i = 1; i <= str1.length; i++) {
+      if (str1.charAt(i - 1) === str2.charAt(j - 1)) {
+        matrix[j][i] = matrix[j - 1][i - 1];
+      } else {
+        matrix[j][i] = Math.min(
+          matrix[j - 1][i - 1] + 1,
+          matrix[j][i - 1] + 1,
+          matrix[j - 1][i] + 1
+        );
+      }
+    }
+  }
+  
+  return matrix[str2.length][str1.length];
+};
+
+// Function to find the best matching category
+const findBestCategoryMatch = (targetCategory: string, categories: any[]): any | null => {
+  const threshold = 0.7; // Minimum similarity threshold (70%)
+  let bestMatch = null;
+  let bestSimilarity = 0;
+  
+  for (const category of categories) {
+    const similarity = calculateSimilarity(targetCategory, category.name);
+    if (similarity > bestSimilarity && similarity >= threshold) {
+      bestSimilarity = similarity;
+      bestMatch = category;
+    }
+  }
+  
+  console.log(`Best match for "${targetCategory}": ${bestMatch?.name} (similarity: ${bestSimilarity.toFixed(2)})`);
+  return bestMatch;
+};
+
 const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
   // --- State ---
   const [input, setInput] = useState(""); // Current text in the input field
@@ -218,17 +277,42 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
       // Check if the category exists in the database
       const categoryTypeLower = parsedData.category_type.toLowerCase() as 'income' | 'expense' | 'transfer';
       
-      // Improved category lookup with type filter
-      const { data: existingCategory, error: categoryError } = await supabase
+      // Intelligent category lookup with fuzzy matching
+      let existingCategory = null;
+      let categoryError = null;
+      
+      // First try exact match
+      const { data: exactMatch, error: exactError } = await supabase
         .from('categories')
         .select('category_id, name, type')
         .eq('type', categoryTypeLower)
-        .ilike('name', parsedData.category_name)
+        .eq('name', parsedData.category_name)
         .maybeSingle();
       
-      if (categoryError) {
-        console.error('Error checking category:', categoryError);
-        // Continue even if there's an error - the backend will handle category creation
+      if (exactError) {
+        console.error('Error checking exact category match:', exactError);
+        categoryError = exactError;
+      } else if (exactMatch) {
+        existingCategory = exactMatch;
+        console.log('Found exact category match:', existingCategory);
+      } else {
+        // Try fuzzy matching if no exact match found
+        const { data: allCategories, error: allCategoriesError } = await supabase
+          .from('categories')
+          .select('category_id, name, type')
+          .eq('type', categoryTypeLower);
+        
+        if (allCategoriesError) {
+          console.error('Error fetching all categories for fuzzy matching:', allCategoriesError);
+          categoryError = allCategoriesError;
+        } else if (allCategories && allCategories.length > 0) {
+          // Find best fuzzy match
+          const fuzzyMatch = findBestCategoryMatch(parsedData.category_name, allCategories);
+          if (fuzzyMatch) {
+            existingCategory = fuzzyMatch;
+            console.log('Found fuzzy category match:', existingCategory);
+          }
+        }
       }
 
       // Log category check results to help debugging
@@ -237,7 +321,8 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
         searchedFor: { 
           name: parsedData.category_name, 
           type: categoryTypeLower 
-        } 
+        },
+        matchType: existingCategory ? (exactMatch ? 'exact' : 'fuzzy') : 'none'
       });
 
       // --- Account Handling ---
