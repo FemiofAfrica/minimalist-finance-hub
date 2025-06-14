@@ -669,7 +669,8 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
     - "Insurance" (life, car, health, property insurance premiums)
     - "Taxes" (income tax, property tax, government fees)
     - "Investments" (stocks, bonds, mutual funds, investment fees)
-    - "Debt Payment" (loan payments, credit card payments, interest)
+    - "Debt Payment" (loan repayments, credit card payments, interest payments)
+    - "Loans Received" (getting/receiving loans, borrowed money)
     - "Charity" (donations, charitable giving, tithes)
     - "Income" (general income, freelance, business, side income)
     - "Salary" (employment salary, wages, bonuses)
@@ -693,7 +694,9 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
     - Cleaning service, Home repairs, Gardening → "Household Services"
     - Insurance premiums → "Insurance"
     - Tax payments → "Taxes"
-    - Loan payments, Credit card payments → "Debt Payment"
+    - RECEIVING loans (got loan, borrowed money, loan from friend) → "Loans Received" + INCOME
+    - REPAYING loans (loan payment, paid back loan, loan installment) → "Debt Payment" + EXPENSE
+    - Credit card payments → "Debt Payment"
     - Donations, Charity, Tithe → "Charity"
 
     RULES:
@@ -702,8 +705,12 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
     3. If you cannot extract amount from text, use context_amount: ${context_amount || 100}
     4. 'category_type' MUST be exactly "INCOME", "EXPENSE", or "TRANSFER".
        - Use "TRANSFER" for moving money between accounts.
-       - Use "INCOME" for receiving money, salary, etc.
-       - Use "EXPENSE" for spending money.
+       - Use "INCOME" for receiving money, salary, getting loans, borrowed money, etc.
+       - Use "EXPENSE" for spending money, repaying loans, making payments, etc.
+    
+    CRITICAL LOAN LOGIC:
+    - "Got loan", "Borrowed money", "Received loan" → category_type: "INCOME", category_name: "Loans Received"
+    - "Loan payment", "Repay loan", "Paid back loan" → category_type: "EXPENSE", category_name: "Debt Payment"
     5. For transfers:
        - Set "is_transfer" to true
        - Set "category_name" to "Transfer"
@@ -766,6 +773,12 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
 
     Text: "Gym membership fee"
     JSON: { "description": "Gym membership", "amount": 5000.00, "category_name": "Fitness", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
+
+    Text: "Got a 20k loan from my friend"
+    JSON: { "description": "Loan from friend", "amount": 20000.00, "category_name": "Loans Received", "category_type": "INCOME", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
+
+    Text: "Repaid 5000 loan to bank"
+    JSON: { "description": "Loan repayment to bank", "amount": 5000.00, "category_name": "Debt Payment", "category_type": "EXPENSE", "is_transfer": false, "source_account": null, "destination_account": null, "account_name": null }
 
     Transaction Text: "${text}"
   `;
