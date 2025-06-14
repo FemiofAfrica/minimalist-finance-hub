@@ -12,19 +12,13 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
-import { Separator } from '@/components/ui/separator';
-import { 
-  sendNotificationToUser, 
-  sendNotificationToAllUsers 
-} from '@/services/notificationService';
-import { NotificationType } from '@/types/notification';
+
 import { Loader2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { SupportBanner } from '@/components/ui/SupportBanner';
 import NotificationTestCenter from '@/components/admin/NotificationTestCenter';
 import ErrorLogsViewer from '@/components/admin/ErrorLogsViewer';
 import { BiometricSettings } from '@/components/settings/BiometricSettings';
-import errorNotificationService from '@/services/errorNotificationService';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -39,12 +33,6 @@ export default function Settings() {
   const [currency, setCurrency] = useState(currentCurrency.code);
   const [darkMode, setDarkMode] = useState(theme === 'dark');
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [notificationTitle, setNotificationTitle] = useState<string>("");
-  const [notificationMessage, setNotificationMessage] = useState<string>("");
-  const [notificationType, setNotificationType] = useState<NotificationType>("info");
-  const [notificationLink, setNotificationLink] = useState<string>("");
-  const [expiryDays, setExpiryDays] = useState<number>(7);
-  const [isSending, setIsSending] = useState<boolean>(false);
   
   // State for support banner text
   const [supportBannerText, setSupportBannerText] = useState<string>('');
@@ -292,48 +280,7 @@ export default function Settings() {
     }
   };
   
-  // Function to send notification to all users
-  const handleSendToAll = async () => {
-    if (!notificationTitle || !notificationMessage) {
-      toast({
-        title: "Error",
-        description: "Please enter both title and message",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsSending(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('send-push-notification', {
-        body: {
-          title: notificationTitle,
-          message: notificationMessage,
-          targetType: 'segment',
-          segment: 'all_users'
-        }
-      });
 
-      if (error) throw error;
-      
-      toast({
-        title: "Success",
-        description: "Notification sent to all users",
-      });
-      
-      setNotificationTitle('');
-      setNotificationMessage('');
-    } catch (error) {
-      console.error('Error sending notification:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send notification",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSending(false);
-    }
-  };
   
 
   
@@ -501,12 +448,14 @@ export default function Settings() {
             <TabsContent value="security" className="p-4 md:p-8">
               <div className="max-w-4xl mx-auto space-y-8">
                 
+                <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-6 md:mb-8 text-center">Security Settings</h2>
+                
                 {/* Biometric Authentication */}
                 <BiometricSettings />
                 
                 {/* Password Change */}
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="text-center">
                     <CardTitle>Change Password</CardTitle>
                     <CardDescription>
                       Update your account password for enhanced security
@@ -520,7 +469,7 @@ export default function Settings() {
                           id="currentPassword" 
                           type="password" 
                           placeholder="Enter your current password"
-                          className="bg-background sm:w-2/3 text-sm md:text-base"
+                          className="bg-background sm:w-2/3 text-sm md:text-base text-center"
                         />
                       </div>
                       
@@ -530,7 +479,7 @@ export default function Settings() {
                           id="newPassword" 
                           type="password" 
                           placeholder="Enter your new password"
-                          className="bg-background sm:w-2/3 text-sm md:text-base"
+                          className="bg-background sm:w-2/3 text-sm md:text-base text-center"
                         />
                       </div>
                       
@@ -540,7 +489,7 @@ export default function Settings() {
                           id="confirmPassword" 
                           type="password" 
                           placeholder="Confirm your new password"
-                          className="bg-background sm:w-2/3 text-sm md:text-base"
+                          className="bg-background sm:w-2/3 text-sm md:text-base text-center"
                         />
                       </div>
                     </div>
@@ -558,155 +507,97 @@ export default function Settings() {
             {/* Admin Tab */}
             {isAdmin && (
               <TabsContent value="admin" className="p-4 md:p-8">
-                <div className="max-w-7xl mx-auto">
-                  <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-6 md:mb-8 text-center">Admin Controls</h2>
-                  
-                  {/* New Comprehensive Admin Components */}
-                  <div className="space-y-8">
-                    <NotificationTestCenter />
-                    <ErrorLogsViewer />
+                <div className="max-w-7xl mx-auto space-y-8">
+                  <div className="text-center">
+                    <h2 className="text-2xl md:text-3xl font-bold mb-2">Admin Dashboard</h2>
+                    <p className="text-muted-foreground">Manage notifications, monitor errors, and configure system settings</p>
                   </div>
                   
-                  {/* Legacy Global Notifications (keeping for backward compatibility) */}
-                  <Card className="shadow-sm border mb-10 mt-8">
+                  {/* Core Admin Features */}
+                  <div className="grid gap-8">
+                    {/* Notification Management */}
+                    <NotificationTestCenter />
+                    
+                    {/* Error Monitoring */}
+                    <ErrorLogsViewer />
+                    
+                    {/* System Configuration */}
+                    <Card className="shadow-sm border">
+                      <CardHeader className="text-center">
+                        <CardTitle className="flex items-center justify-center gap-2">
+                          <span>System Configuration</span>
+                        </CardTitle>
+                        <CardDescription>
+                          Configure global system settings and banners
+                        </CardDescription>
+                      </CardHeader>
                     <CardContent className="space-y-6">
-                      {/* Global Notifications Section (existing) */}
+                        {/* Support Banner Configuration */}
+                        <div className="space-y-4">
                       <div className="text-center">
-                        <h3 className="text-lg font-medium mb-2">Legacy Global Notifications</h3>
+                            <h3 className="text-lg font-semibold mb-2">Support Banner</h3>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Basic notification sending (consider using the comprehensive tool above).
-                        </p>
-                      </div>
-                      <div className="space-y-2 text-center">
-                        <Label htmlFor="notificationTitle" className="block">Title</Label>
-                        <Input 
-                          id="notificationTitle" 
-                          value={notificationTitle}
-                          onChange={(e) => setNotificationTitle(e.target.value)}
-                          placeholder="E.g., New Feature Alert!"
-                          className="text-center"
-                        />
-                      </div>
-                      <div className="space-y-2 text-center">
-                        <Label htmlFor="notificationMessage" className="block">Message</Label>
-                        <Textarea
-                          id="notificationMessage"
-                          value={notificationMessage}
-                          onChange={(e) => setNotificationMessage(e.target.value)}
-                          placeholder="Describe the notification in detail..."
-                          rows={3}
-                          className="text-center"
-                        />
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2 text-center">
-                          <Label htmlFor="notificationType" className="block">Type</Label>
-                          <Select value={notificationType} onValueChange={(value) => setNotificationType(value as NotificationType)}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="info">Info</SelectItem>
-                              <SelectItem value="warning">Warning</SelectItem>
-                              <SelectItem value="error">Error</SelectItem>
-                              <SelectItem value="success">Success</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2 text-center">
-                          <Label htmlFor="notificationLink" className="block">Optional Link (URL)</Label>
-                          <Input 
-                            id="notificationLink" 
-                            type="url"
-                            value={notificationLink}
-                            onChange={(e) => setNotificationLink(e.target.value)}
-                            placeholder="https://yourapp.com/features/new"
-                            className="text-center"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2 text-center">
-                        <Label htmlFor="expiryDays" className="block">Expires In (days)</Label>
-                        <Input 
-                          id="expiryDays" 
-                          type="number"
-                          value={expiryDays}
-                          onChange={(e) => setExpiryDays(Number(e.target.value))}
-                          min="1"
-                          placeholder="Default: 7 days"
-                          className="text-center"
-                        />
-                      </div>
-                      <div className="text-center">
-                        <Button onClick={handleSendToAll} disabled={isSending || !notificationTitle || !notificationMessage}>
-                          {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                          Send to All Users
-                        </Button>
-                      </div>
-                      {/* End of Global Notifications Section */}
-
-                      <Separator className="my-6" /> {/* Separator between sections */}
-
-                      {/* Support Banner Configuration Section (New) */}
-                      <div className="text-center">
-                        <h3 className="text-lg font-medium mb-2">Support Banner Configuration</h3>
-                        <p className="text-sm text-muted-foreground mb-1">
-                          Update the text displayed in the global support banner.
-                        </p>
-                        <p className="text-xs text-muted-foreground mb-4">
-                          Leave empty to potentially hide the banner (behavior depends on SupportBanner component logic for empty text).
+                              Configure the scrolling banner displayed at the top of the application
                         </p>
                       </div>
                       
                       {isLoadingBannerText ? (
-                        <div className="flex items-center space-x-2">
+                            <div className="flex items-center justify-center space-x-2 py-8">
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                          <p className="text-muted-foreground">Loading banner text...</p>
+                              <p className="text-muted-foreground">Loading banner configuration...</p>
                         </div>
                       ) : (
                         <div className="space-y-4">
                           <div className="text-center">
-                            <Label htmlFor="supportBannerText" className="block">Banner Text</Label>
+                                <Label htmlFor="supportBannerText" className="text-sm font-medium block text-center">Banner Text</Label>
                             <Textarea
                               id="supportBannerText"
                               value={supportBannerText}
                               onChange={(e) => setSupportBannerText(e.target.value)}
                               placeholder="Enter the support banner text here..."
                               rows={3}
-                              className="mt-1 text-center"
+                                  className="mt-2 text-center"
                             />
-                            <p className="text-xs text-muted-foreground mt-1">
-                              This text will be displayed in the scrolling banner at the top of the application.
+                                <p className="text-xs text-muted-foreground mt-1 text-center">
+                                  Leave empty to hide the banner. Changes take effect immediately after saving.
                             </p>
                           </div>
                           
+                              {supportBannerText && (
                           <div className="text-center">
-                            <Label className="block">Banner Preview</Label>
-                            <div className="mt-1 border rounded-md p-2 relative">
+                                  <Label className="text-sm font-medium block text-center">Preview</Label>
+                                  <div className="mt-2 border rounded-lg p-4 bg-muted/20">
                               <SupportBanner 
-                                initialText={supportBannerText || "Preview: Enter text above to see it here."}
+                                      initialText={supportBannerText}
                                 className="static top-auto left-auto right-auto"
                                 isPreviewMode={true}
                               />
                             </div>
-                            {(!supportBannerText && !isLoadingBannerText) && (
-                              <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
-                                Preview shows default message as current input is empty. Actual banner might show last saved text or default.
-                              </p>
-                            )}
-                          </div>
+                                </div>
+                              )}
 
-                          <div className="text-center">
-                            <Button onClick={handleSaveBannerText} disabled={isSavingBannerText || isLoadingBannerText}>
-                              {isSavingBannerText ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                              Save Banner Text
+                              <div className="flex justify-center">
+                                <Button 
+                                  onClick={handleSaveBannerText} 
+                                  disabled={isSavingBannerText || isLoadingBannerText}
+                                  className="min-w-[120px]"
+                                >
+                                  {isSavingBannerText ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Saving...
+                                    </>
+                                  ) : (
+                                    'Save Changes'
+                                  )}
                             </Button>
                           </div>
                         </div>
                       )}
-                      {/* End of Support Banner Configuration Section */}
+                        </div>
                     </CardContent>
                   </Card>
+                  </div>
                 </div>
               </TabsContent>
             )}

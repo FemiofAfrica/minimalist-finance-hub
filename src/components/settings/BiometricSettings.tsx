@@ -159,8 +159,8 @@ export function BiometricSettings() {
   if (!isSupported) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="text-center">
+          <CardTitle className="flex items-center justify-center gap-2">
             <Shield className="h-5 w-5" />
             Biometric Authentication
           </CardTitle>
@@ -169,7 +169,7 @@ export function BiometricSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground text-center">
             <AlertTriangle className="h-4 w-4 inline mr-1" />
             This device doesn't support WebAuthn or biometric authentication.
           </div>
@@ -181,8 +181,8 @@ export function BiometricSettings() {
   if (!isAvailable) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="text-center">
+          <CardTitle className="flex items-center justify-center gap-2">
             <Shield className="h-5 w-5" />
             Biometric Authentication
           </CardTitle>
@@ -191,7 +191,7 @@ export function BiometricSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground text-center">
             <AlertTriangle className="h-4 w-4 inline mr-1" />
             Please ensure your device has biometric sensors set up and enabled.
           </div>
@@ -203,8 +203,8 @@ export function BiometricSettings() {
   return (
     <>
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+      <CardHeader className="text-center">
+        <CardTitle className="flex items-center justify-center gap-2">
             <Fingerprint className="h-5 w-5" />
           Biometric Authentication
         </CardTitle>
@@ -215,19 +215,21 @@ export function BiometricSettings() {
       </CardHeader>
         <CardContent className="space-y-4">
           {credentials.length === 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-4 text-center">
               <div className="text-sm text-muted-foreground">
                 No biometric credentials registered for this account.
             </div>
-              <Button onClick={handleEnableBiometric} disabled={isLoading}>
-                <Fingerprint className="h-4 w-4 mr-2" />
-                Enable Biometric Login
-          </Button>
+              <div className="flex justify-center">
+                <Button onClick={handleEnableBiometric} disabled={isLoading}>
+                  <Fingerprint className="h-4 w-4 mr-2" />
+                  Enable Biometric Login
+                </Button>
+              </div>
               </div>
             ) : (
             <div className="space-y-4">
               <div className="space-y-2">
-                <h4 className="text-sm font-medium">Registered Devices</h4>
+                <h4 className="text-sm font-medium text-center">Registered Devices</h4>
                 {credentials.map((credential) => (
                 <div key={credential.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center gap-3">
@@ -264,10 +266,12 @@ export function BiometricSettings() {
                 ))}
                   </div>
                   
-              <Button onClick={handleEnableBiometric} variant="outline" disabled={isLoading}>
-                <Fingerprint className="h-4 w-4 mr-2" />
-                Add Another Device
-                      </Button>
+              <div className="flex justify-center">
+                <Button onClick={handleEnableBiometric} variant="outline" disabled={isLoading}>
+                  <Fingerprint className="h-4 w-4 mr-2" />
+                  Add Another Device
+                </Button>
+              </div>
           </div>
         )}
         </CardContent>
@@ -308,7 +312,7 @@ export function BiometricSettings() {
               </div>
             </div>
             
-            <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded-lg">
+            <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded-lg text-center">
               <Shield className="h-4 w-4 inline mr-1" />
               Your password will be encrypted with device-specific keys and never transmitted or stored in plain text.
             </div>

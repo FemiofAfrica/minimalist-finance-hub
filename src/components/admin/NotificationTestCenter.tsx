@@ -350,7 +350,7 @@ const NotificationTestCenter: React.FC = () => {
             <p className="text-muted-foreground">View all sent notifications</p>
           </div>
           <Button variant="outline" onClick={() => setShowHistory(false)}>
-            Back to Test Center
+            Back to Notifications
           </Button>
         </div>
         <NotificationHistory />
@@ -363,9 +363,9 @@ const NotificationTestCenter: React.FC = () => {
       <div className="text-center">
         <h3 className="text-xl font-semibold flex items-center justify-center gap-2">
           <Shield className="h-5 w-5" />
-          Notification Test Center
+          Notification Management
         </h3>
-        <p className="text-muted-foreground">Send test notifications to users</p>
+        <p className="text-muted-foreground">Send notifications to users and segments</p>
       </div>
 
       <div className="flex justify-center">
@@ -377,7 +377,7 @@ const NotificationTestCenter: React.FC = () => {
       {/* Unified Notification Form */}
       <Card>
         <CardHeader className="text-center">
-          <CardTitle>Send Test Notification</CardTitle>
+          <CardTitle>Send Notification</CardTitle>
           <CardDescription>
             Configure and send notifications to users or segments
           </CardDescription>
@@ -385,7 +385,7 @@ const NotificationTestCenter: React.FC = () => {
         <CardContent className="space-y-6">
           {/* Target Selection */}
           <div className="space-y-4">
-            <Label className="text-base font-medium">Target Audience</Label>
+            <Label className="text-base font-medium block text-center">Target Audience</Label>
             <div className="grid grid-cols-2 gap-4">
               <Button
                 variant={targetType === 'single' ? 'default' : 'outline'}
@@ -410,7 +410,7 @@ const NotificationTestCenter: React.FC = () => {
           {targetType === 'single' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label>Select User ({users.length} users loaded)</Label>
+                <Label className="text-center flex-1">Select User ({users.length} users loaded)</Label>
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -442,7 +442,7 @@ const NotificationTestCenter: React.FC = () => {
           {/* Segment Selection */}
           {targetType === 'segment' && (
             <div className="space-y-4">
-              <Label>Segment Type</Label>
+              <Label className="block text-center">Segment Type</Label>
               <Select value={segmentType} onValueChange={setSegmentType}>
                 <SelectTrigger>
                   <SelectValue />
@@ -456,17 +456,18 @@ const NotificationTestCenter: React.FC = () => {
 
               {segmentType === 'time_based' && (
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Duration</Label>
+                  <div className="text-center">
+                    <Label className="block text-center mb-2">Duration</Label>
                     <Input
                       type="number"
                       value={duration}
                       onChange={(e) => setDuration(e.target.value)}
                       min="1"
+                      className="text-center"
                     />
                   </div>
-                  <div>
-                    <Label>Unit</Label>
+                  <div className="text-center">
+                    <Label className="block text-center mb-2">Unit</Label>
                     <Select value={durationUnit} onValueChange={setDurationUnit}>
                       <SelectTrigger>
                         <SelectValue />
@@ -484,7 +485,7 @@ const NotificationTestCenter: React.FC = () => {
 
               {segmentType === 'all_users' && (
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-800">
+                  <p className="text-sm text-yellow-800 text-center">
                     ⚠️ This will send notifications to ALL users in the system. Use with caution.
                   </p>
                 </div>
@@ -492,7 +493,7 @@ const NotificationTestCenter: React.FC = () => {
 
               {segmentType === 'super_admins' && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-800">
+                  <p className="text-sm text-blue-800 text-center">
                     🔐 This will only send notifications to users with super admin privileges.
                   </p>
                 </div>
@@ -502,48 +503,51 @@ const NotificationTestCenter: React.FC = () => {
 
           {/* Preview */}
           <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm text-green-800 font-medium">
+            <p className="text-sm text-green-800 font-medium text-center">
               📊 {getPreviewText()}
             </p>
           </div>
 
           {/* Notification Content */}
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="title">Title *</Label>
+            <div className="text-center">
+              <Label htmlFor="title" className="block text-center mb-2">Title *</Label>
               <Input
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Notification title"
+                className="text-center"
               />
             </div>
 
-            <div>
-              <Label htmlFor="message">Message *</Label>
+            <div className="text-center">
+              <Label htmlFor="message" className="block text-center mb-2">Message *</Label>
               <Textarea
                 id="message"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Notification message"
                 rows={3}
+                className="text-center"
               />
             </div>
 
-            <div>
-              <Label htmlFor="url">URL (optional)</Label>
+            <div className="text-center">
+              <Label htmlFor="url" className="block text-center mb-2">URL (optional)</Label>
               <Input
                 id="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="e.g., /settings or /transactions"
+                className="text-center"
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1 text-center">
                 Add a URL to make the notification clickable
               </p>
             </div>
 
-            <div className="flex items-center space-x-2 p-3 border rounded-lg bg-blue-50 border-blue-200">
+            <div className="flex items-center justify-center space-x-2 p-3 border rounded-lg bg-blue-50 border-blue-200">
               <input
                 type="checkbox"
                 id="shouldTriggerEmail"
@@ -558,14 +562,16 @@ const NotificationTestCenter: React.FC = () => {
           </div>
 
           {/* Send Button */}
-          <Button 
-            onClick={sendNotification}
-            disabled={sending || !title.trim() || !message.trim() || (targetType === 'single' && !selectedUser)}
-            className="w-full flex items-center justify-center gap-2 h-12"
-          >
-            <Send className="h-4 w-4" />
-            {sending ? 'Sending...' : 'Send Notification'}
-          </Button>
+          <div className="flex justify-center">
+            <Button 
+              onClick={sendNotification}
+              disabled={sending || !title.trim() || !message.trim() || (targetType === 'single' && !selectedUser)}
+              className="flex items-center justify-center gap-2 h-12 px-8"
+            >
+              <Send className="h-4 w-4" />
+              {sending ? 'Sending...' : 'Send Notification'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
