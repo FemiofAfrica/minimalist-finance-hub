@@ -117,6 +117,11 @@ const Login = () => {
 
   // Helper functions for captcha management
   const isCaptchaTokenValid = () => {
+    // In development mode, if Turnstile is disabled, always return true
+    if (isDev && !import.meta.env.VITE_TURNSTILE_SITE_KEY) {
+      return true;
+    }
+    
     if (!captchaToken || !captchaTimestamp) return false;
     
     // Turnstile tokens expire after 5 minutes (300 seconds)
@@ -150,6 +155,11 @@ const Login = () => {
 
   // Helper functions for reset dialog captcha management
   const isResetCaptchaTokenValid = () => {
+    // In development mode, if Turnstile is disabled, always return true
+    if (isDev && !import.meta.env.VITE_TURNSTILE_SITE_KEY) {
+      return true;
+    }
+    
     if (!resetCaptchaToken || !resetCaptchaTimestamp) return false;
     
     // Turnstile tokens expire after 5 minutes (300 seconds)
@@ -226,7 +236,7 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate captcha token exists and is fresh
+    // Validate captcha token exists and is fresh (skip in development mode if Turnstile is disabled)
     if (!isCaptchaTokenValid()) {
       const errorMsg = !captchaToken 
         ? "Please complete the captcha verification to continue."
@@ -665,7 +675,7 @@ const Login = () => {
 
             {/* Cloudflare Turnstile Captcha */}
             <div className="flex justify-center mb-4">
-              {import.meta.env.VITE_TURNSTILE_SITE_KEY ? (
+              {import.meta.env.VITE_TURNSTILE_SITE_KEY && !isDev ? (
                 <>
                   {isDev && (
                     <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded mb-2 text-center">
@@ -692,6 +702,10 @@ const Login = () => {
                   }}
                 />
                 </>
+              ) : isDev ? (
+                <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded">
+                  Development Mode: Turnstile disabled for localhost
+                </div>
               ) : (
                 <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
                   Captcha configuration missing. Please contact support.
@@ -708,14 +722,23 @@ const Login = () => {
               <div className="text-xs text-gray-500 text-center mb-2">
                 Debug: Captcha token {isCaptchaTokenValid() ? '✓ Valid' : '✗ Missing/Expired'} | 
                 {captchaTimestamp && ` Age: ${Math.round((Date.now() - captchaTimestamp) / 1000)}s |`}
-                Button {(isProcessing || !isCaptchaTokenValid() || (isSignUp && (!passwordsMatch || confirmPassword.length === 0))) ? 'Disabled' : 'Enabled'}
+                {!import.meta.env.VITE_TURNSTILE_SITE_KEY && ' Captcha Bypassed (Dev Mode) |'}
+                Button {(
+                  isProcessing || 
+                  (!isCaptchaTokenValid() && !(isDev && !import.meta.env.VITE_TURNSTILE_SITE_KEY)) || 
+                  (isSignUp && (!passwordsMatch || confirmPassword.length === 0))
+                ) ? 'Disabled' : 'Enabled'}
               </div>
             )}
 
             <Button 
               type="submit" 
               className="px-8 py-2 bg-[#004D40] hover:bg-[#00695C] text-white border-2 border-gray-200 hover:border-transparent rounded-md mx-auto block text-base min-w-[120px] w-full sm:w-auto"
-              disabled={isProcessing || !isCaptchaTokenValid() || (isSignUp && (!passwordsMatch || confirmPassword.length === 0))}
+              disabled={
+                isProcessing || 
+                (!isCaptchaTokenValid() && !(isDev && !import.meta.env.VITE_TURNSTILE_SITE_KEY)) || 
+                (isSignUp && (!passwordsMatch || confirmPassword.length === 0))
+              }
             >
               {isProcessing ? 'Processing...' : isSignUp ? 'Sign Up' : 'Sign In'}
             </Button>

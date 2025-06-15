@@ -8,6 +8,11 @@ export default defineConfig(({ mode }) => {
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '');
   
+  // Use different Turnstile site keys for development vs production
+  const turnstileSiteKey = mode === 'development' 
+    ? (env.VITE_TURNSTILE_SITE_KEY_DEV || env.VITE_TURNSTILE_SITE_KEY)
+    : env.VITE_TURNSTILE_SITE_KEY;
+  
   return {
   server: {
     host: '127.0.0.1',
@@ -61,7 +66,11 @@ export default defineConfig(({ mode }) => {
         config: () => ({
           define: {
             'process.env': env,
-            'import.meta.env.VITE_TURNSTILE_SITE_KEY': JSON.stringify(env.VITE_TURNSTILE_SITE_KEY),
+            'import.meta.env.VITE_TURNSTILE_SITE_KEY': JSON.stringify(
+              mode === 'development' 
+                ? (env.VITE_TURNSTILE_SITE_KEY_DEV || env.VITE_TURNSTILE_SITE_KEY)
+                : env.VITE_TURNSTILE_SITE_KEY
+            ),
           }
         })
       }

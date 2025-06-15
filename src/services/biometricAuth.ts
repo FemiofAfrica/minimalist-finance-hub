@@ -15,6 +15,32 @@ export interface BiometricCredential {
   };
 }
 
+// Enhanced interface for database-stored credentials
+export interface DatabaseBiometricCredential {
+  id: number; // Database primary key
+  user_id: string;
+  credential_id: string; // WebAuthn credential ID
+  public_key: string;
+  name: string;
+  device_info: {
+    userAgent: string;
+    platform: string;
+    deviceType: 'mobile' | 'desktop' | 'tablet';
+  };
+  attestation_type: 'direct' | 'indirect' | 'none';
+  aaguid: string;
+  transports: string[];
+  encrypted_credentials?: {
+    email: string;
+    encryptedPassword: string;
+    salt: string;
+  };
+  created_at: string;
+  last_used_at?: string;
+  updated_at: string;
+  is_active: boolean;
+}
+
 export interface SecureBiometricStore {
   credentials: BiometricCredential[];
   // In production, you'd encrypt sensitive data
@@ -35,6 +61,12 @@ export interface BiometricAuthService {
   authenticateAndSignIn: () => Promise<{ success: boolean; credential?: BiometricCredential; error?: string }>;
   registerWithPassword: (email: string, password: string, name?: string) => Promise<{ success: boolean; credential?: BiometricCredential; error?: string }>;
   clearAllCredentials: () => Promise<void>;
+  clearInvalidCredentials: () => Promise<number>;
+  // New methods for cross-device sync
+  syncCredentials: () => Promise<void>;
+  getAllDevices: () => Promise<DatabaseBiometricCredential[]>;
+  removeDevice: (credentialId: string) => Promise<boolean>;
+  updateDeviceName: (credentialId: string, newName: string) => Promise<boolean>;
 }
 
 class BiometricAuthServiceImpl implements BiometricAuthService {
@@ -80,6 +112,307 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
   }
 
   /**
+   * Detect device information for better credential management
+   */
+  private detectDeviceInfo(): { userAgent: string; platform: string; deviceType: 'mobile' | 'desktop' | 'tablet' } {
+    const userAgent = navigator.userAgent;
+    const platform = navigator.platform;
+    
+    let deviceType: 'mobile' | 'desktop' | 'tablet' = 'desktop';
+    
+    if (/iPhone|iPod/.test(userAgent)) {
+      deviceType = 'mobile';
+    } else if (/iPad/.test(userAgent)) {
+      deviceType = 'tablet';
+    } else if (/Android/.test(userAgent)) {
+      if (/Mobile/.test(userAgent)) {
+        deviceType = 'mobile';
+      } else {
+        deviceType = 'tablet';
+      }
+    }
+    
+    return { userAgent, platform, deviceType };
+  }
+
+  /**
+   * Generate a user-friendly device name based on device info
+   */
+  private generateDeviceName(): string {
+    const deviceInfo = this.detectDeviceInfo();
+    const { userAgent, deviceType } = deviceInfo;
+    
+    if (/iPhone/.test(userAgent)) {
+      return 'iPhone';
+    } else if (/iPad/.test(userAgent)) {
+      return 'iPad';
+    } else if (/Android/.test(userAgent)) {
+      return deviceType === 'mobile' ? 'Android Phone' : 'Android Tablet';
+    } else if (/Mac/.test(userAgent)) {
+      return 'Mac';
+    } else if (/Windows/.test(userAgent)) {
+      return 'Windows PC';
+    } else if (/Linux/.test(userAgent)) {
+      return 'Linux PC';
+    }
+    
+    return `${deviceType.charAt(0).toUpperCase() + deviceType.slice(1)} Device`;
+  }
+
+  /**
+   * Store credential in database for cross-device sync
+   */
+  private async storeCredentialInDatabase(credential: BiometricCredential): Promise<void> {
+    try {
+      const user = await supabase.auth.getUser();
+      if (!user.data.user) {
+        throw new Error('User not authenticated');
+      }
+
+      const deviceInfo = this.detectDeviceInfo();
+      
+      const { error } = await supabase
+        .from('biometric_credentials')
+        .insert({
+          user_id: user.data.user.id,
+          credential_id: credential.id,
+          public_key: credential.publicKey,
+          name: credential.name,
+          device_info: deviceInfo,
+          attestation_type: 'none', // Default for now
+          aaguid: '00000000-0000-0000-0000-000000000000',
+          transports: ['internal'], // Default for platform authenticators
+          encrypted_credentials: credential.encryptedCredentials,
+          last_used_at: credential.last_used_at || null
+        });
+
+      if (error) {
+        console.error('Failed to store credential in database:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Database storage failed:', error);
+      // Don't throw - allow localStorage fallback
+    }
+  }
+
+  /**
+   * Update credential last used time in database
+   */
+  private async updateCredentialLastUsed(credentialId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('biometric_credentials')
+        .update({ 
+          last_used_at: new Date().toISOString() 
+        })
+        .eq('credential_id', credentialId);
+
+      if (error) {
+        console.error('Failed to update credential last used:', error);
+      }
+    } catch (error) {
+      console.error('Database update failed:', error);
+      // Don't throw - this is not critical
+    }
+  }
+
+  /**
+   * Sync credentials between localStorage and database
+   */
+  async syncCredentials(): Promise<void> {
+    try {
+      const user = await supabase.auth.getUser();
+      if (!user.data.user) {
+        console.log('User not authenticated, skipping sync');
+        return;
+      }
+
+      // Get credentials from database
+      const { data: dbCredentials, error } = await supabase
+        .from('biometric_credentials')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to fetch credentials from database:', error);
+        return;
+      }
+
+      // Get local credentials
+      const localCredentials = await this.getLocalCredentials();
+      
+      // Convert database credentials to local format for compatibility
+      const syncedCredentials: BiometricCredential[] = [];
+      
+      if (dbCredentials) {
+        for (const dbCred of dbCredentials) {
+          const localFormat: BiometricCredential = {
+            id: dbCred.credential_id,
+            publicKey: dbCred.public_key,
+            name: dbCred.name,
+            created_at: dbCred.created_at,
+            last_used_at: dbCred.last_used_at || undefined,
+            user_email: dbCred.encrypted_credentials?.email || '',
+            encryptedCredentials: dbCred.encrypted_credentials || {
+              email: '',
+              encryptedPassword: '',
+              salt: ''
+            }
+          };
+          syncedCredentials.push(localFormat);
+        }
+      }
+
+      // Merge with local credentials (prioritize database)
+      const mergedCredentials = [...syncedCredentials];
+      
+      for (const localCred of localCredentials) {
+        const existsInDb = syncedCredentials.find(dbCred => dbCred.id === localCred.id);
+        if (!existsInDb) {
+          // Local credential not in database - add it to database
+          await this.storeCredentialInDatabase(localCred);
+          mergedCredentials.push(localCred);
+        }
+      }
+
+      // Update localStorage with merged credentials
+      localStorage.setItem(this.storageKey, JSON.stringify(mergedCredentials));
+      
+      console.log(`Synced ${mergedCredentials.length} biometric credentials`);
+    } catch (error) {
+      console.error('Credential sync failed:', error);
+    }
+  }
+
+  /**
+   * Get all devices for the current user
+   */
+  async getAllDevices(): Promise<DatabaseBiometricCredential[]> {
+    try {
+      const user = await supabase.auth.getUser();
+      if (!user.data.user) {
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .from('biometric_credentials')
+        .select('*')
+        .eq('is_active', true)
+        .order('last_used_at', { ascending: false, nullsFirst: false });
+
+      if (error) {
+        console.error('Failed to fetch devices:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Get devices failed:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Remove a device (credential) from database
+   */
+  async removeDevice(credentialId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('biometric_credentials')
+        .update({ is_active: false })
+        .eq('credential_id', credentialId);
+
+      if (error) {
+        console.error('Failed to remove device:', error);
+        return false;
+      }
+
+      // Also remove from localStorage
+      await this.removeCredential(credentialId);
+      
+      return true;
+    } catch (error) {
+      console.error('Remove device failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Update device name
+   */
+  async updateDeviceName(credentialId: string, newName: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('biometric_credentials')
+        .update({ name: newName })
+        .eq('credential_id', credentialId);
+
+      if (error) {
+        console.error('Failed to update device name:', error);
+        return false;
+      }
+
+      // Also update localStorage
+      const credentials = await this.getLocalCredentials();
+      const updatedCredentials = credentials.map(cred => 
+        cred.id === credentialId ? { ...cred, name: newName } : cred
+      );
+      localStorage.setItem(this.storageKey, JSON.stringify(updatedCredentials));
+      
+      return true;
+    } catch (error) {
+      console.error('Update device name failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get credentials from localStorage only
+   */
+  private async getLocalCredentials(): Promise<BiometricCredential[]> {
+    try {
+      const stored = localStorage.getItem(this.storageKey);
+      if (!stored) return [];
+      
+      const credentials = JSON.parse(stored) as BiometricCredential[];
+      if (!Array.isArray(credentials)) return [];
+      
+      // Migrate old credentials that might not have encryptedCredentials property
+      const migratedCredentials = credentials.map(credential => {
+        if (!credential.encryptedCredentials || typeof credential.encryptedCredentials !== 'object') {
+          console.log('Migrating old credential:', credential.id);
+          return {
+            ...credential,
+            encryptedCredentials: {
+              email: credential.user_email || '',
+              encryptedPassword: '',
+              salt: '',
+            }
+          };
+        }
+        // Ensure all required properties exist
+        if (!credential.encryptedCredentials.email) {
+          credential.encryptedCredentials.email = credential.user_email || '';
+        }
+        if (!credential.encryptedCredentials.encryptedPassword) {
+          credential.encryptedCredentials.encryptedPassword = '';
+        }
+        if (!credential.encryptedCredentials.salt) {
+          credential.encryptedCredentials.salt = '';
+        }
+        return credential;
+      });
+      
+      return migratedCredentials;
+    } catch (error) {
+      console.error('Failed to get local credentials:', error);
+      return [];
+    }
+  }
+
+  /**
    * Register a new biometric credential
    */
   async register(name: string = 'Biometric Login'): Promise<{ success: boolean; credential?: BiometricCredential; error?: string }> {
@@ -101,6 +434,9 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
       const userId = await this.getUserId();
       const userName = (await user).data.user?.email || 'user';
 
+      // Use auto-generated device name if none provided
+      const deviceName = name === 'Biometric Login' ? this.generateDeviceName() : name;
+
       // Generate challenge
       const challenge = new Uint8Array(32);
       crypto.getRandomValues(challenge);
@@ -116,7 +452,7 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
           user: {
             id: userId,
             name: userName,
-            displayName: name,
+            displayName: deviceName,
           },
           pubKeyCredParams: [
             { alg: -7, type: 'public-key' }, // ES256
@@ -140,7 +476,7 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
       const credentialData: BiometricCredential = {
         id: this.arrayBufferToBase64(credential.rawId),
         publicKey: this.arrayBufferToBase64(credential.response.publicKey || new ArrayBuffer(0)),
-        name,
+        name: deviceName,
         created_at: new Date().toISOString(),
         user_email: userName,
         encryptedCredentials: {
@@ -150,7 +486,9 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
         },
       };
 
+      // Store in both localStorage and database
       await this.storeCredential(credentialData);
+      await this.storeCredentialInDatabase(credentialData);
 
       return { success: true, credential: credentialData };
     } catch (error) {
@@ -352,6 +690,9 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
         id: c.id, 
         idLength: c.id.length, 
         hasPassword: !!c.encryptedCredentials?.encryptedPassword,
+        passwordLength: c.encryptedCredentials?.encryptedPassword?.length || 0,
+        hasSalt: !!c.encryptedCredentials?.salt,
+        saltLength: c.encryptedCredentials?.salt?.length || 0,
         isValidBase64: /^[A-Za-z0-9+/]*={0,2}$/.test(c.id)
       })));
       
@@ -399,14 +740,39 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
         usedCredential.last_used_at = new Date().toISOString();
         await this.updateCredential(usedCredential);
         
-        // Check if we have encrypted credentials for passwordless login
-        if (usedCredential.encryptedCredentials?.encryptedPassword && usedCredential.encryptedCredentials?.salt) {
+        // Check if we have valid encrypted credentials for passwordless login
+        console.log('Checking credential for auto-login:', {
+          hasEncryptedCredentials: !!usedCredential.encryptedCredentials,
+          hasEncryptedPassword: !!usedCredential.encryptedCredentials?.encryptedPassword,
+          encryptedPasswordLength: usedCredential.encryptedCredentials?.encryptedPassword?.length || 0,
+          hasSalt: !!usedCredential.encryptedCredentials?.salt,
+          saltLength: usedCredential.encryptedCredentials?.salt?.length || 0,
+        });
+
+        const hasValidEncryption = usedCredential.encryptedCredentials?.encryptedPassword && 
+                                   usedCredential.encryptedCredentials?.salt &&
+                                   typeof usedCredential.encryptedCredentials.encryptedPassword === 'string' &&
+                                   typeof usedCredential.encryptedCredentials.salt === 'string' &&
+                                   usedCredential.encryptedCredentials.encryptedPassword.trim().length > 0 &&
+                                   usedCredential.encryptedCredentials.salt.trim().length > 0;
+
+        console.log('Has valid encryption:', hasValidEncryption);
+
+        if (hasValidEncryption) {
           try {
             // Decrypt the password using the device secret
             const deviceSecret = usedCredential.id + usedCredential.created_at;
-                          const decryptedPassword = await this.decryptPassword(
-                usedCredential.encryptedCredentials.encryptedPassword,
-                usedCredential.encryptedCredentials.salt,
+            console.log('Attempting decryption with:', {
+              credentialId: usedCredential.id,
+              createdAt: usedCredential.created_at,
+              deviceSecretLength: deviceSecret.length,
+              encryptedPasswordLength: usedCredential.encryptedCredentials.encryptedPassword.length,
+              saltLength: usedCredential.encryptedCredentials.salt.length
+            });
+            
+            const decryptedPassword = await this.decryptPassword(
+              usedCredential.encryptedCredentials.encryptedPassword,
+              usedCredential.encryptedCredentials.salt,
               deviceSecret
             );
 
@@ -471,12 +837,12 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
       // Migrate old credentials that might not have encryptedCredentials property
       const migratedCredentials = credentials.map(credential => {
         if (!credential.encryptedCredentials || typeof credential.encryptedCredentials !== 'object') {
-          console.log('Migrating old credential:', credential.id);
+          console.log('Migrating old credential (no password storage):', credential.id);
           return {
             ...credential,
             encryptedCredentials: {
               email: credential.user_email || '',
-              encryptedPassword: '',
+              encryptedPassword: '', // Empty - will be used for auto-fill only
               salt: '',
             }
           };
@@ -485,12 +851,8 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
         if (!credential.encryptedCredentials.email) {
           credential.encryptedCredentials.email = credential.user_email || '';
         }
-        if (!credential.encryptedCredentials.encryptedPassword) {
-          credential.encryptedCredentials.encryptedPassword = '';
-        }
-        if (!credential.encryptedCredentials.salt) {
-          credential.encryptedCredentials.salt = '';
-        }
+        // Don't set empty strings for encryptedPassword and salt if they don't exist
+        // This allows the validation logic to properly detect missing encryption data
         return credential;
       });
       
@@ -540,6 +902,30 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
    */
   async clearAllCredentials(): Promise<void> {
     localStorage.removeItem(this.storageKey);
+  }
+
+  /**
+   * Clear credentials that don't have valid encryption (migration cleanup)
+   */
+  async clearInvalidCredentials(): Promise<number> {
+    const credentials = await this.getRegisteredCredentials();
+    const validCredentials = credentials.filter(cred => {
+      const hasValidEncryption = cred.encryptedCredentials?.encryptedPassword && 
+                                 cred.encryptedCredentials?.salt &&
+                                 typeof cred.encryptedCredentials.encryptedPassword === 'string' &&
+                                 typeof cred.encryptedCredentials.salt === 'string' &&
+                                 cred.encryptedCredentials.encryptedPassword.trim().length > 0 &&
+                                 cred.encryptedCredentials.salt.trim().length > 0;
+      return hasValidEncryption;
+    });
+
+    const removedCount = credentials.length - validCredentials.length;
+    if (removedCount > 0) {
+      localStorage.setItem(this.storageKey, JSON.stringify(validCredentials));
+      console.log(`Removed ${removedCount} invalid biometric credentials`);
+    }
+
+    return removedCount;
   }
 
   // Private helper methods
@@ -650,22 +1036,57 @@ class BiometricAuthServiceImpl implements BiometricAuthService {
   }
 
   private async decryptPassword(encryptedPassword: string, salt: string, userSecret: string): Promise<string> {
-    const decoder = new TextDecoder();
-    const saltBytes = Uint8Array.from(atob(salt), c => c.charCodeAt(0));
-    const key = await this.generateKey(userSecret, saltBytes);
+    // Validate inputs
+    if (!encryptedPassword || !salt || !userSecret) {
+      throw new Error('Missing required parameters for decryption');
+    }
 
-    // Decode the combined iv + encrypted data
-    const combined = Uint8Array.from(atob(encryptedPassword), c => c.charCodeAt(0));
-    const iv = combined.slice(0, 12);
-    const encrypted = combined.slice(12);
+    if (encryptedPassword.length === 0 || salt.length === 0) {
+      throw new Error('Empty encrypted password or salt - credential may not have been properly encrypted');
+    }
 
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      encrypted
-    );
+    try {
+      console.log('Decryption step 1: Parsing salt');
+      const decoder = new TextDecoder();
+      const saltBytes = Uint8Array.from(atob(salt), c => c.charCodeAt(0));
+      console.log('Salt bytes length:', saltBytes.length);
 
-    return decoder.decode(decrypted);
+      console.log('Decryption step 2: Generating key');
+      const key = await this.generateKey(userSecret, saltBytes);
+      console.log('Key generated successfully');
+
+      console.log('Decryption step 3: Parsing encrypted data');
+      // Decode the combined iv + encrypted data
+      const combined = Uint8Array.from(atob(encryptedPassword), c => c.charCodeAt(0));
+      console.log('Combined data length:', combined.length);
+      
+      // Validate that we have enough data (at least 12 bytes for IV)
+      if (combined.length < 12) {
+        throw new Error('Invalid encrypted data - too short');
+      }
+
+      const iv = combined.slice(0, 12);
+      const encrypted = combined.slice(12);
+      console.log('IV length:', iv.length, 'Encrypted data length:', encrypted.length);
+
+      // Validate that we have actual encrypted data
+      if (encrypted.length === 0) {
+        throw new Error('No encrypted data found');
+      }
+
+      console.log('Decryption step 4: Attempting crypto.subtle.decrypt');
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv },
+        key,
+        encrypted
+      );
+      console.log('Decryption successful, decrypted data length:', decrypted.byteLength);
+
+      return decoder.decode(decrypted);
+    } catch (error) {
+      console.error('Decryption failed at step:', error);
+      throw new Error(`Password decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 }
 
