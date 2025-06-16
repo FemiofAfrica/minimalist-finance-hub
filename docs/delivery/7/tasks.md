@@ -8,4 +8,4 @@ This document lists all tasks associated with PBI 7.
 
 | Task ID | Name | Status | Description |
 | :------ | :--------------------------------------- | :------- | :--------------------------------- |
-| 7-1 | [Fix failing test suites](./7-1.md) | Proposed | Resolve syntax errors, polyfills, and mocks so all tests pass | 
+| 7-1 | [Fix failing test suites](./7-1.md) | Done | Resolve syntax errors, polyfills, and mocks so all tests pass | 

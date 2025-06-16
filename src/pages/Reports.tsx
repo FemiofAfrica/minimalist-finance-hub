@@ -20,7 +20,7 @@ const Reports = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   // Responsive and performance hooks
-  const { isMobile, getResponsiveSpacing } = useResponsive();
+  const { isMobile, getResponsiveSpacing, isTouchDevice } = useResponsive();
   const { startMeasurement, endMeasurement } = usePerformanceMetrics();
   
   // Use our custom hook for time period management

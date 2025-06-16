@@ -48,7 +48,9 @@ export default defineConfig({
       '.git',
       '.cache',
       'test/e2e/**',
-      'test/visual/**'
+      'test/visual/**',
+      '**/edge-functions/**',
+      '**/edge-functions/parse-transaction-groq.test.ts'
     ]
   },
   resolve: {

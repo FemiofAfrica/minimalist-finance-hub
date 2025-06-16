@@ -182,7 +182,7 @@ describe('MonthlyTotalsBarChart', () => {
       render(<MonthlyTotalsBarChart timePeriod={12} />);
       
       await waitFor(() => {
-        expect(screen.getByText('N/A')).toBeInTheDocument();
+        expect(screen.getAllByText('N/A').length).toBeGreaterThan(0);
       });
     });
   });
@@ -206,5 +206,6 @@ describe('MonthlyTotalsBarChart', () => {
       expect(mockChartDataService.getMonthlyTotalsData).toHaveBeenCalledWith(24);
     });
   });
-}); 
-}); 
+});
+
+// End of tests 
