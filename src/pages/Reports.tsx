@@ -10,6 +10,7 @@ import { TimePeriodFilter } from "@/components/filters";
 import BalanceTrendChart from "@/components/BalanceTrendChart";
 import IncomeExpenseChart from "@/components/IncomeExpenseChart";
 import MonthlyTotalsBarChart from "@/components/MonthlyTotalsBarChart";
+import CategoryReportsSection from "@/components/reports/CategoryReportsSection";
 import { useTimePeriodData } from "@/hooks/useTimePeriodData";
 import { useResponsive } from "@/hooks/useResponsive";
 import { usePerformanceMetrics } from "@/utils/performance";
@@ -219,6 +220,12 @@ const Reports = () => {
             </Card>
           </div>
 
+          {/* Category Reports Section */}
+          <CategoryReportsSection 
+            timePeriod={currentPeriod}
+            className="w-full"
+          />
+
           {/* Comparative Insights Section */}
           <ComparisonMetrics 
             showCurrentMonth={true}
@@ -237,8 +244,8 @@ const Reports = () => {
                 More Analytics Coming Soon!
               </h3>
               <p className={`${isMobile ? 'text-xs' : 'text-sm md:text-base'} text-muted-foreground mb-4 md:mb-6`}>
-                We're developing advanced features like category breakdowns, spending patterns, 
-                budget vs actual analysis, and predictive insights.
+                We're developing advanced features like budget vs actual analysis, 
+                predictive insights, and automated financial health scoring.
               </p>
               <p className={`${isMobile ? 'text-xs' : 'text-xs sm:text-sm'} text-muted-foreground`}>
                 Have suggestions for reports you'd like to see?{' '}
