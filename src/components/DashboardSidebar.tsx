@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { 
   LayoutDashboard, 
   LineChart, 
@@ -22,7 +22,6 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
-import { BANNER_HEIGHT } from "@/components/ui/SupportBanner";
 import AddTransactionModal from "@/components/AddTransactionModal";
 
 const links = [
@@ -72,30 +71,7 @@ export function DashboardSidebar() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isBannerVisible, setIsBannerVisible] = useState(true);
   const [addTransactionModalOpen, setAddTransactionModalOpen] = useState(false);
-  
-  // Listen for banner visibility changes
-  useEffect(() => {
-    // Initialize from localStorage if available
-    const storedVisibility = localStorage.getItem('support-banner-visible');
-    if (storedVisibility !== null) {
-      setIsBannerVisible(storedVisibility === 'true');
-    }
-    
-    // Listen for visibility change events
-    const handleVisibilityChange = (e: CustomEvent<{visible: boolean}>) => {
-      setIsBannerVisible(e.detail.visible);
-    };
-    
-    document.addEventListener('banner-visibility-change', 
-      handleVisibilityChange as EventListener);
-    
-    return () => {
-      document.removeEventListener('banner-visibility-change', 
-        handleVisibilityChange as EventListener);
-    };
-  }, []);
   
   const handleSignOut = async () => {
     try {
@@ -224,7 +200,7 @@ export function DashboardSidebar() {
         position: 'relative', 
         zIndex: 40 
       }}>
-        <Sidebar>
+        <Sidebar className="top-offset">
           {navigation}
         </Sidebar>
       </div>

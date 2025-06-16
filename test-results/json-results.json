@@ -1,0 +1,987 @@
+{
+  "config": {
+    "configFile": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/playwright.config.ts",
+    "rootDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "testType": "e2e",
+      "framework": "playwright",
+      "application": "minimalist-finance-hub",
+      "feature": "visual-charts",
+      "actualWorkers": 4
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "test-results/html-report",
+          "open": "on-failure"
+        }
+      ],
+      [
+        "junit",
+        {
+          "outputFile": "test-results/junit-results.xml"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/json-results.json"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "chromium-desktop",
+        "name": "chromium-desktop",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "reports-charts.spec.ts",
+          "chart-interactions.spec.ts",
+          "performance-charts.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "firefox-desktop",
+        "name": "firefox-desktop",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "reports-charts.spec.ts",
+          "chart-interactions.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "webkit-desktop",
+        "name": "webkit-desktop",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "reports-charts.spec.ts",
+          "chart-interactions.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "mobile-chrome",
+        "name": "mobile-chrome",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "mobile-charts.spec.ts",
+          "reports-charts.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "mobile-safari",
+        "name": "mobile-safari",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "mobile-charts.spec.ts",
+          "reports-charts.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "mobile-samsung",
+        "name": "mobile-samsung",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "mobile-charts.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "tablet-ipad",
+        "name": "tablet-ipad",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "mobile-charts.spec.ts",
+          "chart-interactions.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "tablet-android",
+        "name": "tablet-android",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "mobile-charts.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "visual-chromium",
+        "name": "visual-chromium",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/visual",
+        "testIgnore": [],
+        "testMatch": [
+          "charts-regression.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "visual-firefox",
+        "name": "visual-firefox",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/visual",
+        "testIgnore": [],
+        "testMatch": [
+          "charts-regression.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "visual-webkit",
+        "name": "visual-webkit",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/visual",
+        "testIgnore": [],
+        "testMatch": [
+          "charts-regression.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "performance-chromium",
+        "name": "performance-chromium",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "performance-charts.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "accessibility-chromium",
+        "name": "accessibility-chromium",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "reports-charts.spec.ts",
+          "chart-interactions.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "arc-desktop",
+        "name": "arc-desktop",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "smoke-layout.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "edge-desktop",
+        "name": "edge-desktop",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "smoke-layout.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "dia-desktop",
+        "name": "dia-desktop",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "smoke-layout.spec.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "testType": "e2e",
+          "framework": "playwright",
+          "application": "minimalist-finance-hub",
+          "feature": "visual-charts",
+          "actualWorkers": 4
+        },
+        "id": "safari-desktop",
+        "name": "safari-desktop",
+        "testDir": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "smoke-layout.spec.ts"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.53.0",
+    "workers": 4,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://localhost:5173",
+      "reuseExistingServer": true,
+      "timeout": 120000,
+      "stdout": "pipe",
+      "stderr": "pipe"
+    }
+  },
+  "suites": [
+    {
+      "title": "smoke-layout.spec.ts",
+      "file": "smoke-layout.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Layout smoke test – safe-area and banner",
+          "file": "smoke-layout.spec.ts",
+          "line": 6,
+          "column": 6,
+          "specs": [
+            {
+              "title": "page / renders without off-screen content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "arc-desktop",
+                  "projectName": "arc-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 7363,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-06-16T15:45:29.530Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e4bce9e449f9b8c31827-92e01087a6d099089379",
+              "file": "smoke-layout.spec.ts",
+              "line": 8,
+              "column": 5
+            },
+            {
+              "title": "page /dashboard renders without off-screen content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "arc-desktop",
+                  "projectName": "arc-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 7219,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-06-16T15:45:29.604Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e4bce9e449f9b8c31827-aab226f48b7323d603d1",
+              "file": "smoke-layout.spec.ts",
+              "line": 8,
+              "column": 5
+            },
+            {
+              "title": "page /reports renders without off-screen content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "arc-desktop",
+                  "projectName": "arc-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 7221,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-06-16T15:45:29.534Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e4bce9e449f9b8c31827-fef6b61d0f5230711916",
+              "file": "smoke-layout.spec.ts",
+              "line": 8,
+              "column": 5
+            },
+            {
+              "title": "page /settings renders without off-screen content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "arc-desktop",
+                  "projectName": "arc-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 7425,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-06-16T15:45:29.767Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e4bce9e449f9b8c31827-711e5b0aa9e1cbef82d3",
+              "file": "smoke-layout.spec.ts",
+              "line": 8,
+              "column": 5
+            },
+            {
+              "title": "page / renders without off-screen content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "edge-desktop",
+                  "projectName": "edge-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 4513,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-06-16T15:45:39.345Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e4bce9e449f9b8c31827-a97613580c5fd9f10c21",
+              "file": "smoke-layout.spec.ts",
+              "line": 8,
+              "column": 5
+            },
+            {
+              "title": "page /dashboard renders without off-screen content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "edge-desktop",
+                  "projectName": "edge-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 4678,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-06-16T15:45:39.349Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e4bce9e449f9b8c31827-ef0c9d57bac72139ac6e",
+              "file": "smoke-layout.spec.ts",
+              "line": 8,
+              "column": 5
+            },
+            {
+              "title": "page /reports renders without off-screen content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "edge-desktop",
+                  "projectName": "edge-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4825,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-06-16T15:45:39.349Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e4bce9e449f9b8c31827-e60680848c882e12bd41",
+              "file": "smoke-layout.spec.ts",
+              "line": 8,
+              "column": 5
+            },
+            {
+              "title": "page /settings renders without off-screen content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "edge-desktop",
+                  "projectName": "edge-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 7,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 4549,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-06-16T15:45:39.349Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e4bce9e449f9b8c31827-b1a7145630ebc81baafb",
+              "file": "smoke-layout.spec.ts",
+              "line": 8,
+              "column": 5
+            },
+            {
+              "title": "page / renders without off-screen content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "dia-desktop",
+                  "projectName": "dia-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 8,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 5459,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-06-16T15:45:45.264Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e4bce9e449f9b8c31827-76d065e66a1904796ec8",
+              "file": "smoke-layout.spec.ts",
+              "line": 8,
+              "column": 5
+            },
+            {
+              "title": "page /dashboard renders without off-screen content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "dia-desktop",
+                  "projectName": "dia-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 9,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 5264,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-06-16T15:45:45.295Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e4bce9e449f9b8c31827-f9c924434765414ee89c",
+              "file": "smoke-layout.spec.ts",
+              "line": 8,
+              "column": 5
+            },
+            {
+              "title": "page /reports renders without off-screen content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "dia-desktop",
+                  "projectName": "dia-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 10,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 5500,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-06-16T15:45:45.461Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e4bce9e449f9b8c31827-91f872f4d02974a07e00",
+              "file": "smoke-layout.spec.ts",
+              "line": 8,
+              "column": 5
+            },
+            {
+              "title": "page /settings renders without off-screen content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "dia-desktop",
+                  "projectName": "dia-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 11,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4961,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-06-16T15:45:45.500Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e4bce9e449f9b8c31827-f22b68ab1594d1beae9f",
+              "file": "smoke-layout.spec.ts",
+              "line": 8,
+              "column": 5
+            },
+            {
+              "title": "page / renders without off-screen content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "safari-desktop",
+                  "projectName": "safari-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 12,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 2474,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-06-16T15:45:51.734Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e4bce9e449f9b8c31827-52b94b5a968e4a4e782e",
+              "file": "smoke-layout.spec.ts",
+              "line": 8,
+              "column": 5
+            },
+            {
+              "title": "page /dashboard renders without off-screen content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "safari-desktop",
+                  "projectName": "safari-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 13,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 2478,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-06-16T15:45:51.887Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e4bce9e449f9b8c31827-d48da5e22106454258e6",
+              "file": "smoke-layout.spec.ts",
+              "line": 8,
+              "column": 5
+            },
+            {
+              "title": "page /reports renders without off-screen content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "safari-desktop",
+                  "projectName": "safari-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 14,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2478,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-06-16T15:45:51.975Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e4bce9e449f9b8c31827-c9e22068abeccf3c3083",
+              "file": "smoke-layout.spec.ts",
+              "line": 8,
+              "column": 5
+            },
+            {
+              "title": "page /settings renders without off-screen content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "safari-desktop",
+                  "projectName": "safari-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 15,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 2474,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-06-16T15:45:52.368Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e4bce9e449f9b8c31827-baf620483a0deb71c2e7",
+              "file": "smoke-layout.spec.ts",
+              "line": 8,
+              "column": 5
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-06-16T15:45:27.293Z",
+    "duration": 28424.767,
+    "expected": 16,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

@@ -1,5 +1,5 @@
 import React, { ReactNode, useState, useEffect } from 'react';
-import { SupportBanner, BANNER_HEIGHT } from '@/components/ui/SupportBanner';
+import { SupportBanner } from '@/components/ui/SupportBanner';
 import { useLocation } from 'react-router-dom';
 
 interface PublicLayoutProps {
@@ -46,11 +46,7 @@ const PublicLayout = ({ children }: PublicLayoutProps) => {
 
   return (
     <div 
-      className="safe-top min-h-screen flex flex-col"
-      style={{ 
-        paddingTop: isBannerVisible && !isAuthPage ? `${BANNER_HEIGHT}px` : '0',
-        transition: 'padding-top 0.2s ease-in-out'
-      }}
+      className={`min-h-screen flex flex-col ${isAuthPage ? 'safe-top' : 'top-offset'}`}
     >
       {!isAuthPage && <SupportBanner />}
       <div className="flex-1">

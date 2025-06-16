@@ -40,7 +40,7 @@ export default defineConfig({
   // Global test configuration
   use: {
     // Base URL for the application
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.BASE_URL || 'http://localhost:5173',
     
     // Browser settings
     actionTimeout: 10000,
@@ -234,22 +234,66 @@ export default defineConfig({
         'reports-charts.spec.ts',
         'chart-interactions.spec.ts'
       ]
+    },
+    
+    // ==================
+    // ADDITIONAL CHROMIUM VARIANTS (Arc, Edge, Dia)
+    // ==================
+    {
+      name: 'arc-desktop',
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 720 },
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Arc/1.29.0 Chrome/117.0.0.0 Safari/537.36'
+      },
+      testMatch: [
+        'smoke-layout.spec.ts'
+      ]
+    },
+    {
+      name: 'edge-desktop',
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 720 },
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Edg/117.0.0.0'
+      },
+      testMatch: [
+        'smoke-layout.spec.ts'
+      ]
+    },
+    {
+      name: 'dia-desktop',
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1280, height: 720 },
+        userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Dia/1.0 Chrome/117.0.0.0 Safari/537.36'
+      },
+      testMatch: [
+        'smoke-layout.spec.ts'
+      ]
+    },
+    // Explicit Safari desktop alias for separate reporting
+    {
+      name: 'safari-desktop',
+      use: { 
+        ...devices['Desktop Safari'],
+        viewport: { width: 1280, height: 720 }
+      },
+      testMatch: [
+        'smoke-layout.spec.ts'
+      ]
     }
   ],
   
   // Web server configuration for local development
   webServer: {
     command: process.env.CI ? 'npm run preview' : 'npm run dev',
-    url: 'http://localhost:3000',
+    url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 120000, // 2 minutes to start
     stdout: 'pipe',
     stderr: 'pipe'
   },
-  
-  // Global setup and teardown
-  globalSetup: require.resolve('./test/global-setup.ts'),
-  globalTeardown: require.resolve('./test/global-teardown.ts'),
   
   // Output directories
   outputDir: 'test-results/artifacts',
@@ -264,20 +308,9 @@ export default defineConfig({
 });
 
 // Environment-specific configurations
-if (process.env.GITHUB_ACTIONS) {
-  // GitHub Actions specific settings
-  module.exports.use = {
-    ...module.exports.use,
-    video: 'retain-on-failure',
-    trace: 'retain-on-failure'
-  };
-}
-
-if (process.env.HEADLESS === 'false') {
-  // Development mode with headed browser
-  module.exports.use = {
-    ...module.exports.use,
-    headless: false,
-    slowMo: 100 // Slow down actions for debugging
-  };
-} 
+// if (process.env.GITHUB_ACTIONS) {
+//   // GitHub Actions specific settings
+// }
+// if (process.env.HEADLESS === 'false') {
+//   // Development mode overrides handled via CLI flags
+// } 

@@ -1,0 +1,42 @@
+<testsuites id="" name="" tests="16" failures="0" skipped="0" errors="0" time="28.424767">
+<testsuite name="smoke-layout.spec.ts" timestamp="2025-06-16T15:45:28.640Z" hostname="arc-desktop" tests="4" failures="0" skipped="0" time="29.228" errors="0">
+<testcase name="Layout smoke test – safe-area and banner › page / renders without off-screen content" classname="smoke-layout.spec.ts" time="7.363">
+</testcase>
+<testcase name="Layout smoke test – safe-area and banner › page /dashboard renders without off-screen content" classname="smoke-layout.spec.ts" time="7.219">
+</testcase>
+<testcase name="Layout smoke test – safe-area and banner › page /reports renders without off-screen content" classname="smoke-layout.spec.ts" time="7.221">
+</testcase>
+<testcase name="Layout smoke test – safe-area and banner › page /settings renders without off-screen content" classname="smoke-layout.spec.ts" time="7.425">
+</testcase>
+</testsuite>
+<testsuite name="smoke-layout.spec.ts" timestamp="2025-06-16T15:45:28.640Z" hostname="edge-desktop" tests="4" failures="0" skipped="0" time="18.565" errors="0">
+<testcase name="Layout smoke test – safe-area and banner › page / renders without off-screen content" classname="smoke-layout.spec.ts" time="4.513">
+</testcase>
+<testcase name="Layout smoke test – safe-area and banner › page /dashboard renders without off-screen content" classname="smoke-layout.spec.ts" time="4.678">
+</testcase>
+<testcase name="Layout smoke test – safe-area and banner › page /reports renders without off-screen content" classname="smoke-layout.spec.ts" time="4.825">
+</testcase>
+<testcase name="Layout smoke test – safe-area and banner › page /settings renders without off-screen content" classname="smoke-layout.spec.ts" time="4.549">
+</testcase>
+</testsuite>
+<testsuite name="smoke-layout.spec.ts" timestamp="2025-06-16T15:45:28.640Z" hostname="dia-desktop" tests="4" failures="0" skipped="0" time="21.184" errors="0">
+<testcase name="Layout smoke test – safe-area and banner › page / renders without off-screen content" classname="smoke-layout.spec.ts" time="5.459">
+</testcase>
+<testcase name="Layout smoke test – safe-area and banner › page /dashboard renders without off-screen content" classname="smoke-layout.spec.ts" time="5.264">
+</testcase>
+<testcase name="Layout smoke test – safe-area and banner › page /reports renders without off-screen content" classname="smoke-layout.spec.ts" time="5.5">
+</testcase>
+<testcase name="Layout smoke test – safe-area and banner › page /settings renders without off-screen content" classname="smoke-layout.spec.ts" time="4.961">
+</testcase>
+</testsuite>
+<testsuite name="smoke-layout.spec.ts" timestamp="2025-06-16T15:45:28.640Z" hostname="safari-desktop" tests="4" failures="0" skipped="0" time="9.904" errors="0">
+<testcase name="Layout smoke test – safe-area and banner › page / renders without off-screen content" classname="smoke-layout.spec.ts" time="2.474">
+</testcase>
+<testcase name="Layout smoke test – safe-area and banner › page /dashboard renders without off-screen content" classname="smoke-layout.spec.ts" time="2.478">
+</testcase>
+<testcase name="Layout smoke test – safe-area and banner › page /reports renders without off-screen content" classname="smoke-layout.spec.ts" time="2.478">
+</testcase>
+<testcase name="Layout smoke test – safe-area and banner › page /settings renders without off-screen content" classname="smoke-layout.spec.ts" time="2.474">
+</testcase>
+</testsuite>
+</testsuites>
