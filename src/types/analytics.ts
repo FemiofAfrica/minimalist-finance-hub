@@ -36,4 +36,28 @@ export interface CategoryChange {
   currency: string;
   /** Period type for this change calculation */
   changeType: 'MoM' | 'YoY';
+}
+
+export interface CategoryTrendPoint {
+  /** Month in YYYY-MM format */
+  month: string;
+  /** Amount for this category in this month */
+  amount: number;
+  /** Percentage change from previous month (optional) */
+  percentageChange?: number;
+}
+
+export interface CategoryTrendSeries {
+  /** Category identifier */
+  categoryId: string;
+  /** Human-readable category name */
+  categoryName: string;
+  /** Category transaction type */
+  type: CategoryType;
+  /** ISO currency code */
+  currency: string;
+  /** Color for this series in charts */
+  color: string;
+  /** Array of monthly data points */
+  data: CategoryTrendPoint[];
 } 
