@@ -13,4 +13,27 @@ export interface CategoryAggregate {
   currency: string;
   /** Category transaction type */
   type: CategoryType;
+}
+
+export interface CategoryChange {
+  /** Category identifier */
+  categoryId: string;
+  /** Human-readable category name */
+  categoryName: string;
+  /** Category transaction type */
+  type: CategoryType;
+  /** Current period total amount */
+  currentTotal: number;
+  /** Previous period total amount for comparison */
+  previousTotal: number;
+  /** Absolute change between periods (current - previous) */
+  absoluteChange: number;
+  /** Percentage change between periods (0-100, can be negative) */
+  percentageChange: number;
+  /** Whether the change exceeds the significance threshold */
+  isSignificant: boolean;
+  /** ISO currency code */
+  currency: string;
+  /** Period type for this change calculation */
+  changeType: 'MoM' | 'YoY';
 } 

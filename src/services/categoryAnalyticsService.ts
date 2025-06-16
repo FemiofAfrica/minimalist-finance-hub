@@ -1,8 +1,11 @@
 import { supabase } from '@/integrations/supabase/client';
-import { CategoryAggregate, CategoryType } from '@/types/analytics';
+import { CategoryAggregate, CategoryType, CategoryChange } from '@/types/analytics';
 
 // Percentage factor extracted as a constant to follow the DRY rule
 const PERCENT_FACTOR = 100;
+
+// Threshold for determining significant changes (25%)
+const SIGNIFICANT_CHANGE_THRESHOLD = 25;
 
 /**
  * Returns aggregated totals per category for the given user and time window.
@@ -101,4 +104,218 @@ export async function getCategoryTotals(
     .sort((a, b) => b.total - a.total);
 
   return aggregates;
+}
+
+/**
+ * Returns category change analysis comparing current period with previous period.
+ * Calculates both month-over-month (MoM) and year-over-year (YoY) changes.
+ *
+ * @param userId   The authenticated user's ID.
+ * @param months   The number of past months for current period. Must be > 0.
+ */
+export async function getCategoryChanges(
+  userId: string,
+  months: number
+): Promise<CategoryChange[]> {
+  if (!userId) {
+    throw new Error('getCategoryChanges: userId is required');
+  }
+  if (months <= 0) {
+    throw new Error('getCategoryChanges: months must be greater than zero');
+  }
+
+  // Get current period data
+  const currentPeriodData = await getCategoryTotals(userId, months);
+  
+  // Get previous period data (same duration, but shifted back by the period length)
+  const previousPeriodData = await getCategoryTotalsPeriod(userId, months, months);
+  
+  // Get year-over-year data (same period but 12 months back)
+  const yearOverYearData = await getCategoryTotalsPeriod(userId, months, 12);
+
+  // Create maps for efficient lookup
+  const currentMap = new Map(currentPeriodData.map(cat => [cat.categoryId, cat]));
+  const previousMap = new Map(previousPeriodData.map(cat => [cat.categoryId, cat]));
+  const yearOverYearMap = new Map(yearOverYearData.map(cat => [cat.categoryId, cat]));
+
+  // Get all unique category IDs from all periods
+  const allCategoryIds = new Set([
+    ...Array.from(currentMap.keys()),
+    ...Array.from(previousMap.keys()),
+    ...Array.from(yearOverYearMap.keys())
+  ]);
+
+  const changes: CategoryChange[] = [];
+
+  // Calculate MoM changes
+  for (const categoryId of Array.from(allCategoryIds)) {
+    const current = currentMap.get(categoryId);
+    const previous = previousMap.get(categoryId);
+    
+    if (current || previous) {
+      const change = calculateCategoryChange(current, previous, 'MoM');
+      if (change) {
+        changes.push(change);
+      }
+    }
+  }
+
+  // Calculate YoY changes
+  for (const categoryId of Array.from(allCategoryIds)) {
+    const current = currentMap.get(categoryId);
+    const yearAgo = yearOverYearMap.get(categoryId);
+    
+    if (current || yearAgo) {
+      const change = calculateCategoryChange(current, yearAgo, 'YoY');
+      if (change) {
+        changes.push(change);
+      }
+    }
+  }
+
+  // Sort by absolute change magnitude (largest changes first)
+  return changes.sort((a, b) => Math.abs(b.absoluteChange) - Math.abs(a.absoluteChange));
+}
+
+/**
+ * Helper function to get category totals for a specific period offset.
+ * 
+ * @param userId The authenticated user's ID
+ * @param months The number of months for the period duration
+ * @param offsetMonths How many months back to start the period
+ */
+async function getCategoryTotalsPeriod(
+  userId: string,
+  months: number,
+  offsetMonths: number,
+  filter?: CategoryType
+): Promise<CategoryAggregate[]> {
+  if (!userId) {
+    throw new Error('getCategoryTotalsPeriod: userId is required');
+  }
+  if (months <= 0 || offsetMonths < 0) {
+    throw new Error('getCategoryTotalsPeriod: invalid period parameters');
+  }
+
+  // Calculate the date range for the offset period
+  const now = new Date();
+  const startDate = new Date(now.getFullYear(), now.getMonth() - offsetMonths - (months - 1), 1).toISOString();
+  const endDate = new Date(now.getFullYear(), now.getMonth() - offsetMonths + 1, 0).toISOString();
+
+  let query = supabase
+    .from('transactions')
+    .select(
+      `amount, currency, type, category_id, categories (name, type)`
+    )
+    .eq('user_id', userId);
+
+  if (filter) {
+    query = query.eq('type', filter);
+  }
+
+  query = query
+    .gte('date', startDate)
+    .lte('date', endDate);
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching category totals for period:', error);
+    throw error;
+  }
+
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  // Same aggregation logic as getCategoryTotals
+  interface RawTxRow {
+    amount: number;
+    currency: string;
+    type: CategoryType;
+    category_id: string | null;
+    categories: { name: string | null; type: CategoryType | null } | null;
+  }
+
+  const aggregateMap = new Map<string, { name: string; type: CategoryType; total: number; currency: string }>();
+  let grandTotal = 0;
+
+  (data as RawTxRow[]).forEach((tx) => {
+    const amountAbs = Math.abs(Number(tx.amount));
+    const categoryId = tx.category_id ?? 'uncategorized';
+    const categoryName = tx.categories?.name ?? 'Uncategorized';
+    const categoryType = tx.categories?.type ?? tx.type;
+
+    const existing = aggregateMap.get(categoryId);
+    if (existing) {
+      existing.total += amountAbs;
+    } else {
+      aggregateMap.set(categoryId, {
+        name: categoryName,
+        type: categoryType as CategoryType,
+        total: amountAbs,
+        currency: tx.currency,
+      });
+    }
+
+    grandTotal += amountAbs;
+  });
+
+  const aggregates: CategoryAggregate[] = Array.from(aggregateMap.entries())
+    .map(([id, info]) => ({
+      categoryId: id,
+      categoryName: info.name,
+      total: info.total,
+      percentage: grandTotal ? (info.total / grandTotal) * PERCENT_FACTOR : 0,
+      currency: info.currency,
+      type: info.type,
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  return aggregates;
+}
+
+/**
+ * Helper function to calculate change metrics between two category periods.
+ */
+function calculateCategoryChange(
+  current: CategoryAggregate | undefined,
+  previous: CategoryAggregate | undefined,
+  changeType: 'MoM' | 'YoY'
+): CategoryChange | null {
+  if (!current && !previous) {
+    return null;
+  }
+
+  // Use current category info if available, otherwise previous
+  const categoryInfo = current || previous!;
+  
+  const currentTotal = current?.total ?? 0;
+  const previousTotal = previous?.total ?? 0;
+  const absoluteChange = currentTotal - previousTotal;
+  
+  // Calculate percentage change, handling division by zero
+  let percentageChange = 0;
+  if (previousTotal > 0) {
+    percentageChange = (absoluteChange / previousTotal) * PERCENT_FACTOR;
+  } else if (currentTotal > 0) {
+    // New category appeared, consider it as 100% increase
+    percentageChange = PERCENT_FACTOR;
+  }
+  // If both are 0, percentage change remains 0
+
+  const isSignificant = Math.abs(percentageChange) >= SIGNIFICANT_CHANGE_THRESHOLD;
+
+  return {
+    categoryId: categoryInfo.categoryId,
+    categoryName: categoryInfo.categoryName,
+    type: categoryInfo.type,
+    currentTotal,
+    previousTotal,
+    absoluteChange,
+    percentageChange,
+    isSignificant,
+    currency: categoryInfo.currency,
+    changeType,
+  };
 } 
