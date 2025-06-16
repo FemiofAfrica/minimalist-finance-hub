@@ -181,4 +181,15 @@ body {
   .safe-top {
     padding-top: env(safe-area-inset-top);
   }
+
+  /* Global banner + safe-area offset helper */
+  body {
+    --banner-offset: 0px; /* default when banner hidden */
+  }
+  body.banner-visible {
+    --banner-offset: 32px; /* BANNER_HEIGHT */
+  }
+  .top-offset {
+    padding-top: calc(env(safe-area-inset-top) + var(--banner-offset));
+  }
 }

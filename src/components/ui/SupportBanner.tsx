@@ -66,6 +66,16 @@ export function SupportBanner({ className = '', initialText, isPreviewMode = fal
     localStorage.setItem('support-banner-visible', String(visible));
   }, [visible]);
 
+  // Manage body class to expose banner visibility globally for spacing helper
+  useEffect(() => {
+    const body = document.body;
+    if (visible) {
+      body.classList.add('banner-visible');
+    } else {
+      body.classList.remove('banner-visible');
+    }
+  }, [visible]);
+
   // Initialize visibility from localStorage if available
   useEffect(() => {
     if (isPreviewMode) {

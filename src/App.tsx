@@ -33,6 +33,7 @@ import { OnboardingProvider } from '@/contexts/OnboardingContext';
 import { Onboarding } from '@/components/onboarding/Onboarding';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useEffect } from 'react';
+import { TopOffsetProvider } from '@/contexts/TopOffsetContext';
 
 // Initialize client environment variables with error handling
 try {
@@ -135,38 +136,40 @@ function App() {
   return (
     <Router>
       <ThemeProvider>
-        <AuthProvider>
-          {/* MixpanelInit must be inside AuthProvider to use useAuth hook */}
-          <MixpanelInit />
-          <CurrencyProvider>
-            <OnboardingProvider>
-              <NotificationProvider>
-                <Routes>
-                  <Route path="/" element={<LandingPage />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/test-reset-password" element={<TestResetPassword />} />
-                  <Route path="/about" element={<AboutUs />} />
-                  <Route path="/blog" element={<Blog />} />
-                  <Route path="/blog/kpege-complete-guide" element={<KpegeCompleteGuide />} />
-                  <Route path="/blog/why-money-management-matters" element={<WhyMoneyManagementMatters />} />
-                  <Route path="/unsubscribe" element={<Unsubscribe />} />
-                  <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-                  <Route path="/transactions" element={<PrivateRoute><Transactions /></PrivateRoute>} />
-                  <Route path="/subscriptions" element={<PrivateRoute><Subscriptions /></PrivateRoute>} />
-                  <Route path="/accounts" element={<PrivateRoute><AccountsAndCards /></PrivateRoute>} />
-                  <Route path="/budgeting" element={<PrivateRoute><Budgeting /></PrivateRoute>} />
-                  <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
-                  <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <Toaster />
-                <SafeAnalytics />
-                <SafeSpeedInsights />
-              </NotificationProvider>
-            </OnboardingProvider>
-          </CurrencyProvider>
-        </AuthProvider>
+        <TopOffsetProvider>
+          <AuthProvider>
+            {/* MixpanelInit must be inside AuthProvider to use useAuth hook */}
+            <MixpanelInit />
+            <CurrencyProvider>
+              <OnboardingProvider>
+                <NotificationProvider>
+                  <Routes>
+                    <Route path="/" element={<LandingPage />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/test-reset-password" element={<TestResetPassword />} />
+                    <Route path="/about" element={<AboutUs />} />
+                    <Route path="/blog" element={<Blog />} />
+                    <Route path="/blog/kpege-complete-guide" element={<KpegeCompleteGuide />} />
+                    <Route path="/blog/why-money-management-matters" element={<WhyMoneyManagementMatters />} />
+                    <Route path="/unsubscribe" element={<Unsubscribe />} />
+                    <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+                    <Route path="/transactions" element={<PrivateRoute><Transactions /></PrivateRoute>} />
+                    <Route path="/subscriptions" element={<PrivateRoute><Subscriptions /></PrivateRoute>} />
+                    <Route path="/accounts" element={<PrivateRoute><AccountsAndCards /></PrivateRoute>} />
+                    <Route path="/budgeting" element={<PrivateRoute><Budgeting /></PrivateRoute>} />
+                    <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
+                    <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                  <Toaster />
+                  <SafeAnalytics />
+                  <SafeSpeedInsights />
+                </NotificationProvider>
+              </OnboardingProvider>
+            </CurrencyProvider>
+          </AuthProvider>
+        </TopOffsetProvider>
       </ThemeProvider>
     </Router>
   );

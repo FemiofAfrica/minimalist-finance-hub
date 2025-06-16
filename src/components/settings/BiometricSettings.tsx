@@ -31,9 +31,9 @@ export function BiometricSettings() {
       // Use enhanced service for better cross-device support
       const supported = enhancedBiometricAuthService.isSupported();
       const available = supported ? await enhancedBiometricAuthService.isAvailable() : false;
-      
-      setIsSupported(supported);
-      setIsAvailable(available);
+    
+    setIsSupported(supported);
+    setIsAvailable(available);
         
       // Detect device type and biometric method
       const userAgent = navigator.userAgent;
@@ -169,23 +169,23 @@ export function BiometricSettings() {
   if (!isSupported) {
     return (
       <div className="space-y-6">
-        <Card>
+      <Card>
           <CardHeader className="text-center">
             <CardTitle className="flex items-center justify-center gap-2">
-              <Shield className="h-5 w-5" />
-              Biometric Authentication
-            </CardTitle>
-            <CardDescription>
+            <Shield className="h-5 w-5" />
+            Biometric Authentication
+          </CardTitle>
+          <CardDescription>
               Biometric authentication is not supported on this device.
-            </CardDescription>
-          </CardHeader>
+          </CardDescription>
+        </CardHeader>
           <CardContent>
             <div className="text-sm text-muted-foreground text-center">
               <AlertTriangle className="h-4 w-4 inline mr-1" />
               This device doesn't support WebAuthn or biometric authentication.
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
         
         {/* Still show device manager for users who might have other devices */}
         <BiometricDeviceManager onDeviceChange={handleDeviceChange} />
@@ -196,23 +196,23 @@ export function BiometricSettings() {
   if (!isAvailable) {
     return (
       <div className="space-y-6">
-        <Card>
+      <Card>
           <CardHeader className="text-center">
             <CardTitle className="flex items-center justify-center gap-2">
-              <Shield className="h-5 w-5" />
-              Biometric Authentication
-            </CardTitle>
-            <CardDescription>
+            <Shield className="h-5 w-5" />
+            Biometric Authentication
+          </CardTitle>
+          <CardDescription>
               Biometric authentication is not available on this device.
-            </CardDescription>
-          </CardHeader>
+          </CardDescription>
+        </CardHeader>
           <CardContent>
             <div className="text-sm text-muted-foreground text-center">
               <AlertTriangle className="h-4 w-4 inline mr-1" />
               Please ensure your device has biometric sensors set up and enabled.
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
         
         {/* Still show device manager for users who might have other devices */}
         <BiometricDeviceManager onDeviceChange={handleDeviceChange} />
@@ -222,58 +222,58 @@ export function BiometricSettings() {
 
   return (
     <div className="space-y-6">
-      <Card>
+    <Card>
         <CardHeader className="text-center">
           <CardTitle className="flex items-center justify-center gap-2">
             <Fingerprint className="h-5 w-5" />
-            Biometric Authentication
-          </CardTitle>
-          <CardDescription>
+          Biometric Authentication
+        </CardTitle>
+        <CardDescription>
             Use {deviceInfo.method} to sign in quickly and securely across all your devices
-          </CardDescription>
-        </CardHeader>
+        </CardDescription>
+      </CardHeader>
         <CardContent className="space-y-4">
           {credentials.length === 0 ? (
             <div className="text-center space-y-4">
               <div className="text-sm text-muted-foreground">
                 No biometric credentials registered on this device.
-              </div>
-              <Button 
-                onClick={handleEnableBiometric}
+        </div>
+          <Button 
+            onClick={handleEnableBiometric}
                 disabled={isLoading}
-                className="w-full"
-              >
+            className="w-full"
+          >
                 {isLoading ? 'Setting up...' : `Enable ${deviceInfo.method}`}
-              </Button>
+          </Button>
             </div>
-          ) : (
+        ) : (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium">
                   Registered Devices ({credentials.length})
                 </div>
-                <Button 
-                  onClick={handleEnableBiometric}
+          <Button 
+            onClick={handleEnableBiometric}
                   disabled={isLoading}
-                  variant="outline"
+            variant="outline"
                   size="sm"
-                >
+          >
                   {isLoading ? 'Adding...' : 'Add This Device'}
-                </Button>
+          </Button>
               </div>
               
               <div className="space-y-2">
                 {credentials.map((credential) => (
-                  <div key={credential.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Fingerprint className="h-4 w-4 text-muted-foreground" />
-                      <div>
+                <div key={credential.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Fingerprint className="h-4 w-4 text-muted-foreground" />
+                    <div>
                         <div className="text-sm font-medium">{credential.name}</div>
                         <div className="text-xs text-muted-foreground">
                           Added {new Date(credential.created_at).toLocaleDateString()}
-                          {credential.last_used_at && (
+                        {credential.last_used_at && (
                             <> • Last used {new Date(credential.last_used_at).toLocaleDateString()}</>
-                          )}
+                        )}
                         </div>
                       </div>
                     </div>
@@ -287,9 +287,9 @@ export function BiometricSettings() {
                     </Button>
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
+                </div>
+          </div>
+        )}
         </CardContent>
       </Card>
 
@@ -354,6 +354,6 @@ export function BiometricSettings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+        </div>
   );
 } 

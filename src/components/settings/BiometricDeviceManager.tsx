@@ -350,3 +350,4 @@ const BiometricDeviceManager: React.FC<BiometricDeviceManagerProps> = ({ onDevic
 };
 
 export default BiometricDeviceManager;
+ 
