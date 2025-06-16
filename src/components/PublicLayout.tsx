@@ -46,7 +46,7 @@ const PublicLayout = ({ children }: PublicLayoutProps) => {
 
   return (
     <div 
-      className="min-h-screen flex flex-col"
+      className="safe-top min-h-screen flex flex-col"
       style={{ 
         paddingTop: isBannerVisible && !isAuthPage ? `${BANNER_HEIGHT}px` : '0',
         transition: 'padding-top 0.2s ease-in-out'

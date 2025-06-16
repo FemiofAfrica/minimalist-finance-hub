@@ -40,7 +40,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   
   return (
     <div 
-      className={`flex flex-col min-h-screen w-full bg-slate-50 dark:bg-neutral-950`}
+      className={`dashboard-layout flex flex-col min-h-screen w-full bg-slate-50 dark:bg-neutral-950`}
       style={{ 
         paddingTop: isBannerVisible ? `${BANNER_HEIGHT}px` : '0',
         transition: 'padding-top 0.2s ease-in-out'

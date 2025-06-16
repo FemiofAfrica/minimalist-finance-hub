@@ -227,17 +227,6 @@ export function DashboardSidebar() {
         <Sidebar>
           {navigation}
         </Sidebar>
-        {/* Add CSS to adjust sidebar position */}
-        <style>{`
-          /* For Mobile Sidebar (SheetContent) */
-          [data-sidebar="sidebar"][data-mobile="true"],
-          /* For Desktop Sidebar (the fixed panel inside the data-state container) */
-          div[data-state][data-variant="sidebar"] > div.fixed.inset-y-0 {
-            top: ${isBannerVisible ? `${BANNER_HEIGHT}px` : '0'} !important;
-            height: ${isBannerVisible ? `calc(100svh - ${BANNER_HEIGHT}px)` : '100svh'} !important;
-            transition: top 0.2s ease-in-out, height 0.2s ease-in-out !important;
-          }
-        `}</style>
       </div>
       
       {/* Add Transaction Modal */}

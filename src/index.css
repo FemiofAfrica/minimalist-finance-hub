@@ -175,3 +175,10 @@
 body {
   min-height: 100vh;
 }
+
+/* Safe-area padding helper */
+@layer utilities {
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}

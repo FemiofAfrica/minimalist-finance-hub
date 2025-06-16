@@ -507,8 +507,8 @@ const Login = () => {
 
   return (
     <PublicLayout>
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#e8f1df] w-screen h-screen m-0 p-0 overflow-auto auth-page">
-        <div className="flex flex-col items-center justify-center mt-16 mb-6 w-full">
+      <div className="min-h-screen flex flex-col items-center bg-[#e8f1df] w-screen m-0 p-0 overflow-auto auth-page pt-10">
+        <div className="flex flex-col items-center justify-center pt-8 mb-6 w-full">
           <img src="/kpege-logo.svg" alt="Kpege Logo" className="h-14 w-auto mx-auto" style={{ maxHeight: 96 }} />
         </div>
         <div className="w-full max-w-xl space-y-6 px-4 sm:px-8 mx-auto">
