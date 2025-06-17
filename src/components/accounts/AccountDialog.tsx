@@ -279,10 +279,32 @@ const AccountDialog = ({ isOpen, onClose, account }: AccountDialogProps) => {
                 <SelectValue placeholder="Select currency" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="NGN">Nigerian Naira (NGN)</SelectItem>
-                <SelectItem value="USD">US Dollar (USD)</SelectItem>
-                <SelectItem value="EUR">Euro (EUR)</SelectItem>
-                <SelectItem value="GBP">British Pound (GBP)</SelectItem>
+                {/* African Currencies */}
+                <SelectItem value="NGN">🇳🇬 Nigerian Naira (NGN)</SelectItem>
+                <SelectItem value="ZAR">🇿🇦 South African Rand (ZAR)</SelectItem>
+                <SelectItem value="GHS">🇬🇭 Ghanaian Cedi (GHS)</SelectItem>
+                <SelectItem value="KES">🇰🇪 Kenyan Shilling (KES)</SelectItem>
+                <SelectItem value="EGP">🇪🇬 Egyptian Pound (EGP)</SelectItem>
+                <SelectItem value="MAD">🇲🇦 Moroccan Dirham (MAD)</SelectItem>
+                <SelectItem value="TND">🇹🇳 Tunisian Dinar (TND)</SelectItem>
+                <SelectItem value="UGX">🇺🇬 Ugandan Shilling (UGX)</SelectItem>
+                <SelectItem value="TZS">🇹🇿 Tanzanian Shilling (TZS)</SelectItem>
+                <SelectItem value="ETB">🇪🇹 Ethiopian Birr (ETB)</SelectItem>
+                <SelectItem value="XOF">🌍 West African CFA Franc (XOF)</SelectItem>
+                <SelectItem value="XAF">🌍 Central African CFA Franc (XAF)</SelectItem>
+                <SelectItem value="BWP">🇧🇼 Botswana Pula (BWP)</SelectItem>
+                <SelectItem value="ZMW">🇿🇲 Zambian Kwacha (ZMW)</SelectItem>
+                <SelectItem value="AOA">🇦🇴 Angolan Kwanza (AOA)</SelectItem>
+                <SelectItem value="MZN">🇲🇿 Mozambican Metical (MZN)</SelectItem>
+                <SelectItem value="RWF">🇷🇼 Rwandan Franc (RWF)</SelectItem>
+                <SelectItem value="MWK">🇲🇼 Malawian Kwacha (MWK)</SelectItem>
+                <SelectItem value="SZL">🇸🇿 Swazi Lilangeni (SZL)</SelectItem>
+                <SelectItem value="LSL">🇱🇸 Lesotho Loti (LSL)</SelectItem>
+                <SelectItem value="NAD">🇳🇦 Namibian Dollar (NAD)</SelectItem>
+                {/* International Currencies */}
+                <SelectItem value="USD">🇺🇸 US Dollar (USD)</SelectItem>
+                <SelectItem value="EUR">🇪🇺 Euro (EUR)</SelectItem>
+                <SelectItem value="GBP">🇬🇧 British Pound (GBP)</SelectItem>
               </SelectContent>
             </Select>
           </div>

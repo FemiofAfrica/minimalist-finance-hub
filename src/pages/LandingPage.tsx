@@ -11,23 +11,41 @@ import TransactionParserDemo from "@/components/demo/TransactionParserDemo";
 import ReceiptScannerDemo from "@/components/demo/ReceiptScannerDemo";
 import ErrorBoundary from "@/components/demo/ErrorBoundary";
 
-// Currency configuration - expanded with more options
+// Currency configuration - expanded with comprehensive African currencies
 const currencies = [
+  // African currencies (prioritized for African users)
   { code: 'NGN', symbol: '₦', name: 'Nigerian Naira', country: 'Nigeria', countries: ['Nigeria'] },
+  { code: 'ZAR', symbol: 'R', name: 'South African Rand', country: 'South Africa', countries: ['South Africa', 'Namibia', 'Lesotho', 'Eswatini'] },
+  { code: 'GHS', symbol: 'GH₵', name: 'Ghanaian Cedi', country: 'Ghana', countries: ['Ghana'] },
+  { code: 'KES', symbol: 'KSh', name: 'Kenyan Shilling', country: 'Kenya', countries: ['Kenya'] },
+  { code: 'EGP', symbol: 'E£', name: 'Egyptian Pound', country: 'Egypt', countries: ['Egypt'] },
+  { code: 'MAD', symbol: 'د.م.', name: 'Moroccan Dirham', country: 'Morocco', countries: ['Morocco'] },
+  { code: 'TND', symbol: 'د.ت', name: 'Tunisian Dinar', country: 'Tunisia', countries: ['Tunisia'] },
+  { code: 'UGX', symbol: 'USh', name: 'Ugandan Shilling', country: 'Uganda', countries: ['Uganda'] },
+  { code: 'TZS', symbol: 'TSh', name: 'Tanzanian Shilling', country: 'Tanzania', countries: ['Tanzania'] },
+  { code: 'ETB', symbol: 'Br', name: 'Ethiopian Birr', country: 'Ethiopia', countries: ['Ethiopia'] },
+  { code: 'XOF', symbol: 'CFA', name: 'West African CFA Franc', country: 'West Africa', countries: ['Benin', 'Burkina Faso', 'Côte d\'Ivoire', 'Guinea-Bissau', 'Mali', 'Niger', 'Senegal', 'Togo'] },
+  { code: 'XAF', symbol: 'FCFA', name: 'Central African CFA Franc', country: 'Central Africa', countries: ['Cameroon', 'Central African Republic', 'Chad', 'Republic of the Congo', 'Equatorial Guinea', 'Gabon'] },
+  { code: 'BWP', symbol: 'P', name: 'Botswana Pula', country: 'Botswana', countries: ['Botswana'] },
+  { code: 'ZMW', symbol: 'ZK', name: 'Zambian Kwacha', country: 'Zambia', countries: ['Zambia'] },
+  { code: 'AOA', symbol: 'Kz', name: 'Angolan Kwanza', country: 'Angola', countries: ['Angola'] },
+  { code: 'MZN', symbol: 'MT', name: 'Mozambican Metical', country: 'Mozambique', countries: ['Mozambique'] },
+  { code: 'RWF', symbol: 'FRw', name: 'Rwandan Franc', country: 'Rwanda', countries: ['Rwanda'] },
+  { code: 'MWK', symbol: 'MK', name: 'Malawian Kwacha', country: 'Malawi', countries: ['Malawi'] },
+  { code: 'SZL', symbol: 'L', name: 'Swazi Lilangeni', country: 'Eswatini', countries: ['Eswatini'] },
+  { code: 'LSL', symbol: 'L', name: 'Lesotho Loti', country: 'Lesotho', countries: ['Lesotho'] },
+  { code: 'NAD', symbol: 'N$', name: 'Namibian Dollar', country: 'Namibia', countries: ['Namibia'] },
+  // International currencies
   { code: 'USD', symbol: '$', name: 'US Dollar', country: 'United States', countries: ['United States', 'Puerto Rico', 'Ecuador', 'El Salvador', 'Panama', 'Zimbabwe'] },
   { code: 'EUR', symbol: '€', name: 'Euro', country: 'European Union', countries: ['Germany', 'France', 'Italy', 'Spain', 'Netherlands', 'Austria', 'Belgium', 'Greece', 'Portugal', 'Ireland', 'Finland', 'Slovakia', 'Slovenia', 'Luxembourg', 'Lithuania', 'Latvia', 'Estonia', 'Cyprus', 'Malta', 'Montenegro', 'European Union'] },
   { code: 'GBP', symbol: '£', name: 'British Pound', country: 'United Kingdom', countries: ['United Kingdom', 'England', 'Scotland', 'Wales', 'Northern Ireland'] },
   { code: 'INR', symbol: '₹', name: 'Indian Rupee', country: 'India', countries: ['India', 'Bhutan'] },
-  { code: 'ZAR', symbol: 'R', name: 'South African Rand', country: 'South Africa', countries: ['South Africa', 'Namibia', 'Lesotho', 'Eswatini'] },
-  { code: 'GHS', symbol: 'GH₵', name: 'Ghanaian Cedi', country: 'Ghana', countries: ['Ghana'] },
-  { code: 'KES', symbol: 'KSh', name: 'Kenyan Shilling', country: 'Kenya', countries: ['Kenya'] },
   { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', country: 'Australia', countries: ['Australia', 'Kiribati', 'Nauru', 'Tuvalu'] },
   { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar', country: 'Canada', countries: ['Canada'] },
   { code: 'JPY', symbol: '¥', name: 'Japanese Yen', country: 'Japan', countries: ['Japan'] },
   { code: 'CNY', symbol: '¥', name: 'Chinese Yuan', country: 'China', countries: ['China', 'People\'s Republic of China'] },
   { code: 'BRL', symbol: 'R$', name: 'Brazilian Real', country: 'Brazil', countries: ['Brazil'] },
   { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham', country: 'United Arab Emirates', countries: ['United Arab Emirates', 'Dubai', 'Abu Dhabi'] },
-  { code: 'EGP', symbol: 'E£', name: 'Egyptian Pound', country: 'Egypt', countries: ['Egypt'] },
   { code: 'MXN', symbol: 'Mex$', name: 'Mexican Peso', country: 'Mexico', countries: ['Mexico'] },
   { code: 'SAR', symbol: '﷼', name: 'Saudi Riyal', country: 'Saudi Arabia', countries: ['Saudi Arabia'] },
   { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar', country: 'Singapore', countries: ['Singapore'] },
