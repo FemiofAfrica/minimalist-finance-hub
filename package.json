@@ -114,6 +114,7 @@
     "@types/webrtc": "^0.0.45",
     "@vitejs/plugin-react": "^4.2.0",
     "@vitejs/plugin-react-swc": "^3.5.0",
+    "@vitest/coverage-v8": "3.2.3",
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.1.2",
     "cors": "^2.8.5",

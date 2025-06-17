@@ -60,4 +60,49 @@ export interface CategoryTrendSeries {
   color: string;
   /** Array of monthly data points */
   data: CategoryTrendPoint[];
+}
+
+// Insight types for actionable recommendations
+export type InsightType = 
+  | 'spending_spike'
+  | 'spending_drop' 
+  | 'new_category'
+  | 'missing_category'
+  | 'budget_suggestion'
+  | 'trend_positive'
+  | 'trend_negative'
+  | 'optimization_tip'
+  | 'comparative_alert';
+
+export type InsightSeverity = 'info' | 'warning' | 'success' | 'error';
+
+export type InsightPriority = 'low' | 'medium' | 'high' | 'critical';
+
+export interface CategoryInsight {
+  id: string;
+  type: InsightType;
+  severity: InsightSeverity;
+  priority: InsightPriority;
+  categoryId: string;
+  categoryName: string;
+  title: string;
+  description: string;
+  actionSuggestion?: string;
+  metadata: {
+    currentAmount: number;
+    previousAmount?: number;
+    percentageChange?: number;
+    zScore?: number;
+    currency: string;
+    timeframe: string;
+  };
+  createdAt: string;
+}
+
+export interface InsightGenerationContext {
+  userId: string;
+  timePeriod: number;
+  categoryData: CategoryAggregate[];
+  categoryChanges: CategoryChange[];
+  historicalData?: CategoryAggregate[][];
 } 

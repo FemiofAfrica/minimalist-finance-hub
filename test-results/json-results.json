@@ -15,7 +15,7 @@
       "framework": "playwright",
       "application": "minimalist-finance-hub",
       "feature": "visual-charts",
-      "actualWorkers": 4
+      "actualWorkers": 3
     },
     "preserveOutput": "always",
     "reporter": [
@@ -58,7 +58,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "chromium-desktop",
         "name": "chromium-desktop",
@@ -66,6 +66,7 @@
         "testIgnore": [],
         "testMatch": [
           "reports-charts.spec.ts",
+          "reports-insights.spec.ts",
           "chart-interactions.spec.ts",
           "performance-charts.spec.ts"
         ],
@@ -80,7 +81,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "firefox-desktop",
         "name": "firefox-desktop",
@@ -88,6 +89,7 @@
         "testIgnore": [],
         "testMatch": [
           "reports-charts.spec.ts",
+          "reports-insights.spec.ts",
           "chart-interactions.spec.ts"
         ],
         "timeout": 30000
@@ -101,7 +103,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "webkit-desktop",
         "name": "webkit-desktop",
@@ -109,6 +111,7 @@
         "testIgnore": [],
         "testMatch": [
           "reports-charts.spec.ts",
+          "reports-insights.spec.ts",
           "chart-interactions.spec.ts"
         ],
         "timeout": 30000
@@ -122,7 +125,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "mobile-chrome",
         "name": "mobile-chrome",
@@ -130,7 +133,8 @@
         "testIgnore": [],
         "testMatch": [
           "mobile-charts.spec.ts",
-          "reports-charts.spec.ts"
+          "reports-charts.spec.ts",
+          "reports-insights.spec.ts"
         ],
         "timeout": 30000
       },
@@ -143,7 +147,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "mobile-safari",
         "name": "mobile-safari",
@@ -151,7 +155,8 @@
         "testIgnore": [],
         "testMatch": [
           "mobile-charts.spec.ts",
-          "reports-charts.spec.ts"
+          "reports-charts.spec.ts",
+          "reports-insights.spec.ts"
         ],
         "timeout": 30000
       },
@@ -164,7 +169,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "mobile-samsung",
         "name": "mobile-samsung",
@@ -184,7 +189,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "tablet-ipad",
         "name": "tablet-ipad",
@@ -205,7 +210,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "tablet-android",
         "name": "tablet-android",
@@ -225,7 +230,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "visual-chromium",
         "name": "visual-chromium",
@@ -245,7 +250,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "visual-firefox",
         "name": "visual-firefox",
@@ -265,7 +270,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "visual-webkit",
         "name": "visual-webkit",
@@ -285,7 +290,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "performance-chromium",
         "name": "performance-chromium",
@@ -305,7 +310,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "accessibility-chromium",
         "name": "accessibility-chromium",
@@ -313,6 +318,7 @@
         "testIgnore": [],
         "testMatch": [
           "reports-charts.spec.ts",
+          "reports-insights.spec.ts",
           "chart-interactions.spec.ts"
         ],
         "timeout": 30000
@@ -326,7 +332,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "arc-desktop",
         "name": "arc-desktop",
@@ -346,7 +352,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "edge-desktop",
         "name": "edge-desktop",
@@ -366,7 +372,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "dia-desktop",
         "name": "dia-desktop",
@@ -386,7 +392,7 @@
           "framework": "playwright",
           "application": "minimalist-finance-hub",
           "feature": "visual-charts",
-          "actualWorkers": 4
+          "actualWorkers": 3
         },
         "id": "safari-desktop",
         "name": "safari-desktop",
@@ -414,561 +420,287 @@
   },
   "suites": [
     {
-      "title": "smoke-layout.spec.ts",
-      "file": "smoke-layout.spec.ts",
+      "title": "reports-insights.spec.ts",
+      "file": "reports-insights.spec.ts",
       "column": 0,
       "line": 0,
       "specs": [],
       "suites": [
         {
-          "title": "Layout smoke test – safe-area and banner",
-          "file": "smoke-layout.spec.ts",
-          "line": 6,
+          "title": "Smart Insights E2E Tests",
+          "file": "reports-insights.spec.ts",
+          "line": 23,
           "column": 6,
           "specs": [
             {
-              "title": "page / renders without off-screen content",
-              "ok": true,
+              "title": "should display Smart Insights section with maximum 5 insights",
+              "ok": false,
               "tags": [],
               "tests": [
                 {
                   "timeout": 30000,
                   "annotations": [],
                   "expectedStatus": "passed",
-                  "projectId": "arc-desktop",
-                  "projectName": "arc-desktop",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
                   "results": [
                     {
                       "workerIndex": 0,
                       "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 7363,
-                      "errors": [],
+                      "status": "timedOut",
+                      "duration": 37090,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts",
+                            "column": 21,
+                            "line": 7
+                          },
+                          "message": "TimeoutError: page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/reports\", waiting until \"load\"\u001b[22m\n\n\n   5 |\n   6 |   async navigateToReports() {\n>  7 |     await this.page.goto('/reports');\n     |                     ^\n   8 |     await this.page.waitForLoadState('networkidle');\n   9 |   }\n  10 |\n    at InsightsHelpers.navigateToReports (/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:7:21)\n    at /Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:32:19"
+                        }
+                      ],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-06-16T15:45:29.530Z",
+                      "startTime": "2025-06-17T11:15:57.625Z",
                       "annotations": [],
                       "attachments": []
+                    },
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 35746,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts",
+                            "column": 21,
+                            "line": 7
+                          },
+                          "message": "TimeoutError: page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/reports\", waiting until \"load\"\u001b[22m\n\n\n   5 |\n   6 |   async navigateToReports() {\n>  7 |     await this.page.goto('/reports');\n     |                     ^\n   8 |     await this.page.waitForLoadState('networkidle');\n   9 |   }\n  10 |\n    at InsightsHelpers.navigateToReports (/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:7:21)\n    at /Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:32:19"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2025-06-17T11:16:45.391Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts/reports-insights-Smart-Ins-e444a-ion-with-maximum-5-insights-chromium-desktop-retry1/error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts/reports-insights-Smart-Ins-e444a-ion-with-maximum-5-insights-chromium-desktop-retry1/trace.zip"
+                        }
+                      ]
                     }
                   ],
-                  "status": "expected"
+                  "status": "unexpected"
                 }
               ],
-              "id": "e4bce9e449f9b8c31827-92e01087a6d099089379",
-              "file": "smoke-layout.spec.ts",
-              "line": 8,
-              "column": 5
+              "id": "38d5fb3adda5b041413a-c0750d493785e7254385",
+              "file": "reports-insights.spec.ts",
+              "line": 31,
+              "column": 3
             },
             {
-              "title": "page /dashboard renders without off-screen content",
-              "ok": true,
+              "title": "each insight card should contain priority badge and formatted amount",
+              "ok": false,
               "tags": [],
               "tests": [
                 {
                   "timeout": 30000,
                   "annotations": [],
                   "expectedStatus": "passed",
-                  "projectId": "arc-desktop",
-                  "projectName": "arc-desktop",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
                   "results": [
                     {
                       "workerIndex": 1,
                       "parallelIndex": 1,
-                      "status": "passed",
-                      "duration": 7219,
-                      "errors": [],
+                      "status": "timedOut",
+                      "duration": 36919,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts",
+                            "column": 21,
+                            "line": 7
+                          },
+                          "message": "TimeoutError: page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/reports\", waiting until \"load\"\u001b[22m\n\n\n   5 |\n   6 |   async navigateToReports() {\n>  7 |     await this.page.goto('/reports');\n     |                     ^\n   8 |     await this.page.waitForLoadState('networkidle');\n   9 |   }\n  10 |\n    at InsightsHelpers.navigateToReports (/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:7:21)\n    at /Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:41:19"
+                        }
+                      ],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-06-16T15:45:29.604Z",
+                      "startTime": "2025-06-17T11:15:57.552Z",
                       "annotations": [],
                       "attachments": []
+                    },
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 1,
+                      "status": "timedOut",
+                      "duration": 35612,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts",
+                            "column": 21,
+                            "line": 7
+                          },
+                          "message": "TimeoutError: page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/reports\", waiting until \"load\"\u001b[22m\n\n\n   5 |\n   6 |   async navigateToReports() {\n>  7 |     await this.page.goto('/reports');\n     |                     ^\n   8 |     await this.page.waitForLoadState('networkidle');\n   9 |   }\n  10 |\n    at InsightsHelpers.navigateToReports (/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:7:21)\n    at /Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:41:19"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2025-06-17T11:16:45.397Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts/reports-insights-Smart-Ins-cff01--badge-and-formatted-amount-chromium-desktop-retry1/error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts/reports-insights-Smart-Ins-cff01--badge-and-formatted-amount-chromium-desktop-retry1/trace.zip"
+                        }
+                      ]
                     }
                   ],
-                  "status": "expected"
+                  "status": "unexpected"
                 }
               ],
-              "id": "e4bce9e449f9b8c31827-aab226f48b7323d603d1",
-              "file": "smoke-layout.spec.ts",
-              "line": 8,
-              "column": 5
+              "id": "38d5fb3adda5b041413a-fa21c10ce10465297d30",
+              "file": "reports-insights.spec.ts",
+              "line": 40,
+              "column": 3
             },
             {
-              "title": "page /reports renders without off-screen content",
-              "ok": true,
+              "title": "should not classify income categories like Salary as spending insights",
+              "ok": false,
               "tags": [],
               "tests": [
                 {
                   "timeout": 30000,
                   "annotations": [],
                   "expectedStatus": "passed",
-                  "projectId": "arc-desktop",
-                  "projectName": "arc-desktop",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
                   "results": [
                     {
                       "workerIndex": 2,
                       "parallelIndex": 2,
-                      "status": "passed",
-                      "duration": 7221,
-                      "errors": [],
+                      "status": "timedOut",
+                      "duration": 36970,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts",
+                            "column": 21,
+                            "line": 7
+                          },
+                          "message": "TimeoutError: page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/reports\", waiting until \"load\"\u001b[22m\n\n\n   5 |\n   6 |   async navigateToReports() {\n>  7 |     await this.page.goto('/reports');\n     |                     ^\n   8 |     await this.page.waitForLoadState('networkidle');\n   9 |   }\n  10 |\n    at InsightsHelpers.navigateToReports (/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:7:21)\n    at /Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:56:19"
+                        }
+                      ],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-06-16T15:45:29.534Z",
+                      "startTime": "2025-06-17T11:15:57.536Z",
                       "annotations": [],
                       "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "e4bce9e449f9b8c31827-fef6b61d0f5230711916",
-              "file": "smoke-layout.spec.ts",
-              "line": 8,
-              "column": 5
-            },
-            {
-              "title": "page /settings renders without off-screen content",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "arc-desktop",
-                  "projectName": "arc-desktop",
-                  "results": [
-                    {
-                      "workerIndex": 3,
-                      "parallelIndex": 3,
-                      "status": "passed",
-                      "duration": 7425,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-06-16T15:45:29.767Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "e4bce9e449f9b8c31827-711e5b0aa9e1cbef82d3",
-              "file": "smoke-layout.spec.ts",
-              "line": 8,
-              "column": 5
-            },
-            {
-              "title": "page / renders without off-screen content",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "edge-desktop",
-                  "projectName": "edge-desktop",
-                  "results": [
-                    {
-                      "workerIndex": 4,
-                      "parallelIndex": 1,
-                      "status": "passed",
-                      "duration": 4513,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-06-16T15:45:39.345Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "e4bce9e449f9b8c31827-a97613580c5fd9f10c21",
-              "file": "smoke-layout.spec.ts",
-              "line": 8,
-              "column": 5
-            },
-            {
-              "title": "page /dashboard renders without off-screen content",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "edge-desktop",
-                  "projectName": "edge-desktop",
-                  "results": [
+                    },
                     {
                       "workerIndex": 5,
                       "parallelIndex": 2,
-                      "status": "passed",
-                      "duration": 4678,
-                      "errors": [],
+                      "status": "timedOut",
+                      "duration": 35772,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts",
+                            "column": 21,
+                            "line": 7
+                          },
+                          "message": "TimeoutError: page.goto: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/reports\", waiting until \"load\"\u001b[22m\n\n\n   5 |\n   6 |   async navigateToReports() {\n>  7 |     await this.page.goto('/reports');\n     |                     ^\n   8 |     await this.page.waitForLoadState('networkidle');\n   9 |   }\n  10 |\n    at InsightsHelpers.navigateToReports (/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:7:21)\n    at /Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:56:19"
+                        }
+                      ],
                       "stdout": [],
                       "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-06-16T15:45:39.349Z",
+                      "retry": 1,
+                      "startTime": "2025-06-17T11:16:45.471Z",
                       "annotations": [],
-                      "attachments": []
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts/reports-insights-Smart-Ins-386dc-Salary-as-spending-insights-chromium-desktop-retry1/error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test-results/artifacts/reports-insights-Smart-Ins-386dc-Salary-as-spending-insights-chromium-desktop-retry1/trace.zip"
+                        }
+                      ]
                     }
                   ],
-                  "status": "expected"
+                  "status": "unexpected"
                 }
               ],
-              "id": "e4bce9e449f9b8c31827-ef0c9d57bac72139ac6e",
-              "file": "smoke-layout.spec.ts",
-              "line": 8,
-              "column": 5
-            },
-            {
-              "title": "page /reports renders without off-screen content",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "edge-desktop",
-                  "projectName": "edge-desktop",
-                  "results": [
-                    {
-                      "workerIndex": 6,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 4825,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-06-16T15:45:39.349Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "e4bce9e449f9b8c31827-e60680848c882e12bd41",
-              "file": "smoke-layout.spec.ts",
-              "line": 8,
-              "column": 5
-            },
-            {
-              "title": "page /settings renders without off-screen content",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "edge-desktop",
-                  "projectName": "edge-desktop",
-                  "results": [
-                    {
-                      "workerIndex": 7,
-                      "parallelIndex": 3,
-                      "status": "passed",
-                      "duration": 4549,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-06-16T15:45:39.349Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "e4bce9e449f9b8c31827-b1a7145630ebc81baafb",
-              "file": "smoke-layout.spec.ts",
-              "line": 8,
-              "column": 5
-            },
-            {
-              "title": "page / renders without off-screen content",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "dia-desktop",
-                  "projectName": "dia-desktop",
-                  "results": [
-                    {
-                      "workerIndex": 8,
-                      "parallelIndex": 1,
-                      "status": "passed",
-                      "duration": 5459,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-06-16T15:45:45.264Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "e4bce9e449f9b8c31827-76d065e66a1904796ec8",
-              "file": "smoke-layout.spec.ts",
-              "line": 8,
-              "column": 5
-            },
-            {
-              "title": "page /dashboard renders without off-screen content",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "dia-desktop",
-                  "projectName": "dia-desktop",
-                  "results": [
-                    {
-                      "workerIndex": 9,
-                      "parallelIndex": 3,
-                      "status": "passed",
-                      "duration": 5264,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-06-16T15:45:45.295Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "e4bce9e449f9b8c31827-f9c924434765414ee89c",
-              "file": "smoke-layout.spec.ts",
-              "line": 8,
-              "column": 5
-            },
-            {
-              "title": "page /reports renders without off-screen content",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "dia-desktop",
-                  "projectName": "dia-desktop",
-                  "results": [
-                    {
-                      "workerIndex": 10,
-                      "parallelIndex": 2,
-                      "status": "passed",
-                      "duration": 5500,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-06-16T15:45:45.461Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "e4bce9e449f9b8c31827-91f872f4d02974a07e00",
-              "file": "smoke-layout.spec.ts",
-              "line": 8,
-              "column": 5
-            },
-            {
-              "title": "page /settings renders without off-screen content",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "dia-desktop",
-                  "projectName": "dia-desktop",
-                  "results": [
-                    {
-                      "workerIndex": 11,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 4961,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-06-16T15:45:45.500Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "e4bce9e449f9b8c31827-f22b68ab1594d1beae9f",
-              "file": "smoke-layout.spec.ts",
-              "line": 8,
-              "column": 5
-            },
-            {
-              "title": "page / renders without off-screen content",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "safari-desktop",
-                  "projectName": "safari-desktop",
-                  "results": [
-                    {
-                      "workerIndex": 12,
-                      "parallelIndex": 3,
-                      "status": "passed",
-                      "duration": 2474,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-06-16T15:45:51.734Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "e4bce9e449f9b8c31827-52b94b5a968e4a4e782e",
-              "file": "smoke-layout.spec.ts",
-              "line": 8,
-              "column": 5
-            },
-            {
-              "title": "page /dashboard renders without off-screen content",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "safari-desktop",
-                  "projectName": "safari-desktop",
-                  "results": [
-                    {
-                      "workerIndex": 13,
-                      "parallelIndex": 1,
-                      "status": "passed",
-                      "duration": 2478,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-06-16T15:45:51.887Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "e4bce9e449f9b8c31827-d48da5e22106454258e6",
-              "file": "smoke-layout.spec.ts",
-              "line": 8,
-              "column": 5
-            },
-            {
-              "title": "page /reports renders without off-screen content",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "safari-desktop",
-                  "projectName": "safari-desktop",
-                  "results": [
-                    {
-                      "workerIndex": 14,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 2478,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-06-16T15:45:51.975Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "e4bce9e449f9b8c31827-c9e22068abeccf3c3083",
-              "file": "smoke-layout.spec.ts",
-              "line": 8,
-              "column": 5
-            },
-            {
-              "title": "page /settings renders without off-screen content",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "safari-desktop",
-                  "projectName": "safari-desktop",
-                  "results": [
-                    {
-                      "workerIndex": 15,
-                      "parallelIndex": 2,
-                      "status": "passed",
-                      "duration": 2474,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-06-16T15:45:52.368Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "e4bce9e449f9b8c31827-baf620483a0deb71c2e7",
-              "file": "smoke-layout.spec.ts",
-              "line": 8,
-              "column": 5
+              "id": "38d5fb3adda5b041413a-f92211a48600c852f396",
+              "file": "reports-insights.spec.ts",
+              "line": 55,
+              "column": 3
             }
           ]
         }
@@ -977,11 +709,11 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2025-06-16T15:45:27.293Z",
-    "duration": 28424.767,
-    "expected": 16,
+    "startTime": "2025-06-17T11:15:45.655Z",
+    "duration": 97774.316,
+    "expected": 0,
     "skipped": 0,
-    "unexpected": 0,
+    "unexpected": 3,
     "flaky": 0
   }
 }

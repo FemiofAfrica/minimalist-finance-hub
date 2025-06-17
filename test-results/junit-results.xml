@@ -1,42 +1,181 @@
-<testsuites id="" name="" tests="16" failures="0" skipped="0" errors="0" time="28.424767">
-<testsuite name="smoke-layout.spec.ts" timestamp="2025-06-16T15:45:28.640Z" hostname="arc-desktop" tests="4" failures="0" skipped="0" time="29.228" errors="0">
-<testcase name="Layout smoke test – safe-area and banner › page / renders without off-screen content" classname="smoke-layout.spec.ts" time="7.363">
+<testsuites id="" name="" tests="3" failures="3" skipped="0" errors="0" time="97.77431600000001">
+<testsuite name="reports-insights.spec.ts" timestamp="2025-06-17T11:15:49.764Z" hostname="chromium-desktop" tests="3" failures="3" skipped="0" time="218.109" errors="0">
+<testcase name="Smart Insights E2E Tests › should display Smart Insights section with maximum 5 insights" classname="reports-insights.spec.ts" time="72.836">
+<failure message="reports-insights.spec.ts:31:3 should display Smart Insights section with maximum 5 insights" type="FAILURE">
+<![CDATA[  [chromium-desktop] › reports-insights.spec.ts:31:3 › Smart Insights E2E Tests › should display Smart Insights section with maximum 5 insights 
+
+    Test timeout of 30000ms exceeded.
+
+    TimeoutError: page.goto: Timeout 30000ms exceeded.
+    Call log:
+      - navigating to "http://localhost:5173/reports", waiting until "load"
+
+
+       5 |
+       6 |   async navigateToReports() {
+    >  7 |     await this.page.goto('/reports');
+         |                     ^
+       8 |     await this.page.waitForLoadState('networkidle');
+       9 |   }
+      10 |
+        at InsightsHelpers.navigateToReports (/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:7:21)
+        at /Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:32:19
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    TimeoutError: page.goto: Timeout 30000ms exceeded.
+    Call log:
+      - navigating to "http://localhost:5173/reports", waiting until "load"
+
+
+       5 |
+       6 |   async navigateToReports() {
+    >  7 |     await this.page.goto('/reports');
+         |                     ^
+       8 |     await this.page.waitForLoadState('networkidle');
+       9 |   }
+      10 |
+        at InsightsHelpers.navigateToReports (/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:7:21)
+        at /Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:32:19
+
+    Error Context: ../../test-results/artifacts/reports-insights-Smart-Ins-e444a-ion-with-maximum-5-insights-chromium-desktop-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/artifacts/reports-insights-Smart-Ins-e444a-ion-with-maximum-5-insights-chromium-desktop-retry1/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/artifacts/reports-insights-Smart-Ins-e444a-ion-with-maximum-5-insights-chromium-desktop-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|artifacts/reports-insights-Smart-Ins-e444a-ion-with-maximum-5-insights-chromium-desktop-retry1/error-context.md]]
+
+[[ATTACHMENT|artifacts/reports-insights-Smart-Ins-e444a-ion-with-maximum-5-insights-chromium-desktop-retry1/trace.zip]]
+]]>
+</system-out>
 </testcase>
-<testcase name="Layout smoke test – safe-area and banner › page /dashboard renders without off-screen content" classname="smoke-layout.spec.ts" time="7.219">
+<testcase name="Smart Insights E2E Tests › each insight card should contain priority badge and formatted amount" classname="reports-insights.spec.ts" time="72.531">
+<failure message="reports-insights.spec.ts:40:3 each insight card should contain priority badge and formatted amount" type="FAILURE">
+<![CDATA[  [chromium-desktop] › reports-insights.spec.ts:40:3 › Smart Insights E2E Tests › each insight card should contain priority badge and formatted amount 
+
+    Test timeout of 30000ms exceeded.
+
+    TimeoutError: page.goto: Timeout 30000ms exceeded.
+    Call log:
+      - navigating to "http://localhost:5173/reports", waiting until "load"
+
+
+       5 |
+       6 |   async navigateToReports() {
+    >  7 |     await this.page.goto('/reports');
+         |                     ^
+       8 |     await this.page.waitForLoadState('networkidle');
+       9 |   }
+      10 |
+        at InsightsHelpers.navigateToReports (/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:7:21)
+        at /Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:41:19
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    TimeoutError: page.goto: Timeout 30000ms exceeded.
+    Call log:
+      - navigating to "http://localhost:5173/reports", waiting until "load"
+
+
+       5 |
+       6 |   async navigateToReports() {
+    >  7 |     await this.page.goto('/reports');
+         |                     ^
+       8 |     await this.page.waitForLoadState('networkidle');
+       9 |   }
+      10 |
+        at InsightsHelpers.navigateToReports (/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:7:21)
+        at /Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:41:19
+
+    Error Context: ../../test-results/artifacts/reports-insights-Smart-Ins-cff01--badge-and-formatted-amount-chromium-desktop-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/artifacts/reports-insights-Smart-Ins-cff01--badge-and-formatted-amount-chromium-desktop-retry1/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/artifacts/reports-insights-Smart-Ins-cff01--badge-and-formatted-amount-chromium-desktop-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|artifacts/reports-insights-Smart-Ins-cff01--badge-and-formatted-amount-chromium-desktop-retry1/error-context.md]]
+
+[[ATTACHMENT|artifacts/reports-insights-Smart-Ins-cff01--badge-and-formatted-amount-chromium-desktop-retry1/trace.zip]]
+]]>
+</system-out>
 </testcase>
-<testcase name="Layout smoke test – safe-area and banner › page /reports renders without off-screen content" classname="smoke-layout.spec.ts" time="7.221">
-</testcase>
-<testcase name="Layout smoke test – safe-area and banner › page /settings renders without off-screen content" classname="smoke-layout.spec.ts" time="7.425">
-</testcase>
-</testsuite>
-<testsuite name="smoke-layout.spec.ts" timestamp="2025-06-16T15:45:28.640Z" hostname="edge-desktop" tests="4" failures="0" skipped="0" time="18.565" errors="0">
-<testcase name="Layout smoke test – safe-area and banner › page / renders without off-screen content" classname="smoke-layout.spec.ts" time="4.513">
-</testcase>
-<testcase name="Layout smoke test – safe-area and banner › page /dashboard renders without off-screen content" classname="smoke-layout.spec.ts" time="4.678">
-</testcase>
-<testcase name="Layout smoke test – safe-area and banner › page /reports renders without off-screen content" classname="smoke-layout.spec.ts" time="4.825">
-</testcase>
-<testcase name="Layout smoke test – safe-area and banner › page /settings renders without off-screen content" classname="smoke-layout.spec.ts" time="4.549">
-</testcase>
-</testsuite>
-<testsuite name="smoke-layout.spec.ts" timestamp="2025-06-16T15:45:28.640Z" hostname="dia-desktop" tests="4" failures="0" skipped="0" time="21.184" errors="0">
-<testcase name="Layout smoke test – safe-area and banner › page / renders without off-screen content" classname="smoke-layout.spec.ts" time="5.459">
-</testcase>
-<testcase name="Layout smoke test – safe-area and banner › page /dashboard renders without off-screen content" classname="smoke-layout.spec.ts" time="5.264">
-</testcase>
-<testcase name="Layout smoke test – safe-area and banner › page /reports renders without off-screen content" classname="smoke-layout.spec.ts" time="5.5">
-</testcase>
-<testcase name="Layout smoke test – safe-area and banner › page /settings renders without off-screen content" classname="smoke-layout.spec.ts" time="4.961">
-</testcase>
-</testsuite>
-<testsuite name="smoke-layout.spec.ts" timestamp="2025-06-16T15:45:28.640Z" hostname="safari-desktop" tests="4" failures="0" skipped="0" time="9.904" errors="0">
-<testcase name="Layout smoke test – safe-area and banner › page / renders without off-screen content" classname="smoke-layout.spec.ts" time="2.474">
-</testcase>
-<testcase name="Layout smoke test – safe-area and banner › page /dashboard renders without off-screen content" classname="smoke-layout.spec.ts" time="2.478">
-</testcase>
-<testcase name="Layout smoke test – safe-area and banner › page /reports renders without off-screen content" classname="smoke-layout.spec.ts" time="2.478">
-</testcase>
-<testcase name="Layout smoke test – safe-area and banner › page /settings renders without off-screen content" classname="smoke-layout.spec.ts" time="2.474">
+<testcase name="Smart Insights E2E Tests › should not classify income categories like Salary as spending insights" classname="reports-insights.spec.ts" time="72.742">
+<failure message="reports-insights.spec.ts:55:3 should not classify income categories like Salary as spending insights" type="FAILURE">
+<![CDATA[  [chromium-desktop] › reports-insights.spec.ts:55:3 › Smart Insights E2E Tests › should not classify income categories like Salary as spending insights 
+
+    Test timeout of 30000ms exceeded.
+
+    TimeoutError: page.goto: Timeout 30000ms exceeded.
+    Call log:
+      - navigating to "http://localhost:5173/reports", waiting until "load"
+
+
+       5 |
+       6 |   async navigateToReports() {
+    >  7 |     await this.page.goto('/reports');
+         |                     ^
+       8 |     await this.page.waitForLoadState('networkidle');
+       9 |   }
+      10 |
+        at InsightsHelpers.navigateToReports (/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:7:21)
+        at /Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:56:19
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    TimeoutError: page.goto: Timeout 30000ms exceeded.
+    Call log:
+      - navigating to "http://localhost:5173/reports", waiting until "load"
+
+
+       5 |
+       6 |   async navigateToReports() {
+    >  7 |     await this.page.goto('/reports');
+         |                     ^
+       8 |     await this.page.waitForLoadState('networkidle');
+       9 |   }
+      10 |
+        at InsightsHelpers.navigateToReports (/Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:7:21)
+        at /Users/macbook/Library/FinTrack/minimalist-finance-hub-1/test/e2e/reports-insights.spec.ts:56:19
+
+    Error Context: ../../test-results/artifacts/reports-insights-Smart-Ins-386dc-Salary-as-spending-insights-chromium-desktop-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/artifacts/reports-insights-Smart-Ins-386dc-Salary-as-spending-insights-chromium-desktop-retry1/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/artifacts/reports-insights-Smart-Ins-386dc-Salary-as-spending-insights-chromium-desktop-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|artifacts/reports-insights-Smart-Ins-386dc-Salary-as-spending-insights-chromium-desktop-retry1/error-context.md]]
+
+[[ATTACHMENT|artifacts/reports-insights-Smart-Ins-386dc-Salary-as-spending-insights-chromium-desktop-retry1/trace.zip]]
+]]>
+</system-out>
 </testcase>
 </testsuite>
 </testsuites>

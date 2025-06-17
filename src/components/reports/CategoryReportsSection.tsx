@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   PieChart, 
   TrendingUp, 
@@ -15,19 +16,26 @@ import {
   Calendar,
   BarChart3,
   Eye,
-  EyeOff
+  EyeOff,
+  Lightbulb,
+  AlertTriangle,
+  CheckCircle,
+  Info,
+  X
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useResponsive } from '@/hooks/useResponsive';
 import { getCategoryTotals, getCategoryChanges } from '@/services/categoryAnalyticsService';
+import { generateCategoryInsights } from '@/services/insights/categoryInsights';
 import TopCategoriesChart from '@/components/charts/TopCategoriesChart';
 import CategoryTrendChart from '@/components/charts/CategoryTrendChart';
 import type { 
   CategoryAggregate, 
   CategoryTrendSeries, 
   CategoryChange,
-  CategoryType 
+  CategoryType,
+  CategoryInsight 
 } from '@/types/analytics';
 
 // Chart colors that match the existing design system
@@ -71,6 +79,8 @@ const CategoryReportsSection: React.FC<CategoryReportsSectionProps> = ({
   const [categoryData, setCategoryData] = useState<CategoryAggregate[]>([]);
   const [categoryChanges, setCategoryChanges] = useState<CategoryChange[]>([]);
   const [trendSeries, setTrendSeries] = useState<CategoryTrendSeries[]>([]);
+  const [insights, setInsights] = useState<CategoryInsight[]>([]);
+  const [insightsLoading, setInsightsLoading] = useState(false);
 
   // Filter state
   const [filters, setFilters] = useState<CategoryFilters>({
@@ -168,6 +178,34 @@ const CategoryReportsSection: React.FC<CategoryReportsSectionProps> = ({
     }
   }, [user?.id, categoryData, timePeriod]);
 
+  // Load insights based on category data
+  const loadInsights = useCallback(async () => {
+    if (!user?.id || categoryData.length === 0) {
+      setInsights([]);
+      return;
+    }
+
+    try {
+      setInsightsLoading(true);
+      
+      const insightContext = {
+        userId: user.id,
+        timePeriod,
+        categoryData,
+        categoryChanges
+      };
+
+      const generatedInsights = await generateCategoryInsights(insightContext);
+      setInsights(generatedInsights);
+
+    } catch (err) {
+      console.error('Failed to generate insights:', err);
+      setInsights([]);
+    } finally {
+      setInsightsLoading(false);
+    }
+  }, [user?.id, timePeriod, categoryData, categoryChanges]);
+
   // Load data on mount and when dependencies change
   useEffect(() => {
     loadCategoryData();
@@ -181,6 +219,13 @@ const CategoryReportsSection: React.FC<CategoryReportsSectionProps> = ({
       setTrendSeries([]);
     }
   }, [filters.showTrendComparison, filters.selectedCategories, loadTrendData]);
+
+  // Load insights when category data changes
+  useEffect(() => {
+    if (categoryData.length > 0 && categoryChanges.length > 0) {
+      loadInsights();
+    }
+  }, [loadInsights]);
 
   // Filter category data based on current filters
   const filteredCategoryData = useMemo(() => {
@@ -502,40 +547,107 @@ const CategoryReportsSection: React.FC<CategoryReportsSectionProps> = ({
           </Card>
 
           {/* Category Insights */}
-          {showCategoryInsights && significantChanges.length > 0 && (
+          {showCategoryInsights && (insights.length > 0 || insightsLoading) && (
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-green-600" />
-                  <CardTitle>Category Insights</CardTitle>
+                  <Lightbulb className="h-5 w-5 text-amber-600" />
+                  <CardTitle>Smart Insights</CardTitle>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Significant changes in spending patterns
+                  AI-powered analysis of your spending patterns
                 </p>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {significantChanges.map((change) => (
-                    <div key={change.categoryId} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                      <div className="flex-1">
-                        <div className="font-medium">{change.categoryName}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {change.changeType} comparison
+                {insightsLoading ? (
+                  <div className="space-y-3" data-testid="insights-loading">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="flex items-start gap-3">
+                          <Skeleton className="h-4 w-4 rounded-full" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-3 w-full" />
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className={`font-semibold ${
-                          change.percentageChange > 0 ? 'text-red-600' : 'text-green-600'
-                        }`}>
-                          {change.percentageChange > 0 ? '+' : ''}{change.percentageChange.toFixed(1)}%
+                    ))}
+                  </div>
+                ) : insights.length > 0 ? (
+                  <div className="space-y-4">
+                    {insights.map((insight) => {
+                      const severityIcons = {
+                        info: <Info className="h-4 w-4 text-blue-500" />,
+                        warning: <AlertTriangle className="h-4 w-4 text-amber-500" />,
+                        success: <CheckCircle className="h-4 w-4 text-green-500" />,
+                        error: <AlertTriangle className="h-4 w-4 text-red-500" />
+                      };
+
+                      const severityColors = {
+                        info: 'border-blue-200 bg-blue-50',
+                        warning: 'border-amber-200 bg-amber-50', 
+                        success: 'border-green-200 bg-green-50',
+                        error: 'border-red-200 bg-red-50'
+                      };
+
+                      return (
+                        <div 
+                          key={insight.id} 
+                          className={`p-4 rounded-lg border ${severityColors[insight.severity]}`}
+                          data-testid="insight-card"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-0.5">
+                              {severityIcons[insight.severity]}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <h4 className="font-medium text-sm leading-tight">
+                                  {insight.title}
+                                </h4>
+                                <Badge variant="outline" className="text-xs" data-testid="insight-priority">
+                                  {insight.priority}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                                {insight.description}
+                              </p>
+                              {insight.actionSuggestion && (
+                                <div className="mt-2 p-2 rounded bg-background/80 border border-dashed">
+                                  <p className="text-xs text-muted-foreground">
+                                    <strong>Suggestion:</strong> {insight.actionSuggestion}
+                                  </p>
+                                </div>
+                              )}
+                              {insight.metadata.currentAmount > 0 && (
+                                <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                                  <span>
+                                    Current: {formatPossiblyConvertedCurrency(insight.metadata.currentAmount)}
+                                  </span>
+                                  {insight.metadata.percentageChange !== undefined && (
+                                    <span className={
+                                      insight.metadata.percentageChange > 0 ? 'text-red-600' : 'text-green-600'
+                                    }>
+                                      {insight.metadata.percentageChange > 0 ? '+' : ''}
+                                      {insight.metadata.percentageChange.toFixed(1)}%
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {formatPossiblyConvertedCurrency(Math.abs(change.absoluteChange))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <Lightbulb className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      No significant insights detected for this period
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

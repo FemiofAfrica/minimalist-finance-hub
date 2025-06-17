@@ -78,6 +78,7 @@ export default defineConfig({
       },
       testMatch: [
         'reports-charts.spec.ts',
+        'reports-insights.spec.ts',
         'chart-interactions.spec.ts',
         'performance-charts.spec.ts'
       ]
@@ -91,6 +92,7 @@ export default defineConfig({
       },
       testMatch: [
         'reports-charts.spec.ts',
+        'reports-insights.spec.ts',
         'chart-interactions.spec.ts'
       ]
     },
@@ -103,6 +105,7 @@ export default defineConfig({
       },
       testMatch: [
         'reports-charts.spec.ts',
+        'reports-insights.spec.ts',
         'chart-interactions.spec.ts'
       ]
     },
@@ -119,7 +122,8 @@ export default defineConfig({
       },
       testMatch: [
         'mobile-charts.spec.ts',
-        'reports-charts.spec.ts'
+        'reports-charts.spec.ts',
+        'reports-insights.spec.ts'
       ]
     },
     
@@ -132,7 +136,8 @@ export default defineConfig({
       },
       testMatch: [
         'mobile-charts.spec.ts',
-        'reports-charts.spec.ts'
+        'reports-charts.spec.ts',
+        'reports-insights.spec.ts'
       ]
     },
     
@@ -232,6 +237,7 @@ export default defineConfig({
       },
       testMatch: [
         'reports-charts.spec.ts',
+        'reports-insights.spec.ts',
         'chart-interactions.spec.ts'
       ]
     },
