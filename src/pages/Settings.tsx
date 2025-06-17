@@ -12,13 +12,58 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 
-import { Loader2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { SupportBanner } from '@/components/ui/SupportBanner';
 import NotificationTestCenter from '@/components/admin/NotificationTestCenter';
 import ErrorLogsViewer from '@/components/admin/ErrorLogsViewer';
 import { BiometricSettings } from '@/components/settings/BiometricSettings';
+
+// Helper function to get country name for currency codes
+const getCountryName = (currencyCode: string): string => {
+  const countryMap: Record<string, string> = {
+    'NGN': 'Nigeria',
+    'ZAR': 'South Africa',
+    'GHS': 'Ghana',
+    'KES': 'Kenya',
+    'EGP': 'Egypt',
+    'MAD': 'Morocco',
+    'TND': 'Tunisia',
+    'UGX': 'Uganda',
+    'TZS': 'Tanzania',
+    'ETB': 'Ethiopia',
+    'XOF': 'West Africa',
+    'XAF': 'Central Africa',
+    'BWP': 'Botswana',
+    'ZMW': 'Zambia',
+    'AOA': 'Angola',
+    'MZN': 'Mozambique',
+    'RWF': 'Rwanda',
+    'MWK': 'Malawi',
+    'SZL': 'Eswatini',
+    'LSL': 'Lesotho',
+    'NAD': 'Namibia',
+    'USD': 'United States',
+    'EUR': 'European Union',
+    'GBP': 'United Kingdom',
+  };
+  return countryMap[currencyCode] || currencyCode;
+};
 
 export default function Settings() {
   const { user } = useAuth();
@@ -33,6 +78,7 @@ export default function Settings() {
   const [currency, setCurrency] = useState(currentCurrency.code);
   const [darkMode, setDarkMode] = useState(theme === 'dark');
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [currencyOpen, setCurrencyOpen] = useState(false);
   
   // State for support banner text
   const [supportBannerText, setSupportBannerText] = useState<string>('');
@@ -390,18 +436,87 @@ export default function Settings() {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-8">
                       <Label htmlFor="currency" className="font-medium text-sm md:text-base sm:w-1/3 text-center">Display Currency</Label>
                       <div className="sm:w-2/3">
-                        <Select value={currency} onValueChange={setCurrency}>
-                          <SelectTrigger id="currency" className="bg-background w-full text-sm md:text-base">
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {supportedCurrencies.map((c) => (
-                        <SelectItem key={c.code} value={c.code}>
-                          {`${c.name} (${c.symbol})`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        <Popover open={currencyOpen} onOpenChange={setCurrencyOpen}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={"outline"}
+                              role="combobox"
+                              aria-expanded={currencyOpen}
+                              className="w-full justify-between"
+                            >
+                              <span className="truncate">
+                                {supportedCurrencies.find(c => c.code === currency)?.name || currency} ({supportedCurrencies.find(c => c.code === currency)?.symbol})
+                              </span>
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Search by currency or country..." className="h-9" />
+                              <CommandList>
+                                <CommandEmpty>No currency found.</CommandEmpty>
+                                <CommandGroup heading="African Currencies">
+                                  {supportedCurrencies
+                                    .filter(c => ['NGN', 'ZAR', 'GHS', 'KES', 'EGP', 'MAD', 'TND', 'UGX', 'TZS', 'ETB', 'XOF', 'XAF', 'BWP', 'ZMW', 'AOA', 'MZN', 'RWF', 'MWK', 'SZL', 'LSL', 'NAD'].includes(c.code))
+                                    .map((c) => (
+                                    <CommandItem
+                                      key={c.code}
+                                      value={`${c.code} ${c.name} ${getCountryName(c.code)} ${c.symbol}`}
+                                      onSelect={() => {
+                                        setCurrency(c.code);
+                                        setCurrencyOpen(false);
+                                      }}
+                                      className="flex items-center justify-between py-3"
+                                    >
+                                      <div className="flex items-center flex-1 min-w-0">
+                                        <span className="font-mono text-sm mr-3 w-10 flex-shrink-0">{c.symbol}</span>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="font-medium text-sm truncate">{c.name}</div>
+                                          <div className="text-xs text-muted-foreground truncate">{getCountryName(c.code)} • {c.code}</div>
+                                        </div>
+                                      </div>
+                                      <Check
+                                        className={cn(
+                                          "ml-2 h-4 w-4 flex-shrink-0",
+                                          currency === c.code ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                                <CommandGroup heading="International Currencies">
+                                  {supportedCurrencies
+                                    .filter(c => !['NGN', 'ZAR', 'GHS', 'KES', 'EGP', 'MAD', 'TND', 'UGX', 'TZS', 'ETB', 'XOF', 'XAF', 'BWP', 'ZMW', 'AOA', 'MZN', 'RWF', 'MWK', 'SZL', 'LSL', 'NAD'].includes(c.code))
+                                    .map((c) => (
+                                    <CommandItem
+                                      key={c.code}
+                                      value={`${c.code} ${c.name} ${getCountryName(c.code)} ${c.symbol}`}
+                                      onSelect={() => {
+                                        setCurrency(c.code);
+                                        setCurrencyOpen(false);
+                                      }}
+                                      className="flex items-center justify-between py-3"
+                                    >
+                                      <div className="flex items-center flex-1 min-w-0">
+                                        <span className="font-mono text-sm mr-3 w-10 flex-shrink-0">{c.symbol}</span>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="font-medium text-sm truncate">{c.name}</div>
+                                          <div className="text-xs text-muted-foreground truncate">{getCountryName(c.code)} • {c.code}</div>
+                                        </div>
+                                      </div>
+                                      <Check
+                                        className={cn(
+                                          "ml-2 h-4 w-4 flex-shrink-0",
+                                          currency === c.code ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                         <p className="text-xs sm:text-sm text-muted-foreground text-center mt-1">Choose your preferred currency for displaying amounts</p>
                       </div>
                     </div>

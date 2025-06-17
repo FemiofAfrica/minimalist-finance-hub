@@ -1,14 +1,23 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { FinanceEvents } from "@/integrations/mixpanel/events";
+import { Check, ChevronsUpDown } from "lucide-react";
 
 const supportedCurrencies = [
   // African currencies (prioritized for African users)
@@ -42,9 +51,11 @@ const supportedCurrencies = [
 export function CurrencySelector() {
   const { currentCurrency, setCurrentCurrency } = useCurrency();
   const isMobile = useIsMobile();
+  const [open, setOpen] = useState(false);
 
   const handleCurrencyChange = (currency: typeof currentCurrency) => {
     setCurrentCurrency(currency);
+    setOpen(false);
     
     // Track currency selection event
     FinanceEvents.trackLiveCurrency({
@@ -54,29 +65,82 @@ export function CurrencySelector() {
     });
   };
 
+  const africanCurrencyCodes = ['NGN', 'ZAR', 'GHS', 'KES', 'EGP', 'MAD', 'TND', 'UGX', 'TZS', 'ETB', 'XOF', 'XAF', 'BWP', 'ZMW', 'AOA', 'MZN', 'RWF', 'MWK', 'SZL', 'LSL', 'NAD'];
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button 
-          variant="outline" 
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
           className={cn(
-            "min-w-0",
+            "justify-between min-w-0",
             isMobile ? "w-[70px] text-sm px-2" : "w-[130px]"
           )}
         >
-          {currentCurrency.symbol} {!isMobile && currentCurrency.code}
+          <span className="truncate">
+            {currentCurrency.symbol} {!isMobile && currentCurrency.code}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[200px]">
-        {supportedCurrencies.map((currency) => (
-          <DropdownMenuItem
-            key={currency.code}
-            onClick={() => handleCurrencyChange(currency)}
-          >
-            {currency.symbol} {currency.code} - {currency.name}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </PopoverTrigger>
+      <PopoverContent className="w-[300px] p-0" align="end">
+        <Command>
+          <CommandInput placeholder="Search currencies..." className="h-9" />
+          <CommandList>
+            <CommandEmpty>No currency found.</CommandEmpty>
+            <CommandGroup heading="African Currencies">
+              {supportedCurrencies
+                .filter(currency => africanCurrencyCodes.includes(currency.code))
+                .map((currency) => (
+                  <CommandItem
+                    key={currency.code}
+                    value={`${currency.code} ${currency.name} ${currency.symbol}`}
+                    onSelect={() => handleCurrencyChange(currency)}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center">
+                        <span className="font-mono text-sm mr-2">{currency.symbol}</span>
+                        <span className="text-sm">{currency.code} - {currency.name}</span>
+                      </div>
+                      <Check
+                        className={cn(
+                          "ml-auto h-4 w-4",
+                          currentCurrency.code === currency.code ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                    </div>
+                  </CommandItem>
+                ))}
+            </CommandGroup>
+            <CommandGroup heading="International Currencies">
+              {supportedCurrencies
+                .filter(currency => !africanCurrencyCodes.includes(currency.code))
+                .map((currency) => (
+                  <CommandItem
+                    key={currency.code}
+                    value={`${currency.code} ${currency.name} ${currency.symbol}`}
+                    onSelect={() => handleCurrencyChange(currency)}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center">
+                        <span className="font-mono text-sm mr-2">{currency.symbol}</span>
+                        <span className="text-sm">{currency.code} - {currency.name}</span>
+                      </div>
+                      <Check
+                        className={cn(
+                          "ml-auto h-4 w-4",
+                          currentCurrency.code === currency.code ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                    </div>
+                  </CommandItem>
+                ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
-}
+} 
