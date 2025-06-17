@@ -291,7 +291,8 @@ export default defineConfig({
     }
   ],
   
-  // Web server configuration for local development
+  // Web server configuration for local development - COMMENTED OUT TO USE MANUAL SERVER
+  /*
   webServer: {
     command: process.env.CI ? 'npm run preview' : 'npm run dev',
     url: 'http://localhost:5173',
@@ -300,6 +301,7 @@ export default defineConfig({
     stdout: 'pipe',
     stderr: 'pipe'
   },
+  */
   
   // Output directories
   outputDir: 'test-results/artifacts',
