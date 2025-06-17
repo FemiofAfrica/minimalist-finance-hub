@@ -1,1 +1,0 @@
-INSERT INTO notifications (user_id, title, message, link, type, is_read, created_at) VALUES ('3393a074-8692-4d58-87cd-77d910b5cdfc', '🔔 Direct SQL Test Notification', 'This notification was inserted directly into the database using SQL to test the bell functionality.', '/dashboard', 'info', false, NOW());

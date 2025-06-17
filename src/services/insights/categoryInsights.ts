@@ -18,6 +18,29 @@ const THRESHOLDS = {
   Z_SCORE_THRESHOLD: 2.0, // 2 standard deviations for anomaly detection
 } as const;
 
+// Currency normalization thresholds
+const CURRENCY_NORMALIZATION = {
+  NGN_KOBO_THRESHOLD: 10000000, // NGN 10M+ likely stored in kobo, divide by 100
+  KOBO_TO_NAIRA_FACTOR: 100,
+  USD_TO_NGN_THRESHOLD: 1000000, // NGN 1M+ might be USD stored as NGN, needs investigation
+} as const;
+
+/**
+ * Normalizes currency amounts to handle cases where values might be stored in wrong units
+ * @param amount The raw amount from the database
+ * @param currency The currency code (NGN, USD, etc.)
+ * @returns The normalized amount in the correct currency unit
+ */
+function normalizeAmount(amount: number, currency: string): number {
+  if (currency === 'NGN' && Math.abs(amount) >= CURRENCY_NORMALIZATION.NGN_KOBO_THRESHOLD) {
+    // Likely stored in kobo, convert to naira
+    return amount / CURRENCY_NORMALIZATION.KOBO_TO_NAIRA_FACTOR;
+  }
+  
+  // For other currencies or amounts below threshold, return as-is
+  return amount;
+}
+
 /**
  * Generates actionable insights from category spending data
  */
@@ -27,20 +50,23 @@ export async function generateCategoryInsights(
   const insights: CategoryInsight[] = [];
   
   try {
+    // Normalize amounts in context data before generating insights
+    const normalizedContext = normalizeContextAmounts(context);
+    
     // Generate insights from category changes (MoM/YoY analysis)
-    const changeInsights = generateChangeBasedInsights(context);
+    const changeInsights = generateChangeBasedInsights(normalizedContext);
     insights.push(...changeInsights);
     
     // Generate insights from spending patterns
-    const patternInsights = generatePatternBasedInsights(context);
+    const patternInsights = generatePatternBasedInsights(normalizedContext);
     insights.push(...patternInsights);
     
     // Generate budget optimization insights
-    const optimizationInsights = generateOptimizationInsights(context);
+    const optimizationInsights = generateOptimizationInsights(normalizedContext);
     insights.push(...optimizationInsights);
     
     // Generate comparative insights
-    const comparativeInsights = generateComparativeInsights(context);
+    const comparativeInsights = generateComparativeInsights(normalizedContext);
     insights.push(...comparativeInsights);
     
     // Sort insights by priority and relevance
@@ -53,6 +79,25 @@ export async function generateCategoryInsights(
 }
 
 /**
+ * Normalizes amounts in the insight generation context
+ */
+function normalizeContextAmounts(context: InsightGenerationContext): InsightGenerationContext {
+  return {
+    ...context,
+    categoryData: context.categoryData.map(cat => ({
+      ...cat,
+      total: normalizeAmount(cat.total, cat.currency)
+    })),
+    categoryChanges: context.categoryChanges.map(change => ({
+      ...change,
+      currentTotal: normalizeAmount(change.currentTotal, change.currency),
+      previousTotal: normalizeAmount(change.previousTotal, change.currency),
+      absoluteChange: normalizeAmount(change.absoluteChange, change.currency)
+    }))
+  };
+}
+
+/**
  * Generate insights based on category changes (significant increases/decreases)
  */
 function generateChangeBasedInsights(context: InsightGenerationContext): CategoryInsight[] {
@@ -62,6 +107,12 @@ function generateChangeBasedInsights(context: InsightGenerationContext): Categor
   for (const change of categoryChanges) {
     // Skip if change is not significant enough
     if (!change.isSignificant) continue;
+    
+    // CRITICAL FIX: Skip income categories for spending-based insights
+    if (change.type === 'income') {
+      console.log(`Skipping income category "${change.categoryName}" from spending insights`);
+      continue;
+    }
     
     const absChange = Math.abs(change.percentageChange);
     const isIncrease = change.percentageChange > 0;
@@ -161,8 +212,8 @@ function generatePatternBasedInsights(context: InsightGenerationContext): Catego
   const insights: CategoryInsight[] = [];
   const { categoryData, timePeriod } = context;
   
-  // Find top spending categories for pattern analysis
-  const topCategories = categoryData.slice(0, 5);
+  // Find top spending categories for pattern analysis (exclude income categories)
+  const topCategories = categoryData.filter(cat => cat.type !== 'income').slice(0, 5);
   
   for (const category of topCategories) {
     // High concentration detection
@@ -217,8 +268,9 @@ function generateOptimizationInsights(context: InsightGenerationContext): Catego
   const insights: CategoryInsight[] = [];
   const { categoryData, categoryChanges, timePeriod } = context;
   
-  // Calculate spending variability for budget suggestions
+  // Calculate spending variability for budget suggestions (exclude income categories)
   const highVariabilityCategories = categoryChanges.filter(change => 
+    change.type !== 'income' && // CRITICAL FIX: Exclude income categories
     Math.abs(change.percentageChange) >= THRESHOLDS.HIGH_VARIANCE && 
     change.currentTotal >= THRESHOLDS.SIGNIFICANT_AMOUNT
   );
@@ -243,8 +295,9 @@ function generateOptimizationInsights(context: InsightGenerationContext): Catego
     }));
   }
   
-  // Optimization tips for discretionary spending
+  // Optimization tips for discretionary spending (exclude income categories)
   const discretionaryCategories = categoryData.filter(cat => 
+    cat.type !== 'income' && // CRITICAL FIX: Exclude income categories
     ['Entertainment', 'Dining', 'Shopping', 'Hobbies', 'Subscription'].some(disc => 
       cat.categoryName.toLowerCase().includes(disc.toLowerCase())
     ) && cat.percentage > 15

@@ -465,4 +465,256 @@ describe('categoryInsights', () => {
       expect(cv).toBeGreaterThan(50); // Should be high CV
     });
   });
+});
+
+describe('Currency Normalization and Income Category Exclusion', () => {
+  let mockContext: InsightGenerationContext;
+
+  beforeEach(() => {
+    mockContext = {
+      userId: 'test-user-123',
+      timePeriod: 3,
+      categoryData: [],
+      categoryChanges: []
+    };
+  });
+
+  it('should exclude income categories from spending spike insights', async () => {
+    // Arrange: Create data with a salary (income) category showing a "spike"
+    mockContext.categoryChanges = [
+      {
+        categoryId: 'salary',
+        categoryName: 'Salary',
+        type: 'income', // This should be excluded from spending insights
+        currentTotal: 50000000, // NGN 50M (will be normalized to 500K)
+        previousTotal: 30000000, // NGN 30M (will be normalized to 300K)
+        absoluteChange: 20000000, // NGN 20M increase (will be normalized)
+        percentageChange: 66.67, // 66% increase - would normally trigger spike
+        isSignificant: true,
+        currency: 'NGN',
+        changeType: 'MoM'
+      },
+      {
+        categoryId: 'dining',
+        categoryName: 'Dining',
+        type: 'expense', // This should generate insights
+        currentTotal: 15000,
+        previousTotal: 10000,
+        absoluteChange: 5000,
+        percentageChange: 50,
+        isSignificant: true,
+        currency: 'NGN',
+        changeType: 'MoM'
+      }
+    ];
+
+    mockContext.categoryData = [
+      {
+        categoryId: 'salary',
+        categoryName: 'Salary',
+        total: 50000000, // Will be normalized
+        percentage: 70,
+        currency: 'NGN',
+        type: 'income'
+      },
+      {
+        categoryId: 'dining',
+        categoryName: 'Dining',
+        total: 15000,
+        percentage: 30,
+        currency: 'NGN',
+        type: 'expense'
+      }
+    ];
+
+    // Act
+    const insights = await generateCategoryInsights(mockContext);
+
+    // Assert
+    // Should not have any spending-based insights for Salary (income category)
+    const salarySpendingInsights = insights.filter(insight => 
+      insight.categoryName === 'Salary' && 
+      ['spending_spike', 'spending_drop', 'new_category', 'missing_category'].includes(insight.type)
+    );
+    expect(salarySpendingInsights).toHaveLength(0);
+
+    // Should have insights for Dining (expense category)
+    const diningInsights = insights.filter(insight => insight.categoryName === 'Dining');
+    expect(diningInsights.length).toBeGreaterThan(0);
+
+    // Verify dining spike insight exists
+    const diningSpike = insights.find(insight => 
+      insight.type === 'spending_spike' && insight.categoryName === 'Dining'
+    );
+    expect(diningSpike).toBeDefined();
+  });
+
+  it('should normalize large NGN amounts (kobo to naira conversion)', async () => {
+    // Arrange: Create data with amounts that should be normalized
+    mockContext.categoryChanges = [
+      {
+        categoryId: 'groceries',
+        categoryName: 'Groceries',
+        type: 'expense',
+        currentTotal: 25000000, // NGN 25M in kobo = NGN 250K in naira
+        previousTotal: 15000000, // NGN 15M in kobo = NGN 150K in naira
+        absoluteChange: 10000000, // NGN 10M in kobo = NGN 100K in naira
+        percentageChange: 66.67,
+        isSignificant: true,
+        currency: 'NGN',
+        changeType: 'MoM'
+      }
+    ];
+
+    mockContext.categoryData = [
+      {
+        categoryId: 'groceries',
+        categoryName: 'Groceries',
+        total: 25000000, // Should be normalized to 250,000
+        percentage: 100,
+        currency: 'NGN',
+        type: 'expense'
+      }
+    ];
+
+    // Act
+    const insights = await generateCategoryInsights(mockContext);
+
+    // Assert
+    expect(insights.length).toBeGreaterThan(0);
+    
+    // Find spending_spike insight which should have both current and previous amounts
+    const groceriesSpike = insights.find(insight => 
+      insight.categoryName === 'Groceries' && insight.type === 'spending_spike'
+    );
+    expect(groceriesSpike).toBeDefined();
+    
+    // Check that the normalized amounts are used in metadata
+    expect(groceriesSpike?.metadata.currentAmount).toBe(250000); // Normalized from 25M
+    expect(groceriesSpike?.metadata.previousAmount).toBe(150000); // Normalized from 15M
+    
+    // Verify the insight description contains reasonable amounts
+    expect(groceriesSpike?.description).toContain('66.7%');
+  });
+
+  it('should not normalize amounts below the threshold', async () => {
+    // Arrange: Create data with amounts below normalization threshold
+    mockContext.categoryChanges = [
+      {
+        categoryId: 'coffee',
+        categoryName: 'Coffee',
+        type: 'expense',
+        currentTotal: 5000, // NGN 5K - below threshold, should not be normalized
+        previousTotal: 3000, // NGN 3K - below threshold, should not be normalized
+        absoluteChange: 2000,
+        percentageChange: 66.67,
+        isSignificant: true,
+        currency: 'NGN',
+        changeType: 'MoM'
+      }
+    ];
+
+    mockContext.categoryData = [
+      {
+        categoryId: 'coffee',
+        categoryName: 'Coffee',
+        total: 5000, // Should remain 5,000 (not normalized)
+        percentage: 100,
+        currency: 'NGN',
+        type: 'expense'
+      }
+    ];
+
+    // Act
+    const insights = await generateCategoryInsights(mockContext);
+
+    // Assert
+    expect(insights.length).toBeGreaterThan(0);
+    
+    // Find spending_spike insight which should have both current and previous amounts
+    const coffeeSpike = insights.find(insight => 
+      insight.categoryName === 'Coffee' && insight.type === 'spending_spike'
+    );
+    expect(coffeeSpike).toBeDefined();
+    
+    // Check that amounts are NOT normalized (remain the same)
+    expect(coffeeSpike?.metadata.currentAmount).toBe(5000); // Not normalized
+    expect(coffeeSpike?.metadata.previousAmount).toBe(3000); // Not normalized
+  });
+
+  it('should exclude multiple income categories from spending insights', async () => {
+    // Arrange: Create data with multiple income categories and some expense categories
+    mockContext.categoryChanges = [
+      {
+        categoryId: 'salary',
+        categoryName: 'Salary',
+        type: 'income',
+        currentTotal: 50000000,
+        previousTotal: 40000000,
+        absoluteChange: 10000000,
+        percentageChange: 25,
+        isSignificant: true,
+        currency: 'NGN',
+        changeType: 'MoM'
+      },
+      {
+        categoryId: 'bonus',
+        categoryName: 'Bonus',
+        type: 'income',
+        currentTotal: 10000000,
+        previousTotal: 0,
+        absoluteChange: 10000000,
+        percentageChange: 100,
+        isSignificant: true,
+        currency: 'NGN',
+        changeType: 'MoM'
+      },
+      {
+        categoryId: 'dividend',
+        categoryName: 'Dividend',
+        type: 'income',
+        currentTotal: 5000000,
+        previousTotal: 8000000,
+        absoluteChange: -3000000,
+        percentageChange: -37.5,
+        isSignificant: true,
+        currency: 'NGN',
+        changeType: 'MoM'
+      },
+      {
+        categoryId: 'dining',
+        categoryName: 'Dining',
+        type: 'expense',
+        currentTotal: 15000,
+        previousTotal: 10000,
+        absoluteChange: 5000,
+        percentageChange: 50,
+        isSignificant: true,
+        currency: 'NGN',
+        changeType: 'MoM'
+      }
+    ];
+
+    // Act
+    const insights = await generateCategoryInsights(mockContext);
+
+    // Assert
+    // Should not have any spending-based insights for income categories
+    const incomeInsights = insights.filter(insight => 
+      ['Salary', 'Bonus', 'Dividend'].includes(insight.categoryName) &&
+      ['spending_spike', 'spending_drop', 'new_category', 'missing_category'].includes(insight.type)
+    );
+    expect(incomeInsights).toHaveLength(0);
+
+    // Should have insights for expense category
+    const expenseInsights = insights.filter(insight => insight.categoryName === 'Dining');
+    expect(expenseInsights.length).toBeGreaterThan(0);
+
+    // Verify all insights are for expense categories only
+    insights.forEach(insight => {
+      if (['spending_spike', 'spending_drop', 'new_category', 'missing_category'].includes(insight.type)) {
+        expect(['Salary', 'Bonus', 'Dividend']).not.toContain(insight.categoryName);
+      }
+    });
+  });
 }); 

@@ -7,6 +7,29 @@ const PERCENT_FACTOR = 100;
 // Threshold for determining significant changes (25%)
 const SIGNIFICANT_CHANGE_THRESHOLD = 25;
 
+// Currency normalization thresholds
+const CURRENCY_NORMALIZATION = {
+  NGN_KOBO_THRESHOLD: 10000000, // NGN 10M+ likely stored in kobo, divide by 100
+  KOBO_TO_NAIRA_FACTOR: 100,
+  USD_TO_NGN_THRESHOLD: 1000000, // NGN 1M+ might be USD stored as NGN, needs investigation
+} as const;
+
+/**
+ * Normalizes currency amounts to handle cases where values might be stored in wrong units
+ * @param amount The raw amount from the database
+ * @param currency The currency code (NGN, USD, etc.)
+ * @returns The normalized amount in the correct currency unit
+ */
+function normalizeAmount(amount: number, currency: string): number {
+  if (currency === 'NGN' && Math.abs(amount) >= CURRENCY_NORMALIZATION.NGN_KOBO_THRESHOLD) {
+    // Likely stored in kobo, convert to naira
+    return amount / CURRENCY_NORMALIZATION.KOBO_TO_NAIRA_FACTOR;
+  }
+  
+  // For other currencies or amounts below threshold, return as-is
+  return amount;
+}
+
 /**
  * Returns aggregated totals per category for the given user and time window.
  *
@@ -72,7 +95,9 @@ export async function getCategoryTotals(
 
   (data as RawTxRow[]).forEach((tx) => {
     // Normalise amount (treat expenses as positive values for aggregation)
-    const amountAbs = Math.abs(Number(tx.amount));
+    const rawAmount = Math.abs(Number(tx.amount));
+    // Apply currency normalization to handle kobo/naira conversion issues
+    const amountAbs = normalizeAmount(rawAmount, tx.currency);
     const categoryId = tx.category_id ?? 'uncategorized';
     const categoryName = tx.categories?.name ?? 'Uncategorized';
     const categoryType = tx.categories?.type ?? tx.type; // Fallback to tx.type if join missing
@@ -241,7 +266,10 @@ async function getCategoryTotalsPeriod(
   let grandTotal = 0;
 
   (data as RawTxRow[]).forEach((tx) => {
-    const amountAbs = Math.abs(Number(tx.amount));
+    // Normalise amount (treat expenses as positive values for aggregation)
+    const rawAmount = Math.abs(Number(tx.amount));
+    // Apply currency normalization to handle kobo/naira conversion issues
+    const amountAbs = normalizeAmount(rawAmount, tx.currency);
     const categoryId = tx.category_id ?? 'uncategorized';
     const categoryName = tx.categories?.name ?? 'Uncategorized';
     const categoryType = tx.categories?.type ?? tx.type;
