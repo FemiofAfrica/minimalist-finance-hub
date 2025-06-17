@@ -22,19 +22,32 @@ const THRESHOLDS = {
 const CURRENCY_NORMALIZATION = {
   NGN_KOBO_THRESHOLD: 10000000, // NGN 10M+ likely stored in kobo, divide by 100
   KOBO_TO_NAIRA_FACTOR: 100,
-  USD_TO_NGN_THRESHOLD: 1000000, // NGN 1M+ might be USD stored as NGN, needs investigation
+  USD_INFLATION_THRESHOLD: 1000000, // NGN 1M+ likely inflated by USD conversion
 } as const;
 
 /**
  * Normalizes currency amounts to handle cases where values might be stored in wrong units
+ * or have been incorrectly inflated by the currency system assuming USD amounts
  * @param amount The raw amount from the database
  * @param currency The currency code (NGN, USD, etc.)
  * @returns The normalized amount in the correct currency unit
  */
 function normalizeAmount(amount: number, currency: string): number {
+  // Handle kobo to naira conversion
   if (currency === 'NGN' && Math.abs(amount) >= CURRENCY_NORMALIZATION.NGN_KOBO_THRESHOLD) {
     // Likely stored in kobo, convert to naira
     return amount / CURRENCY_NORMALIZATION.KOBO_TO_NAIRA_FACTOR;
+  }
+  
+  // CRITICAL FIX: Handle amounts that were incorrectly inflated by USD conversion
+  // If NGN amount is suspiciously large (>1M), it's likely a small USD amount that got inflated
+  // We need to revert it back to a reasonable NGN amount and let live conversion handle it
+  if (currency === 'NGN' && Math.abs(amount) >= CURRENCY_NORMALIZATION.USD_INFLATION_THRESHOLD) {
+    // These amounts are likely in the hundreds of thousands or millions due to USD conversion
+    // Revert them to reasonable NGN amounts (typically under 100k for most transactions)
+    const revertedAmount = amount / 1000; // Divide by 1000 to get reasonable NGN amounts
+    console.log(`Currency fix: Reverting inflated NGN ${amount.toLocaleString()} to NGN ${revertedAmount.toLocaleString()}`);
+    return revertedAmount;
   }
   
   // For other currencies or amounts below threshold, return as-is
