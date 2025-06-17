@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import errorNotificationService from '@/services/errorNotificationService';
 
 import PublicLayout from '@/components/PublicLayout';
 import { Eye, EyeOff } from 'lucide-react';
@@ -176,6 +177,12 @@ const ResetPassword = () => {
           ...currentLocationInfo,
           errorInfo
         });
+
+        // Report error to admin monitoring
+        await errorNotificationService.reportAuthError(
+          new Error(`Password reset link error: ${error} - ${errorDescription}`),
+          'password_reset_link_validation'
+        );
         
         setValidResetLink(false);
         setError('This reset link has expired or is invalid. Please request a new one.');

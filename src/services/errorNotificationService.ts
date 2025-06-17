@@ -11,6 +11,8 @@ interface ErrorReport {
   errorType: 'javascript' | 'api' | 'network' | 'react' | 'unhandled'
   severity: 'low' | 'medium' | 'high' | 'critical'
   additionalContext?: Record<string, any>
+  sessionId?: string
+  isAuthenticated?: boolean
 }
 
 class ErrorNotificationService {
@@ -20,8 +22,10 @@ class ErrorNotificationService {
   private readonly MAX_NOTIFICATIONS_PER_HOUR = 10
   private notificationCount = 0
   private notificationResetTime = Date.now() + 60 * 60 * 1000 // 1 hour
+  private sessionId: string
 
   private constructor() {
+    this.sessionId = this.generateSessionId()
     this.initializeGlobalErrorHandlers()
   }
 
@@ -32,28 +36,30 @@ class ErrorNotificationService {
     return ErrorNotificationService.instance
   }
 
+  private generateSessionId(): string {
+    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  }
+
   private initializeGlobalErrorHandlers() {
-    // Handle unhandled JavaScript errors
     window.addEventListener('error', (event) => {
       this.reportError({
         message: event.message || 'Unknown error',
         stack: event.error?.stack,
-        url: window.location.href,
+        url: event.filename || window.location.href,
         userAgent: navigator.userAgent,
         errorType: 'javascript',
         severity: this.determineSeverity(event.message, event.error?.stack),
         additionalContext: {
-          filename: event.filename,
           lineno: event.lineno,
-          colno: event.colno
+          colno: event.colno,
+          filename: event.filename
         }
       })
     })
 
-    // Handle unhandled promise rejections
     window.addEventListener('unhandledrejection', (event) => {
       this.reportError({
-        message: event.reason?.message || 'Unhandled Promise Rejection',
+        message: event.reason?.message || 'Unhandled promise rejection',
         stack: event.reason?.stack,
         url: window.location.href,
         userAgent: navigator.userAgent,
@@ -69,54 +75,40 @@ class ErrorNotificationService {
   private determineSeverity(message: string, stack?: string): 'low' | 'medium' | 'high' | 'critical' {
     const content = `${message} ${stack || ''}`.toLowerCase()
     
-    // Critical errors - payment, auth, security, database
-    if (content.includes('payment') || 
-        content.includes('auth') || 
-        content.includes('security') || 
-        content.includes('database') ||
-        content.includes('unauthorized') ||
-        content.includes('forbidden')) {
+    if (content.includes('auth') || content.includes('payment') || 
+        content.includes('database') || content.includes('supabase') ||
+        content.includes('login') || content.includes('signup') ||
+        content.includes('password') || content.includes('reset')) {
       return 'critical'
     }
     
-    // High severity - network errors, API failures, 500 errors, timeouts
-    if (content.includes('network') || 
-        content.includes('fetch') || 
-        content.includes('500') || 
-        content.includes('timeout') ||
-        content.includes('connection') ||
-        content.includes('api')) {
+    if (content.includes('network') || content.includes('fetch') || 
+        content.includes('api') || content.includes('500') || 
+        content.includes('crash') || content.includes('fatal')) {
       return 'high'
     }
     
-    // Medium severity - component errors, 404s, validation
-    if (content.includes('component') || 
-        content.includes('404') || 
-        content.includes('validation') ||
-        content.includes('render') ||
+    if (content.includes('component') || content.includes('render') || 
+        content.includes('validation') || content.includes('form') ||
         content.includes('props')) {
       return 'medium'
     }
     
-    // Low severity - everything else
     return 'low'
   }
 
   private shouldThrottle(errorKey: string): boolean {
     const now = Date.now()
     
-    // Reset notification count every hour
     if (now > this.notificationResetTime) {
       this.notificationCount = 0
       this.notificationResetTime = now + 60 * 60 * 1000
     }
     
-    // Check hourly limit
     if (this.notificationCount >= this.MAX_NOTIFICATIONS_PER_HOUR) {
       return true
     }
     
-    // Check if same error was reported recently
     const lastReported = this.throttleMap.get(errorKey)
     if (lastReported && (now - lastReported) < this.THROTTLE_WINDOW) {
       return true
@@ -138,26 +130,45 @@ class ErrorNotificationService {
     try {
       const user = await this.getCurrentUser()
       
-      // Add user context if available
       if (user) {
         errorReport.userId = user.id
         errorReport.userEmail = user.email
+        errorReport.isAuthenticated = true
+      } else {
+        errorReport.userId = null
+        errorReport.userEmail = `anonymous_${this.sessionId}@unauthenticated.local`
+        errorReport.sessionId = this.sessionId
+        errorReport.isAuthenticated = false
       }
 
-      // Create throttle key based on error message and type
-      const errorKey = `${errorReport.errorType}:${errorReport.message.substring(0, 100)}`
+      const userIdentifier = user?.id || this.sessionId
+      const errorKey = `${errorReport.errorType}:${errorReport.message.substring(0, 100)}:${userIdentifier}`
       
-      // Check if we should throttle this error
       if (this.shouldThrottle(errorKey)) {
         return
       }
 
-      // Only notify admins for medium+ severity errors
-      if (!['medium', 'high', 'critical'].includes(errorReport.severity)) {
+      const shouldLog = errorReport.severity === 'critical' || 
+                       ['medium', 'high', 'critical'].includes(errorReport.severity)
+      
+      if (!shouldLog) {
         return
       }
 
-      // Store error in database
+      const enhancedContext = {
+        ...errorReport.additionalContext,
+        sessionId: this.sessionId,
+        isAuthenticated: errorReport.isAuthenticated,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        viewport: {
+          width: window.innerWidth,
+          height: window.innerHeight
+        },
+        url: window.location.href,
+        referrer: document.referrer
+      }
+
       const { error } = await supabase
         .from('error_logs')
         .insert([{
@@ -170,7 +181,7 @@ class ErrorNotificationService {
           user_email: errorReport.userEmail,
           error_type: errorReport.errorType,
           severity: errorReport.severity,
-          additional_context: errorReport.additionalContext
+          additional_context: enhancedContext
         }])
 
       if (error) {
@@ -178,11 +189,9 @@ class ErrorNotificationService {
         return
       }
 
-      // Update throttle map
       this.throttleMap.set(errorKey, Date.now())
       this.notificationCount++
 
-      // Send notifications to super admins
       await this.notifyAdmins(errorReport)
 
     } catch (error) {
@@ -192,10 +201,8 @@ class ErrorNotificationService {
 
   private async notifyAdmins(errorReport: ErrorReport) {
     try {
-      // Send push notification for all medium+ severity errors
       await this.sendPushNotification(errorReport)
       
-      // Send email for critical and high severity errors
       if (['critical', 'high'].includes(errorReport.severity)) {
         await this.sendEmailNotification(errorReport)
       }
@@ -206,10 +213,14 @@ class ErrorNotificationService {
 
   private async sendPushNotification(errorReport: ErrorReport) {
     try {
+      const userContext = errorReport.isAuthenticated 
+        ? `User: ${errorReport.userEmail}`
+        : `Anonymous User (Session: ${errorReport.sessionId?.slice(-8)})`
+
       const { error } = await supabase.functions.invoke('send-push-notification', {
         body: {
           title: `🚨 ${errorReport.severity.toUpperCase()} Error Detected`,
-          message: errorReport.message.substring(0, 100),
+          message: `${errorReport.message.substring(0, 80)}\n${userContext}`,
           url: '/settings?tab=admin',
           targetType: 'segment',
           segment: 'super_admins'
@@ -226,10 +237,14 @@ class ErrorNotificationService {
 
   private async sendEmailNotification(errorReport: ErrorReport) {
     try {
+      const userContext = errorReport.isAuthenticated 
+        ? `User: ${errorReport.userEmail}`
+        : `Anonymous User\nSession ID: ${errorReport.sessionId}`
+
       const { error } = await supabase.functions.invoke('send-push-notification', {
         body: {
           title: `🚨 ${errorReport.severity.toUpperCase()} Error Detected`,
-          message: `Error: ${errorReport.message}\n\nURL: ${errorReport.url}\n\nUser: ${errorReport.userEmail || 'Anonymous'}\n\nTime: ${new Date().toISOString()}`,
+          message: `Error: ${errorReport.message}\n\nURL: ${errorReport.url}\n\n${userContext}\n\nTime: ${new Date().toISOString()}`,
           url: '/settings?tab=admin',
           targetType: 'segment',
           segment: 'super_admins',
@@ -245,7 +260,6 @@ class ErrorNotificationService {
     }
   }
 
-  // Method for manual error reporting
   async reportApiError(url: string, status: number, statusText: string, response?: any) {
     await this.reportError({
       message: `API Error: ${status} ${statusText}`,
@@ -288,9 +302,23 @@ class ErrorNotificationService {
       severity: 'high'
     })
   }
+
+  async reportAuthError(error: Error, context: string) {
+    await this.reportError({
+      message: `Auth Error: ${error.message}`,
+      stack: error.stack,
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+      errorType: 'unhandled',
+      severity: 'critical',
+      additionalContext: {
+        authContext: context,
+        errorName: error.name
+      }
+    })
+  }
 }
 
-// Initialize the service
 const errorNotificationService = ErrorNotificationService.getInstance()
 
 export default errorNotificationService 
