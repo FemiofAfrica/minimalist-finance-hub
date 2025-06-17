@@ -117,7 +117,25 @@ function generateChangeBasedInsights(context: InsightGenerationContext): Categor
   const insights: CategoryInsight[] = [];
   const { categoryChanges, timePeriod } = context;
   
+  // Deduplicate changes by category - prefer MoM over YoY for the same category
+  const deduplicatedChanges = new Map<string, CategoryChange>();
+  
   for (const change of categoryChanges) {
+    const existingChange = deduplicatedChanges.get(change.categoryId);
+    
+    if (!existingChange) {
+      // First change for this category
+      deduplicatedChanges.set(change.categoryId, change);
+    } else {
+      // Category already exists, prefer MoM over YoY
+      if (change.changeType === 'MoM' && existingChange.changeType === 'YoY') {
+        deduplicatedChanges.set(change.categoryId, change);
+      }
+      // If both are same type or existing is MoM, keep existing
+    }
+  }
+  
+  for (const change of deduplicatedChanges.values()) {
     // Skip if change is not significant enough
     if (!change.isSignificant) continue;
     

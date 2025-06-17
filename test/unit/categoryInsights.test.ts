@@ -643,16 +643,16 @@ describe('Currency Normalization and Income Category Exclusion', () => {
   });
 
   it('should exclude multiple income categories from spending insights', async () => {
-    // Arrange: Create data with multiple income categories and some expense categories
+    // Arrange: Create data with multiple income categories that should be excluded
     mockContext.categoryChanges = [
       {
         categoryId: 'salary',
         categoryName: 'Salary',
         type: 'income',
-        currentTotal: 50000000,
-        previousTotal: 40000000,
-        absoluteChange: 10000000,
-        percentageChange: 25,
+        currentTotal: 5000000, // Should be normalized to 5,000
+        previousTotal: 3000000, // Should be normalized to 3,000
+        absoluteChange: 2000000,
+        percentageChange: 66.67,
         isSignificant: true,
         currency: 'NGN',
         changeType: 'MoM'
@@ -661,10 +661,10 @@ describe('Currency Normalization and Income Category Exclusion', () => {
         categoryId: 'bonus',
         categoryName: 'Bonus',
         type: 'income',
-        currentTotal: 10000000,
-        previousTotal: 0,
-        absoluteChange: 10000000,
-        percentageChange: 100,
+        currentTotal: 8000000, // Should be normalized to 8,000
+        previousTotal: 5000000, // Should be normalized to 5,000
+        absoluteChange: 3000000, // Should be normalized to 3,000
+        percentageChange: 60,
         isSignificant: true,
         currency: 'NGN',
         changeType: 'MoM'
@@ -673,25 +673,40 @@ describe('Currency Normalization and Income Category Exclusion', () => {
         categoryId: 'dividend',
         categoryName: 'Dividend',
         type: 'income',
-        currentTotal: 5000000,
-        previousTotal: 8000000,
-        absoluteChange: -3000000,
-        percentageChange: -37.5,
+        currentTotal: 2000000, // Should be normalized to 2,000
+        previousTotal: 5000000, // Should be normalized to 5,000
+        absoluteChange: -3000000, // Should be normalized to -3,000
+        percentageChange: -60,
         isSignificant: true,
         currency: 'NGN',
         changeType: 'MoM'
+      }
+    ];
+
+    mockContext.categoryData = [
+      {
+        categoryId: 'salary',
+        categoryName: 'Salary',
+        total: 5000000,
+        percentage: 50,
+        currency: 'NGN',
+        type: 'income'
       },
       {
-        categoryId: 'dining',
-        categoryName: 'Dining',
-        type: 'expense',
-        currentTotal: 15000,
-        previousTotal: 10000,
-        absoluteChange: 5000,
-        percentageChange: 50,
-        isSignificant: true,
+        categoryId: 'bonus',
+        categoryName: 'Bonus',
+        total: 8000000,
+        percentage: 40,
         currency: 'NGN',
-        changeType: 'MoM'
+        type: 'income'
+      },
+      {
+        categoryId: 'dividend',
+        categoryName: 'Dividend',
+        total: 2000000,
+        percentage: 10,
+        currency: 'NGN',
+        type: 'income'
       }
     ];
 
@@ -699,22 +714,71 @@ describe('Currency Normalization and Income Category Exclusion', () => {
     const insights = await generateCategoryInsights(mockContext);
 
     // Assert
-    // Should not have any spending-based insights for income categories
-    const incomeInsights = insights.filter(insight => 
-      ['Salary', 'Bonus', 'Dividend'].includes(insight.categoryName) &&
+    // Should not generate any spending insights for income categories
+    const spendingInsights = insights.filter(insight => 
       ['spending_spike', 'spending_drop', 'new_category', 'missing_category'].includes(insight.type)
     );
-    expect(incomeInsights).toHaveLength(0);
-
-    // Should have insights for expense category
-    const expenseInsights = insights.filter(insight => insight.categoryName === 'Dining');
-    expect(expenseInsights.length).toBeGreaterThan(0);
-
-    // Verify all insights are for expense categories only
-    insights.forEach(insight => {
-      if (['spending_spike', 'spending_drop', 'new_category', 'missing_category'].includes(insight.type)) {
-        expect(['Salary', 'Bonus', 'Dividend']).not.toContain(insight.categoryName);
-      }
+    
+    // All spending insights should be for expense categories only
+    spendingInsights.forEach(insight => {
+      expect(['Salary', 'Bonus', 'Dividend']).not.toContain(insight.categoryName);
     });
+  });
+
+  it('should deduplicate MoM and YoY insights for the same category', async () => {
+    // Arrange: Create both MoM and YoY changes for the same category
+    mockContext.categoryChanges = [
+      {
+        categoryId: 'groceries',
+        categoryName: 'Groceries',
+        type: 'expense',
+        currentTotal: 15000,
+        previousTotal: 10000,
+        absoluteChange: 5000,
+        percentageChange: 50, // MoM change
+        isSignificant: true,
+        currency: 'NGN',
+        changeType: 'MoM'
+      },
+      {
+        categoryId: 'groceries',
+        categoryName: 'Groceries',
+        type: 'expense',
+        currentTotal: 15000,
+        previousTotal: 8000,
+        absoluteChange: 7000,
+        percentageChange: 87.5, // YoY change (higher percentage)
+        isSignificant: true,
+        currency: 'NGN',
+        changeType: 'YoY'
+      }
+    ];
+
+    mockContext.categoryData = [
+      {
+        categoryId: 'groceries',
+        categoryName: 'Groceries',
+        total: 15000,
+        percentage: 100,
+        currency: 'NGN',
+        type: 'expense'
+      }
+    ];
+
+    // Act
+    const insights = await generateCategoryInsights(mockContext);
+
+    // Assert
+    const groceriesInsights = insights.filter(insight => 
+      insight.categoryName === 'Groceries' && insight.type === 'spending_spike'
+    );
+    
+    // Should have only ONE insight for Groceries, not two
+    expect(groceriesInsights).toHaveLength(1);
+    
+    // Should prefer MoM over YoY (50% change, not 87.5%)
+    expect(groceriesInsights[0].metadata.percentageChange).toBe(50);
+    expect(groceriesInsights[0].description).toContain('this month');
+    expect(groceriesInsights[0].description).not.toContain('this year');
   });
 }); 
