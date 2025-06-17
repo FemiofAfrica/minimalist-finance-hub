@@ -622,7 +622,12 @@ const CategoryReportsSection: React.FC<CategoryReportsSectionProps> = ({
                               {insight.metadata.currentAmount > 0 && (
                                 <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                                   <span>
-                                    Current: {formatPossiblyConvertedCurrency(insight.metadata.currentAmount)}
+                                    Current: {new Intl.NumberFormat('en-NG', {
+                                      style: 'currency',
+                                      currency: insight.metadata.currency || 'NGN',
+                                      minimumFractionDigits: 0,
+                                      maximumFractionDigits: 0
+                                    }).format(insight.metadata.currentAmount)}
                                   </span>
                                   {insight.metadata.percentageChange !== undefined && (
                                     <span className={
