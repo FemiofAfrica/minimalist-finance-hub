@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { createInsightsAnalysisService } from '@/services/insights/insightsAnalysisService';
 
 interface Insight {
   id: string;
@@ -95,14 +96,26 @@ export function InsightsSection({ className }: InsightsSectionProps) {
   ];
 
   useEffect(() => {
-    // Simulate loading insights
-    const timer = setTimeout(() => {
-      setInsights(mockInsights);
-      setLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchInsights = async () => {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const service = createInsightsAnalysisService(user.id);
+        const result = await service.analyzeUserInsights();
+        setInsights(result.insights as any);
+      } catch (error) {
+        console.error('Failed to load insights:', error);
+        // fallback to mock until analysis service stabilises
+        setInsights(mockInsights);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInsights();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const getInsightIcon = (type: Insight['type']) => {
     switch (type) {

@@ -239,15 +239,15 @@ export class InsightsAnalysisService {
   private generateComparativeInsights(current: MonthlyAnalysis, previous: MonthlyAnalysis): InsightType[] {
     const insights: InsightType[] = [];
 
-    // Expense increase alert
-    const expenseChange = ((current.totalExpenses - previous.totalExpenses) / previous.totalExpenses) * 100;
+    // -------- Expense increase MoM --------
+    const expenseChange = ((current.totalExpenses - previous.totalExpenses) / (previous.totalExpenses || 1)) * 100;
     if (expenseChange > this.thresholds.expenseIncreasePercent) {
       insights.push({
         id: `expense-increase-${Date.now()}`,
         type: 'alert',
         title: 'Expenses Increased Significantly',
-        description: `Your expenses increased by ${expenseChange.toFixed(1)}% this month (${current.totalExpenses.toLocaleString()} vs ${previous.totalExpenses.toLocaleString()})`,
-        severity: expenseChange > 50 ? 'high' : 'medium',
+        description: `Your expenses increased by ${expenseChange.toFixed(1)}% this month (${current.totalExpenses.toLocaleString()} vs ${previous.totalExpenses.toLocaleString()}).`,
+        severity: expenseChange > 2 * this.thresholds.expenseIncreasePercent ? 'high' : 'medium',
         category: 'spending',
         actionable: true,
         actionText: 'Review Transactions',
@@ -256,6 +256,45 @@ export class InsightsAnalysisService {
         createdAt: new Date()
       });
     }
+
+    // -------- Income decrease MoM --------
+    const incomeChange = ((current.totalIncome - previous.totalIncome) / (previous.totalIncome || 1)) * 100;
+    if (incomeChange < -this.thresholds.incomeDecreasePercent) {
+      insights.push({
+        id: `income-drop-${Date.now()}`,
+        type: 'alert',
+        title: 'Income Decreased',
+        description: `Your income dropped by ${Math.abs(incomeChange).toFixed(1)}% this month (${current.totalIncome.toLocaleString()} vs ${previous.totalIncome.toLocaleString()}).`,
+        severity: Math.abs(incomeChange) > this.thresholds.incomeDecreasePercent * 2 ? 'high' : 'medium',
+        category: 'income',
+        actionable: false,
+        dismissible: true,
+        createdAt: new Date()
+      });
+    }
+
+    // -------- Category spending spikes --------
+    current.categoryBreakdown.forEach(curCat => {
+      const prevCat = previous.categoryBreakdown.find(c => c.categoryId === curCat.categoryId);
+      if (prevCat && prevCat.currentAmount > 0) {
+        const catChange = ((curCat.currentAmount - prevCat.currentAmount) / prevCat.currentAmount) * 100;
+        if (catChange > this.thresholds.categorySpikePer) {
+          insights.push({
+            id: `category-spike-${curCat.categoryId}-${Date.now()}`,
+            type: 'alert',
+            title: `Spike in ${curCat.categoryName} spending`,
+            description: `${curCat.categoryName} spending increased by ${catChange.toFixed(1)}% this month.`,
+            severity: catChange > this.thresholds.categorySpikePer * 1.5 ? 'high' : 'medium',
+            category: curCat.categoryName,
+            actionable: true,
+            actionText: 'Review Category',
+            actionUrl: `/reports?category=${curCat.categoryId}`,
+            dismissible: true,
+            createdAt: new Date()
+          });
+        }
+      }
+    });
 
     return insights;
   }
@@ -266,17 +305,51 @@ export class InsightsAnalysisService {
   private generateThresholdInsights(current: MonthlyAnalysis): InsightType[] {
     const insights: InsightType[] = [];
 
-    // Housing ratio tip
+    // ---- Housing cost ratio ----
     if (current.housingRatio > this.thresholds.housingRatioPercent) {
       insights.push({
         id: `housing-ratio-${Date.now()}`,
         type: 'tip',
         title: 'Housing Costs High',
-        description: `Your housing costs are ${current.housingRatio.toFixed(1)}% of income. Financial experts recommend keeping this under ${this.thresholds.housingRatioPercent}%`,
+        description: `Your housing costs are ${current.housingRatio.toFixed(1)}% of income. Financial experts recommend keeping this under ${this.thresholds.housingRatioPercent}%.`,
         severity: 'medium',
         category: 'budgeting',
         actionable: true,
         actionText: 'Review Housing Budget',
+        dismissible: true,
+        createdAt: new Date()
+      });
+    }
+
+    // ---- Subscription cost alert ----
+    if (current.subscriptionTotal > this.thresholds.subscriptionThreshold) {
+      insights.push({
+        id: `subscription-alert-${Date.now()}`,
+        type: 'recommendation',
+        title: 'High Recurring Expenses',
+        description: `You have ₦${current.subscriptionTotal.toLocaleString()} in recurring charges this month. Consider reviewing subscriptions for potential savings.`,
+        severity: 'low',
+        category: 'subscriptions',
+        actionable: true,
+        actionText: 'Review Subscriptions',
+        actionUrl: '/subscriptions',
+        dismissible: true,
+        createdAt: new Date()
+      });
+    }
+
+    // ---- Cash flow warning ----
+    if (current.totalExpenses > current.totalIncome * 0.9) {
+      insights.push({
+        id: `cashflow-warning-${Date.now()}`,
+        type: 'alert',
+        title: 'Cash Flow Warning',
+        description: 'Your expenses are close to or exceed your income this month. Review discretionary spending to avoid negative cash flow.',
+        severity: 'high',
+        category: 'spending',
+        actionable: true,
+        actionText: 'View Spending',
+        actionUrl: '/transactions',
         dismissible: true,
         createdAt: new Date()
       });
