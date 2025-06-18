@@ -74,7 +74,7 @@ const CategoryReportsSection: React.FC<CategoryReportsSectionProps> = ({
   const { isMobile, getResponsiveSpacing } = useResponsive();
 
   // Component state
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [categoryData, setCategoryData] = useState<CategoryAggregate[]>([]);
   const [categoryChanges, setCategoryChanges] = useState<CategoryChange[]>([]);
@@ -93,7 +93,7 @@ const CategoryReportsSection: React.FC<CategoryReportsSectionProps> = ({
 
   // Chart view states
   const [topCategoriesVariant, setTopCategoriesVariant] = useState<'bar' | 'pie'>('bar');
-  const [showCategoryInsights, setShowCategoryInsights] = useState(true);
+  const [showCategoryInsights, setShowCategoryInsights] = useState(false);
 
   // Get responsive spacing
   const spacing = useMemo(() => getResponsiveSpacing(), [getResponsiveSpacing]);

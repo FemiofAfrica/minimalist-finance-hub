@@ -165,10 +165,6 @@ const Reports = () => {
                 height={isMobile ? 250 : 350}
                 className="w-full"
           />
-
-          {/* Financial Insights Section */}
-          <InsightsSection className="w-full" 
-              />
             </CardContent>
           </Card>
 
