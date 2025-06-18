@@ -7,6 +7,7 @@ import {
   MonthlyAnalysis,
   InsightAnalysisResult
 } from '@/types/insights';
+import { detectSpike, detectMoMChange } from '@/services/insights/patternDetection';
 
 // Default thresholds based on financial best practices
 const DEFAULT_THRESHOLDS: InsightThresholds = {
@@ -240,8 +241,8 @@ export class InsightsAnalysisService {
     const insights: InsightType[] = [];
 
     // -------- Expense increase MoM --------
-    const expenseChange = ((current.totalExpenses - previous.totalExpenses) / (previous.totalExpenses || 1)) * 100;
-    if (expenseChange > this.thresholds.expenseIncreasePercent) {
+    const { percentChange: expenseChange } = detectMoMChange([previous.totalExpenses, current.totalExpenses], this.thresholds.expenseIncreasePercent);
+    if (Math.abs(expenseChange) > this.thresholds.expenseIncreasePercent) {
       insights.push({
         id: `expense-increase-${Date.now()}`,
         type: 'alert',
@@ -277,8 +278,8 @@ export class InsightsAnalysisService {
     current.categoryBreakdown.forEach(curCat => {
       const prevCat = previous.categoryBreakdown.find(c => c.categoryId === curCat.categoryId);
       if (prevCat && prevCat.currentAmount > 0) {
-        const catChange = ((curCat.currentAmount - prevCat.currentAmount) / prevCat.currentAmount) * 100;
-        if (catChange > this.thresholds.categorySpikePer) {
+        if (detectSpike(curCat.currentAmount, prevCat.currentAmount, this.thresholds.categorySpikePer)) {
+          const catChange = ((curCat.currentAmount - prevCat.currentAmount) / prevCat.currentAmount) * 100;
           insights.push({
             id: `category-spike-${curCat.categoryId}-${Date.now()}`,
             type: 'alert',
