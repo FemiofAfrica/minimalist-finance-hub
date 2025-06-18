@@ -1,1 +1,1 @@
-import { SpendingPattern, FinancialAnomaly, InsightThresholds } from '@/types/insights';
+export class PatternDetectionService { constructor(thresholds) { this.thresholds = thresholds; } detectSpendingSpikes(amounts) { return { isSpike: false, severity: "low", confidence: 0 }; } analyzeSpendingPatterns(monthlyData) { return []; } }
