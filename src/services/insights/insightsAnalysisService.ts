@@ -8,6 +8,7 @@ import {
   InsightAnalysisResult
 } from '@/types/insights';
 import { detectSpike, detectMoMChange } from '@/services/insights/patternDetection';
+import { RecommendationEngine } from '@/services/insights/recommendationEngine';
 
 // Default thresholds based on financial best practices
 const DEFAULT_THRESHOLDS: InsightThresholds = {
@@ -230,6 +231,15 @@ export class InsightsAnalysisService {
 
     // Generate achievement insights
     insights.push(...this.generateAchievementInsights(currentMonth, previousMonth));
+
+    // ---- Recommendations ----
+    try {
+      const engine = new RecommendationEngine();
+      const recs = engine.generateRecommendations({ currentMonth, previousMonth, insights });
+      insights.push(...recs);
+    } catch (err) {
+      console.warn('RecommendationEngine error:', err);
+    }
 
     return insights;
   }

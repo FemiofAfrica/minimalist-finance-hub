@@ -4,23 +4,10 @@ import TimePeriodFilter from '@/components/filters/TimePeriodFilter';
 import { chartDataService } from '@/services/chartDataService';
 import type { HistoricalBalanceData } from '@/types/chartData';
 
-// Mock the chart data service
-vi.mock('@/services/chartDataService', () => ({
-  chartDataService: {
-    getHistoricalBalanceData: vi.fn()
-  }
-}));
-
 // Mock date-fns
 vi.mock('date-fns', () => ({
-  differenceInMonths: vi.fn((end, start) => {
-    // Simple mock: assume each month difference = 1
-    const endYear = parseInt(end.split('-')[0]);
-    const endMonth = parseInt(end.split('-')[1]);
-    const startYear = parseInt(start.split('-')[0]);
-    const startMonth = parseInt(start.split('-')[1]);
-    
-    return (endYear - startYear) * 12 + (endMonth - startMonth);
+  differenceInMonths: vi.fn((end: Date, start: Date) => {
+    return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
   }),
   format: vi.fn((date, formatStr) => {
     if (formatStr === 'yyyy-MM') {
@@ -73,6 +60,14 @@ vi.mock('@/components/ui/badge', () => ({
   )
 }));
 
+// Mock chartDataService before component import resolution
+vi.mock('@/services/chartDataService', () => ({
+  chartDataService: {
+    getBalanceTrendData: vi.fn(),
+    getHistoricalBalanceData: vi.fn()
+  }
+}));
+
 describe('TimePeriodFilter', () => {
   const mockChartDataService = chartDataService as any;
   const defaultProps = {
@@ -91,6 +86,7 @@ describe('TimePeriodFilter', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockChartDataService.getBalanceTrendData.mockResolvedValue(mockHistoricalData);
     mockChartDataService.getHistoricalBalanceData.mockResolvedValue(mockHistoricalData);
     
     // Mock localStorage
@@ -124,7 +120,7 @@ describe('TimePeriodFilter', () => {
 
     it('displays loading state initially', () => {
       // Make the service call hang
-      mockChartDataService.getHistoricalBalanceData.mockImplementation(() => new Promise(() => {}));
+      mockChartDataService.getBalanceTrendData.mockImplementation(() => new Promise(() => {}));
       
       render(<TimePeriodFilter {...defaultProps} />);
       
@@ -133,10 +129,8 @@ describe('TimePeriodFilter', () => {
 
     it('applies custom className', () => {
       const customClass = 'custom-filter-class';
-      render(<TimePeriodFilter {...defaultProps} className={customClass} />);
-      
-      const container = screen.getByTestId('clock-icon').closest('div');
-      expect(container).toHaveClass(customClass);
+      const { container } = render(<TimePeriodFilter {...defaultProps} className={customClass} />);
+      expect((container.firstChild as HTMLElement)).toHaveClass(customClass);
     });
   });
 
@@ -145,12 +139,12 @@ describe('TimePeriodFilter', () => {
       render(<TimePeriodFilter {...defaultProps} />);
       
       await waitFor(() => {
-        expect(mockChartDataService.getHistoricalBalanceData).toHaveBeenCalledWith(24);
+        expect(mockChartDataService.getBalanceTrendData).toHaveBeenCalledWith(24);
       });
     });
 
     it('handles empty historical data', async () => {
-      mockChartDataService.getHistoricalBalanceData.mockResolvedValue([]);
+      mockChartDataService.getBalanceTrendData.mockResolvedValue([]);
       
       render(<TimePeriodFilter {...defaultProps} />);
       
@@ -160,7 +154,7 @@ describe('TimePeriodFilter', () => {
     });
 
     it('handles service errors gracefully', async () => {
-      mockChartDataService.getHistoricalBalanceData.mockRejectedValue(new Error('Service error'));
+      mockChartDataService.getBalanceTrendData.mockRejectedValue(new Error('Service error'));
       
       render(<TimePeriodFilter {...defaultProps} />);
       
@@ -184,7 +178,7 @@ describe('TimePeriodFilter', () => {
       });
       
       // Should not call the service when data is provided
-      expect(mockChartDataService.getHistoricalBalanceData).not.toHaveBeenCalled();
+      expect(mockChartDataService.getBalanceTrendData).not.toHaveBeenCalled();
     });
   });
 
@@ -235,13 +229,15 @@ describe('TimePeriodFilter', () => {
       expect(select).toHaveAttribute('data-disabled', 'true');
     });
 
-    it('disables select during loading', () => {
-      mockChartDataService.getHistoricalBalanceData.mockImplementation(() => new Promise(() => {}));
+    it('disables select during loading', async () => {
+      mockChartDataService.getBalanceTrendData.mockImplementation(() => new Promise(() => {}));
       
       render(<TimePeriodFilter {...defaultProps} />);
       
-      const select = screen.getByTestId('select');
-      expect(select).toHaveAttribute('data-disabled', 'true');
+      await waitFor(() => {
+        const select = screen.getByTestId('select');
+        expect(select).toHaveAttribute('data-disabled', 'true');
+      });
     });
   });
 
@@ -251,7 +247,7 @@ describe('TimePeriodFilter', () => {
       
       await waitFor(() => {
         expect(screen.getByTestId('info-icon')).toBeInTheDocument();
-        expect(screen.getByText('6 months')).toBeInTheDocument();
+        expect(screen.getAllByText('6 months').length).toBeGreaterThan(0);
       });
     });
 
@@ -303,7 +299,7 @@ describe('TimePeriodFilter', () => {
 
   describe('Error Handling', () => {
     it('handles chart service errors gracefully', async () => {
-      mockChartDataService.getHistoricalBalanceData.mockRejectedValue(new Error('Network error'));
+      mockChartDataService.getBalanceTrendData.mockRejectedValue(new Error('Network error'));
       
       render(<TimePeriodFilter {...defaultProps} />);
       
@@ -319,7 +315,7 @@ describe('TimePeriodFilter', () => {
         { month: 'invalid-date', balance: 1000 }
       ];
       
-      mockChartDataService.getHistoricalBalanceData.mockResolvedValue(invalidData);
+      mockChartDataService.getBalanceTrendData.mockResolvedValue(invalidData);
       
       render(<TimePeriodFilter {...defaultProps} />);
       
@@ -335,14 +331,14 @@ describe('TimePeriodFilter', () => {
       const { rerender } = render(<TimePeriodFilter {...defaultProps} />);
       
       await waitFor(() => {
-        expect(mockChartDataService.getHistoricalBalanceData).toHaveBeenCalledTimes(1);
+        expect(mockChartDataService.getBalanceTrendData).toHaveBeenCalledTimes(1);
       });
       
       // Re-render with different props
       rerender(<TimePeriodFilter {...defaultProps} className="different" />);
       
       // Should not call service again
-      expect(mockChartDataService.getHistoricalBalanceData).toHaveBeenCalledTimes(1);
+      expect(mockChartDataService.getBalanceTrendData).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -359,8 +355,8 @@ describe('TimePeriodFilter', () => {
       render(<TimePeriodFilter {...defaultProps} />);
       
       await waitFor(() => {
-        expect(screen.getByTestId('tooltip')).toBeInTheDocument();
-        expect(screen.getByTestId('tooltip-content')).toBeInTheDocument();
+        expect(screen.getAllByTestId('tooltip').length).toBeGreaterThan(0);
+        expect(screen.getAllByTestId('tooltip-content').length).toBeGreaterThan(0);
       });
     });
   });

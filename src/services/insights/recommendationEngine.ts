@@ -11,6 +11,7 @@ export interface RecommendationRule {
 export interface FinancialData {
   currentMonth: MonthlyAnalysis;
   previousMonth?: MonthlyAnalysis;
+  insights?: InsightType[];
   userProfile?: {
     age?: number;
     income?: number;
@@ -60,6 +61,7 @@ export class RecommendationEngine {
     this.rules = [
       this.createEmergencyFundRule(),
       this.createHighSpendingRule(),
+      this.createCashFlowRule(),
       this.createIncomeDeclineRule(),
       this.createSavingsGoalRule(),
       this.createDebtReductionRule(),
@@ -138,6 +140,37 @@ export class RecommendationEngine {
           actionable: true,
           actionText: 'Review Transactions',
           actionUrl: '/transactions',
+          dismissible: true,
+          createdAt: new Date()
+        };
+      }
+    };
+  }
+
+  /**
+   * Cash-flow recommendation – triggered when expenses approach income level (~90% or more)
+   */
+  private createCashFlowRule(): RecommendationRule {
+    return {
+      id: 'cash-flow',
+      name: 'Cash Flow Tight',
+      priority: 8,
+      condition: (data) => {
+        const { totalExpenses, totalIncome } = data.currentMonth;
+        return totalIncome > 0 && totalExpenses / totalIncome >= 0.9;
+      },
+      generateRecommendation: (data) => {
+        const { totalExpenses, totalIncome } = data.currentMonth;
+        const percent = ((totalExpenses / totalIncome) * 100).toFixed(1);
+        return {
+          id: `cash-flow-${Date.now()}`,
+          type: 'recommendation',
+          title: 'Improve Your cash flow',
+          description: `Your expenses represent about ${percent}% of your income this month. Look for opportunities to reduce discretionary spending or boost income to maintain healthy cash flow.`,
+          severity: 'high',
+          category: 'cashflow',
+          actionable: true,
+          actionText: 'View Spending Breakdown',
           dismissible: true,
           createdAt: new Date()
         };
@@ -272,7 +305,9 @@ export class RecommendationEngine {
       name: 'Subscription Optimization',
       priority: 5,
       condition: (data) => {
-        return data.currentMonth.subscriptionTotal > data.currentMonth.totalIncome * 0.15; // More than 15% on subscriptions
+        const highSubscriptionCost = data.currentMonth.subscriptionTotal > data.currentMonth.totalIncome * 0.15;
+        const alertInsight = data.insights?.some(i => i.category === 'subscriptions');
+        return highSubscriptionCost || alertInsight || false;
       },
       generateRecommendation: (data) => {
         const subscriptionPercent = (data.currentMonth.subscriptionTotal / data.currentMonth.totalIncome) * 100;

@@ -184,6 +184,7 @@ vi.mock('lucide-react', () => ({
   XIcon: () => <div data-testid="x-icon">XIcon</div>,
   ChevronDownIcon: () => <div data-testid="chevron-down-icon">ChevronDownIcon</div>,
   ChevronUpIcon: () => <div data-testid="chevron-up-icon">ChevronUpIcon</div>,
+  ChevronsUpDown: () => <div data-testid="chevrons-up-down-icon">ChevronsUpDown</div>,
   
   // Support banner icons  
   Heart: () => <div data-testid="heart-icon">Heart</div>,
@@ -192,6 +193,8 @@ vi.mock('lucide-react', () => ({
   // Transaction modal icons
   Mic: () => <div data-testid="mic-icon">Mic</div>,
   FileUp: () => <div data-testid="file-up-icon">FileUp</div>,
+  Eye: () => <div data-testid="eye-icon">Eye</div>,
+  EyeOff: () => <div data-testid="eye-off-icon">EyeOff</div>,
   
   // Commonly used icons
   ChevronLeft: () => <div data-testid="chevron-left-icon">ChevronLeft</div>,

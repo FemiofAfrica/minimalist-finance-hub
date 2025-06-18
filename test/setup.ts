@@ -79,12 +79,13 @@ vi.mock('pdfjs-dist', () => ({
 
 // Mock lucide-react with comprehensive icon set
 vi.mock('lucide-react', () => {
-  // Create a mock component factory
-  const createMockIcon = (name: string) => (props: any) => 
-    React.createElement('div', { 'data-testid': `icon-${name.toLowerCase()}`, ...props }, name)
+  // Factory to create a simple div representing an icon
+  const createMockIcon = (name: string) => (props: any) =>
+    React.createElement('div', { 'data-testid': `${name.toLowerCase()}-icon`, ...props }, name)
 
-  return {
-    // Charts and Reports icons
+  // Pre-define the icons we know are heavily used so tests can rely on stable testIds
+  const presetIcons = {
+    // Charts / reports
     Target: createMockIcon('Target'),
     Calendar: createMockIcon('Calendar'),
     TrendingUp: createMockIcon('TrendingUp'),
@@ -92,39 +93,50 @@ vi.mock('lucide-react', () => {
     BarChart3: createMockIcon('BarChart3'),
     LineChart: createMockIcon('LineChart'),
     PieChart: createMockIcon('PieChart'),
-    
-    // Dashboard sidebar icons
+
+    // Dashboard & common UI
     LayoutDashboard: createMockIcon('LayoutDashboard'),
     CreditCard: createMockIcon('CreditCard'),
     Settings: createMockIcon('Settings'),
     LogOut: createMockIcon('LogOut'),
     BookOpenText: createMockIcon('BookOpenText'),
-    
-    // Common UI icons
     ChevronDown: createMockIcon('ChevronDown'),
     ChevronUp: createMockIcon('ChevronUp'),
+    ChevronsUpDown: createMockIcon('ChevronsUpDown'),
     Plus: createMockIcon('Plus'),
     Minus: createMockIcon('Minus'),
     Edit: createMockIcon('Edit'),
     Trash: createMockIcon('Trash'),
     Download: createMockIcon('Download'),
     Upload: createMockIcon('Upload'),
-    
-    // Notification icons
+
+    // Alerts / info / loaders
+    AlertCircle: createMockIcon('AlertCircle'),
+    Info: createMockIcon('Info'),
+    Clock: createMockIcon('Clock'),
+    Loader2: createMockIcon('Loader2'),
+
+    // Notifications / others
     Bell: createMockIcon('Bell'),
     BellIcon: createMockIcon('BellIcon'),
     XIcon: createMockIcon('XIcon'),
     ChevronDownIcon: createMockIcon('ChevronDownIcon'),
     ChevronUpIcon: createMockIcon('ChevronUpIcon'),
-    
-    // Support banner icons  
     Heart: createMockIcon('Heart'),
     X: createMockIcon('X'),
-    
-    // Transaction modal icons
     Mic: createMockIcon('Mic'),
     FileUp: createMockIcon('FileUp'),
-
-    // Install prompt icons are already covered above (Download, X)
   }
+
+  // Use a Proxy so any icon not explicitly listed still resolves to a mock component
+  return new Proxy(presetIcons, {
+    get(target, prop: string) {
+      if (!(prop in target)) {
+        // lazily create & cache unknown icons
+        target[prop] = createMockIcon(prop)
+      }
+      // @ts-ignore – dynamic prop
+      return target[prop]
+    }
+  })
 })

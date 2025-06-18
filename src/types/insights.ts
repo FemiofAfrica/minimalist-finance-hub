@@ -76,4 +76,7 @@ export interface InsightAnalysisResult {
     achievementCount: number;
     recommendationCount: number;
   };
-} 
+}
+
+// A Recommendation is represented the same way as an Insight but always has type "recommendation"
+export type Recommendation = InsightType & { type: 'recommendation' }; 
