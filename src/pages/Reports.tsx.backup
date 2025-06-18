@@ -10,17 +10,19 @@ import { TimePeriodFilter } from "@/components/filters";
 import BalanceTrendChart from "@/components/BalanceTrendChart";
 import IncomeExpenseChart from "@/components/IncomeExpenseChart";
 import MonthlyTotalsBarChart from "@/components/MonthlyTotalsBarChart";
+import CategoryReportsSection from "@/components/reports/CategoryReportsSection";
 import { useTimePeriodData } from "@/hooks/useTimePeriodData";
 import { useResponsive } from "@/hooks/useResponsive";
 import { usePerformanceMetrics } from "@/utils/performance";
 import ComparisonMetrics from "@/components/dashboard/ComparisonMetrics";
+import { InsightsSection } from "@/components/insights/InsightsSection";
 
 const Reports = () => {
   const [hasMultipleMonths, setHasMultipleMonths] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
   // Responsive and performance hooks
-  const { isMobile, getResponsiveSpacing } = useResponsive();
+  const { isMobile, getResponsiveSpacing, isTouchDevice } = useResponsive();
   const { startMeasurement, endMeasurement } = usePerformanceMetrics();
   
   // Use our custom hook for time period management
@@ -74,6 +76,8 @@ const Reports = () => {
         <Skeleton className={`${isMobile ? 'h-64' : 'h-96'} w-full`} />
         <Skeleton className={`${isMobile ? 'h-64' : 'h-96'} w-full`} />
       </div>
+      <Skeleton className={`${isMobile ? 'h-64' : 'h-96'} w-full`} />
+      {/* Comparative insights skeleton */}
       <Skeleton className={`${isMobile ? 'h-64' : 'h-96'} w-full`} />
     </div>
   );
@@ -217,9 +221,20 @@ const Reports = () => {
             </Card>
           </div>
 
+          {/* Category Reports Section */}
+          <CategoryReportsSection 
+            timePeriod={currentPeriod}
+            className="w-full"
+          />
 
+          {/* Comparative Insights Section */}
+          <ComparisonMetrics 
+            showCurrentMonth={true}
+            showDetailed={!isMobile}
+            className="w-full"
+          />
             
-            {/* Future Reports Section */}
+          {/* Future Reports Section */}
           <Card 
             className={`text-center bg-gradient-to-r from-green-50 to-blue-50 border-green-200`}
             style={{ padding: `${isMobile ? '1.5rem' : '2rem'} ${isMobile ? '1.5rem' : '2rem'}` }}
@@ -230,8 +245,8 @@ const Reports = () => {
                 More Analytics Coming Soon!
               </h3>
               <p className={`${isMobile ? 'text-xs' : 'text-sm md:text-base'} text-muted-foreground mb-4 md:mb-6`}>
-                We're developing advanced features like category breakdowns, spending patterns, 
-                budget vs actual analysis, and predictive insights.
+                We're developing advanced features like budget vs actual analysis, 
+                predictive insights, and automated financial health scoring.
               </p>
               <p className={`${isMobile ? 'text-xs' : 'text-xs sm:text-sm'} text-muted-foreground`}>
                 Have suggestions for reports you'd like to see?{' '}
@@ -264,4 +279,4 @@ const Reports = () => {
   );
 };
 
-export default Reports;
+export default Reports; 

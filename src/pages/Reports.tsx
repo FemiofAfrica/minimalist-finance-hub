@@ -15,6 +15,7 @@ import { useTimePeriodData } from "@/hooks/useTimePeriodData";
 import { useResponsive } from "@/hooks/useResponsive";
 import { usePerformanceMetrics } from "@/utils/performance";
 import ComparisonMetrics from "@/components/dashboard/ComparisonMetrics";
+import { InsightsSection } from "@/components/insights/InsightsSection";
 
 const Reports = () => {
   const [hasMultipleMonths, setHasMultipleMonths] = useState<boolean | null>(null);
@@ -163,6 +164,10 @@ const Reports = () => {
                 timePeriod={currentPeriod}
                 height={isMobile ? 250 : 350}
                 className="w-full"
+          />
+
+          {/* Financial Insights Section */}
+          <InsightsSection className="w-full" 
               />
             </CardContent>
           </Card>
@@ -231,6 +236,10 @@ const Reports = () => {
             showCurrentMonth={true}
             showDetailed={!isMobile}
             className="w-full"
+          />
+
+          {/* Financial Insights Section */}
+          <InsightsSection className="w-full" 
           />
             
           {/* Future Reports Section */}
