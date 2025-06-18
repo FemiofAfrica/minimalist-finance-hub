@@ -84,7 +84,7 @@ const CategoryReportsSection: React.FC<CategoryReportsSectionProps> = ({
 
   // Filter state
   const [filters, setFilters] = useState<CategoryFilters>({
-    categoryType: 'all',
+    categoryType: 'expense',
     searchQuery: '',
     maxCategories: 10,
     showTrendComparison: false,
@@ -321,33 +321,7 @@ const CategoryReportsSection: React.FC<CategoryReportsSectionProps> = ({
     );
   }
 
-  // Empty state
-  if (filteredCategoryData.length === 0) {
-    return (
-      <Card className={className}>
-        <CardContent className="p-6">
-          <div className="text-center">
-            <BarChart3 className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">No Category Data Available</h3>
-            <p className="text-muted-foreground mb-4">
-              {filters.searchQuery.trim() 
-                ? `No categories found matching "${filters.searchQuery}"`
-                : 'Add some categorized transactions to see category reports'
-              }
-            </p>
-            {filters.searchQuery.trim() && (
-              <Button 
-                onClick={() => updateFilter('searchQuery', '')} 
-                variant="outline"
-              >
-                Clear Search
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Note: Removed early return for empty state - now filters are always visible
 
   return (
     <div className={className}>
@@ -445,8 +419,8 @@ const CategoryReportsSection: React.FC<CategoryReportsSectionProps> = ({
               />
             </div>
 
-            {/* Category Selection for Trends */}
-            {filters.showTrendComparison && (
+            {/* Category Selection for Trends - Only show if there are categories available */}
+            {filters.showTrendComparison && filteredCategoryData.length > 0 && (
               <div className="space-y-2">
                 <Label>Select Categories for Trend Comparison</Label>
                 <div className="flex flex-wrap gap-2">
@@ -496,192 +470,237 @@ const CategoryReportsSection: React.FC<CategoryReportsSectionProps> = ({
       </Card>
 
       {/* Charts Section */}
-      <div className="space-y-6">
-        {/* Top Categories Charts */}
-        <div className={`grid grid-cols-1 ${isMobile ? '' : 'xl:grid-cols-2'} gap-6`}>
-          {/* Top Categories Bar/Pie Chart */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <PieChart className="h-5 w-5 text-indigo-600" />
-                  <CardTitle>Top Categories</CardTitle>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={topCategoriesVariant === 'bar' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setTopCategoriesVariant('bar')}
-                  >
-                    Bar
-                  </Button>
-                  <Button
-                    variant={topCategoriesVariant === 'pie' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setTopCategoriesVariant('pie')}
-                  >
-                    Pie
-                  </Button>
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground">
+      {filteredCategoryData.length === 0 ? (
+        // Empty state for charts only
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <BarChart3 className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">
                 {filters.categoryType === 'all' 
-                  ? `Spending breakdown across top ${filteredCategoryData.length} categories`
-                  : `Top ${filteredCategoryData.length} ${filters.categoryType} categories`
+                  ? 'No Category Data Available'
+                  : `No ${filters.categoryType === 'expense' ? 'Expense' : filters.categoryType === 'income' ? 'Income' : 'Transfer'} Categories Found`
+                }
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                {filters.searchQuery.trim() 
+                  ? `No categories found matching "${filters.searchQuery}" in ${filters.categoryType === 'all' ? 'any category type' : filters.categoryType + ' categories'}`
+                  : filters.categoryType === 'all'
+                    ? 'Add some categorized transactions to see category reports'
+                    : `No ${filters.categoryType} transactions found for the selected time period`
                 }
               </p>
-            </CardHeader>
-            <CardContent>
-              <TopCategoriesChart
-                data={filteredCategoryData}
-                variant={topCategoriesVariant}
-                maxCategories={filters.maxCategories}
-                height={isMobile ? 300 : 400}
-                onCategoryClick={(category) => {
-                  if (filters.showTrendComparison) {
-                    toggleCategorySelection(category.categoryId);
-                  }
-                }}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Category Insights */}
-          {showCategoryInsights && (insights.length > 0 || insightsLoading) && (
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                {filters.searchQuery.trim() && (
+                  <Button 
+                    onClick={() => updateFilter('searchQuery', '')} 
+                    variant="outline"
+                  >
+                    Clear Search
+                  </Button>
+                )}
+                {filters.categoryType !== 'all' && (
+                  <Button 
+                    onClick={() => updateFilter('categoryType', 'all')} 
+                    variant="outline"
+                  >
+                    Show All Categories
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {/* Top Categories Charts */}
+          <div className={`grid grid-cols-1 ${isMobile ? '' : 'xl:grid-cols-2'} gap-6`}>
+            {/* Top Categories Bar/Pie Chart */}
             <Card>
               <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Lightbulb className="h-5 w-5 text-amber-600" />
-                  <CardTitle>Smart Insights</CardTitle>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <PieChart className="h-5 w-5 text-indigo-600" />
+                    <CardTitle>Top Categories</CardTitle>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={topCategoriesVariant === 'bar' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTopCategoriesVariant('bar')}
+                    >
+                      Bar
+                    </Button>
+                    <Button
+                      variant={topCategoriesVariant === 'pie' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTopCategoriesVariant('pie')}
+                    >
+                      Pie
+                    </Button>
+                  </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  AI-powered analysis of your spending patterns
+                  {filters.categoryType === 'all' 
+                    ? `All categories breakdown across top ${filteredCategoryData.length} categories`
+                    : filters.categoryType === 'expense'
+                      ? `Spending breakdown across top ${filteredCategoryData.length} categories`
+                      : `Top ${filteredCategoryData.length} ${filters.categoryType} categories`
+                  }
                 </p>
               </CardHeader>
               <CardContent>
-                {insightsLoading ? (
-                  <div className="space-y-3" data-testid="insights-loading">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="animate-pulse">
-                        <div className="flex items-start gap-3">
-                          <Skeleton className="h-4 w-4 rounded-full" />
-                          <div className="flex-1 space-y-2">
-                            <Skeleton className="h-4 w-3/4" />
-                            <Skeleton className="h-3 w-full" />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                <TopCategoriesChart
+                  data={filteredCategoryData}
+                  variant={topCategoriesVariant}
+                  maxCategories={filters.maxCategories}
+                  height={isMobile ? 300 : 400}
+                  onCategoryClick={(category) => {
+                    if (filters.showTrendComparison) {
+                      toggleCategorySelection(category.categoryId);
+                    }
+                  }}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Category Insights */}
+            {showCategoryInsights && (insights.length > 0 || insightsLoading) && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Lightbulb className="h-5 w-5 text-amber-600" />
+                    <CardTitle>Smart Insights</CardTitle>
                   </div>
-                ) : insights.length > 0 ? (
-                  <div className="space-y-4">
-                    {insights.map((insight) => {
-                      const severityIcons = {
-                        info: <Info className="h-4 w-4 text-blue-500" />,
-                        warning: <AlertTriangle className="h-4 w-4 text-amber-500" />,
-                        success: <CheckCircle className="h-4 w-4 text-green-500" />,
-                        error: <AlertTriangle className="h-4 w-4 text-red-500" />
-                      };
-
-                      const severityColors = {
-                        info: 'border-blue-200 bg-blue-50',
-                        warning: 'border-amber-200 bg-amber-50', 
-                        success: 'border-green-200 bg-green-50',
-                        error: 'border-red-200 bg-red-50'
-                      };
-
-                      return (
-                        <div 
-                          key={insight.id} 
-                          className={`p-4 rounded-lg border ${severityColors[insight.severity]}`}
-                          data-testid="insight-card"
-                        >
+                  <p className="text-sm text-muted-foreground">
+                    AI-powered analysis of your spending patterns
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  {insightsLoading ? (
+                    <div className="space-y-3" data-testid="insights-loading">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="animate-pulse">
                           <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 mt-0.5">
-                              {severityIcons[insight.severity]}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2">
-                                <h4 className="font-medium text-sm leading-tight">
-                                  {insight.title}
-                                </h4>
-                                <Badge variant="outline" className="text-xs" data-testid="insight-priority">
-                                  {insight.priority}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-                                {insight.description}
-                              </p>
-                              {insight.actionSuggestion && (
-                                <div className="mt-2 p-2 rounded bg-background/80 border border-dashed">
-                                  <p className="text-xs text-muted-foreground">
-                                    <strong>Suggestion:</strong> {insight.actionSuggestion}
-                                  </p>
-                                </div>
-                              )}
-                              {insight.metadata.currentAmount > 0 && (
-                                <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                                  <span>
-                                    Current: {new Intl.NumberFormat('en-NG', {
-                                      style: 'currency',
-                                      currency: insight.metadata.currency || 'NGN',
-                                      minimumFractionDigits: 0,
-                                      maximumFractionDigits: 0
-                                    }).format(insight.metadata.currentAmount)}
-                                  </span>
-                                  {insight.metadata.percentageChange !== undefined && (
-                                    <span className={
-                                      insight.metadata.percentageChange > 0 ? 'text-red-600' : 'text-green-600'
-                                    }>
-                                      {insight.metadata.percentageChange > 0 ? '+' : ''}
-                                      {insight.metadata.percentageChange.toFixed(1)}%
-                                    </span>
-                                  )}
-                                </div>
-                              )}
+                            <Skeleton className="h-4 w-4 rounded-full" />
+                            <div className="flex-1 space-y-2">
+                              <Skeleton className="h-4 w-3/4" />
+                              <Skeleton className="h-3 w-full" />
                             </div>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-6">
-                    <Lightbulb className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      No significant insights detected for this period
-                    </p>
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  ) : insights.length > 0 ? (
+                    <div className="space-y-4">
+                      {insights.map((insight) => {
+                        const severityIcons = {
+                          info: <Info className="h-4 w-4 text-blue-500" />,
+                          warning: <AlertTriangle className="h-4 w-4 text-amber-500" />,
+                          success: <CheckCircle className="h-4 w-4 text-green-500" />,
+                          error: <AlertTriangle className="h-4 w-4 text-red-500" />
+                        };
+
+                        const severityColors = {
+                          info: 'border-blue-200 bg-blue-50',
+                          warning: 'border-amber-200 bg-amber-50', 
+                          success: 'border-green-200 bg-green-50',
+                          error: 'border-red-200 bg-red-50'
+                        };
+
+                        return (
+                          <div 
+                            key={insight.id} 
+                            className={`p-4 rounded-lg border ${severityColors[insight.severity]}`}
+                            data-testid="insight-card"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 mt-0.5">
+                                {severityIcons[insight.severity]}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <h4 className="font-medium text-sm leading-tight">
+                                    {insight.title}
+                                  </h4>
+                                  <Badge variant="outline" className="text-xs" data-testid="insight-priority">
+                                    {insight.priority}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                                  {insight.description}
+                                </p>
+                                {insight.actionSuggestion && (
+                                  <div className="mt-2 p-2 rounded bg-background/80 border border-dashed">
+                                    <p className="text-xs text-muted-foreground">
+                                      <strong>Suggestion:</strong> {insight.actionSuggestion}
+                                    </p>
+                                  </div>
+                                )}
+                                {insight.metadata.currentAmount > 0 && (
+                                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                                    <span>
+                                      Current: {new Intl.NumberFormat('en-NG', {
+                                        style: 'currency',
+                                        currency: insight.metadata.currency || 'NGN',
+                                        minimumFractionDigits: 0,
+                                        maximumFractionDigits: 0
+                                      }).format(insight.metadata.currentAmount)}
+                                    </span>
+                                    {insight.metadata.percentageChange !== undefined && (
+                                      <span className={
+                                        insight.metadata.percentageChange > 0 ? 'text-red-600' : 'text-green-600'
+                                      }>
+                                        {insight.metadata.percentageChange > 0 ? '+' : ''}
+                                        {insight.metadata.percentageChange.toFixed(1)}%
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <Lightbulb className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        No significant insights detected for this period
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Trend Chart */}
+          {filters.showTrendComparison && trendSeries.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-blue-600" />
+                  <CardTitle>Category Trends</CardTitle>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Compare spending trends for {trendSeries.length} selected categories over {timePeriod} months
+                </p>
+              </CardHeader>
+              <CardContent>
+                <CategoryTrendChart
+                  series={trendSeries}
+                  height={isMobile ? 300 : 400}
+                  mode="line"
+                  enableModeToggle={true}
+                  showPercentageChange={true}
+                />
               </CardContent>
             </Card>
           )}
         </div>
-
-        {/* Trend Chart */}
-        {filters.showTrendComparison && trendSeries.length > 0 && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-blue-600" />
-                <CardTitle>Category Trends</CardTitle>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Compare spending trends for {trendSeries.length} selected categories over {timePeriod} months
-              </p>
-            </CardHeader>
-            <CardContent>
-              <CategoryTrendChart
-                series={trendSeries}
-                height={isMobile ? 300 : 400}
-                mode="line"
-                enableModeToggle={true}
-                showPercentageChange={true}
-              />
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      )}
     </div>
   );
 };
