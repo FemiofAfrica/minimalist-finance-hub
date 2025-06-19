@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page, devices } from '@playwright/test';
 
 // Test data scenarios for comprehensive testing
 const testScenarios = {
@@ -117,6 +117,34 @@ test.describe('Visual Charts E2E Tests', () => {
         path: '/'
       }
     ]);
+
+    // Inject mock Supabase session so app treats user as signed in
+    await page.addInitScript(() => {
+      const now = Math.floor(Date.now() / 1000);
+      const mockSession = {
+        currentSession: {
+          access_token: 'dummy-access-token',
+          refresh_token: 'dummy-refresh-token',
+          expires_at: now + 3600,
+          token_type: 'bearer',
+          user: {
+            id: '00000000-0000-0000-0000-000000000001',
+            aud: 'authenticated',
+            role: 'authenticated',
+            email: 'charts@example.com',
+            app_metadata: {},
+            user_metadata: {},
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        },
+        expiresAt: now + 3600
+      };
+      window.localStorage.setItem('supabase.auth.token', JSON.stringify(mockSession));
+    });
+
+    // Block all outgoing Supabase calls to avoid network/CORS issues
+    await page.route(/https?:\/\/(?:[a-zA-Z0-9_-]+\.)?supabase\.(co|in)\/.*$/, route => route.fulfill({ status: 200, body: '{}' }));
   });
 
   test.describe('Core Chart Functionality', () => {
@@ -343,41 +371,4 @@ test.describe('Visual Charts E2E Tests', () => {
       await expect(page.locator('h1:has-text("Financial Reports")')).toBeVisible();
     });
   });
-});
-
-// Export test configuration
-export const config = {
-  testDir: './test/e2e',
-  timeout: 30000,
-  expect: {
-    timeout: 5000
-  },
-  use: {
-    actionTimeout: 0,
-    baseURL: 'http://localhost:3000',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure'
-  },
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...require('@playwright/test').devices['Desktop Chrome'] }
-    },
-    {
-      name: 'firefox',
-      use: { ...require('@playwright/test').devices['Desktop Firefox'] }
-    },
-    {
-      name: 'webkit',
-      use: { ...require('@playwright/test').devices['Desktop Safari'] }
-    },
-    {
-      name: 'mobile-chrome',
-      use: { ...require('@playwright/test').devices['Pixel 5'] }
-    },
-    {
-      name: 'mobile-safari',
-      use: { ...require('@playwright/test').devices['iPhone 12'] }
-    }
-  ]
-}; 
+}); 
