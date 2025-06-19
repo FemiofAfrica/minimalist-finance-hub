@@ -175,6 +175,7 @@ vi.mock('lucide-react', () => ({
   Sun: () => <div data-testid="sun-icon">Sun</div>,
   Plus: () => <div data-testid="plus-icon">Plus</div>,
   ChevronDown: () => <div data-testid="chevron-down-icon">ChevronDown</div>,
+  ChevronUp: () => <div data-testid="chevron-up-icon">ChevronUp</div>,
   Globe: () => <div data-testid="globe-icon">Globe</div>,
   PanelLeft: () => <div data-testid="panel-left-icon">PanelLeft</div>,
   
@@ -207,6 +208,8 @@ vi.mock('lucide-react', () => ({
   Trash: () => <div data-testid="trash-icon">Trash</div>,
   Check: () => <div data-testid="check-icon">Check</div>,
   AlertCircle: () => <div data-testid="alert-circle-icon">AlertCircle</div>,
+  AlertTriangle: () => <div data-testid="alert-triangle-icon">AlertTriangle</div>,
+  Lightbulb: () => <div data-testid="lightbulb-icon">Lightbulb</div>,
   Info: () => <div data-testid="info-icon">Info</div>
 }));
 

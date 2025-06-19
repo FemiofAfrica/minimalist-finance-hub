@@ -111,38 +111,43 @@ const Reports = () => {
 
   // Basic layout for users without historical data
   const BasicReportsLayout = () => (
-    <Card 
-      className="text-center"
-      style={{ 
-        padding: `${isMobile ? '1.5rem' : '2rem'}`
-      }}
-    >
-      <div className="max-w-md mx-auto">
-        <Calendar 
-          className={`${getIconSize('w-10 h-10', 'w-12 h-12 md:w-16 md:h-16')} mx-auto ${getMarginBottom('3', '4')} md:mb-6 text-muted-foreground`} 
-        />
-        <h3 className={`${getTextSize('text-base', 'text-lg')} font-semibold mb-2 md:mb-4`}>
-          No Historical Data Yet
-        </h3>
-        <p className={`${getTextSize('text-xs', 'text-sm md:text-base')} text-muted-foreground mb-4 md:mb-6`}>
-          You need at least one completed month of transactions to view historical reports. 
-          Current month data is available on your Dashboard.
-        </p>
-        <div className="space-y-3">
-          <Link to="/dashboard">
-            <Button 
-              className={`w-full sm:w-auto ${getTextSize('text-sm', 'text-sm md:text-base')}`}
-              style={{ minHeight: isTouchDevice ? TOUCH_MIN_HEIGHT : 'auto' }}
-            >
-              View Current Month Data
-            </Button>
-          </Link>
-          <div className={`${getTextSize('text-xs', 'text-xs sm:text-sm')} text-muted-foreground`}>
-            Come back after you've completed your first month!
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.cardGap }}>
+      <Card 
+        className="text-center"
+        style={{ 
+          padding: `${isMobile ? '1.5rem' : '2rem'}`
+        }}
+      >
+        <div className="max-w-md mx-auto">
+          <Calendar 
+            className={`${getIconSize('w-10 h-10', 'w-12 h-12 md:w-16 md:h-16')} mx-auto ${getMarginBottom('3', '4')} md:mb-6 text-muted-foreground`} 
+          />
+          <h3 className={`${getTextSize('text-base', 'text-lg')} font-semibold mb-2 md:mb-4`}>
+            No Historical Data Yet
+          </h3>
+          <p className={`${getTextSize('text-xs', 'text-sm md:text-base')} text-muted-foreground mb-4 md:mb-6`}>
+            You need at least one completed month of transactions to view historical reports. 
+            Current month data is available on your Dashboard.
+          </p>
+          <div className="space-y-3">
+            <Link to="/dashboard">
+              <Button 
+                className={`w-full sm:w-auto ${getTextSize('text-sm', 'text-sm md:text-base')}`}
+                style={{ minHeight: isTouchDevice ? TOUCH_MIN_HEIGHT : 'auto' }}
+              >
+                View Current Month Data
+              </Button>
+            </Link>
+            <div className={`${getTextSize('text-xs', 'text-xs sm:text-sm')} text-muted-foreground`}>
+              Come back after you've completed your first month!
+            </div>
           </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+
+      {/* Financial Insights Section - Available even for new users */}
+      <InsightsSection className="w-full" />
+    </div>
   );
 
   // Chart card component to reduce duplication

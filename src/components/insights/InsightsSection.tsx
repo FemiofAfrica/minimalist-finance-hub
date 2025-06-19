@@ -1,37 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  AlertTriangle, 
-  Lightbulb, 
   Trophy, 
-  Target, 
-  X, 
-  TrendingUp, 
-  TrendingDown,
-  DollarSign,
-  Home,
-  Repeat
+  TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { createInsightsAnalysisService } from '@/services/insights/insightsAnalysisService';
-
-interface Insight {
-  id: string;
-  type: 'alert' | 'tip' | 'achievement' | 'recommendation';
-  title: string;
-  description: string;
-  severity: 'low' | 'medium' | 'high';
-  category: string;
-  actionable: boolean;
-  actionText?: string;
-  actionUrl?: string;
-  dismissible: boolean;
-  createdAt: Date;
-}
+import { InsightCard, type InsightCardData } from './InsightCard';
 
 interface InsightsSectionProps {
   className?: string;
@@ -39,12 +16,12 @@ interface InsightsSectionProps {
 
 export function InsightsSection({ className }: InsightsSectionProps) {
   const { user } = useAuth();
-  const [insights, setInsights] = useState<Insight[]>([]);
+  const [insights, setInsights] = useState<InsightCardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [dismissedInsights, setDismissedInsights] = useState<string[]>([]);
 
   // Mock insights for demonstration - in real implementation this would come from the analysis service
-  const mockInsights: Insight[] = [
+  const mockInsights: InsightCardData[] = [
     {
       id: 'expense-increase-1',
       type: 'alert',
@@ -116,56 +93,6 @@ export function InsightsSection({ className }: InsightsSectionProps) {
     fetchInsights();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
-
-  const getInsightIcon = (type: Insight['type']) => {
-    switch (type) {
-      case 'alert':
-        return <AlertTriangle className="h-5 w-5" />;
-      case 'tip':
-        return <Lightbulb className="h-5 w-5" />;
-      case 'achievement':
-        return <Trophy className="h-5 w-5" />;
-      case 'recommendation':
-        return <Target className="h-5 w-5" />;
-      default:
-        return <Lightbulb className="h-5 w-5" />;
-    }
-  };
-
-  const getInsightColors = (type: Insight['type'], severity: Insight['severity']) => {
-    switch (type) {
-      case 'alert':
-        return {
-          card: severity === 'high' ? 'border-red-200 bg-red-50' : 'border-orange-200 bg-orange-50',
-          icon: severity === 'high' ? 'text-red-600' : 'text-orange-600',
-          badge: severity === 'high' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
-        };
-      case 'tip':
-        return {
-          card: 'border-blue-200 bg-blue-50',
-          icon: 'text-blue-600',
-          badge: 'bg-blue-100 text-blue-800'
-        };
-      case 'achievement':
-        return {
-          card: 'border-green-200 bg-green-50',
-          icon: 'text-green-600',
-          badge: 'bg-green-100 text-green-800'
-        };
-      case 'recommendation':
-        return {
-          card: 'border-purple-200 bg-purple-50',
-          icon: 'text-purple-600',
-          badge: 'bg-purple-100 text-purple-800'
-        };
-      default:
-        return {
-          card: 'border-gray-200 bg-gray-50',
-          icon: 'text-gray-600',
-          badge: 'bg-gray-100 text-gray-800'
-        };
-    }
-  };
 
   const handleDismiss = (insightId: string) => {
     setDismissedInsights(prev => [...prev, insightId]);
@@ -240,61 +167,14 @@ export function InsightsSection({ className }: InsightsSectionProps) {
       </div>
 
       <div className="grid gap-4">
-        {visibleInsights.map((insight) => {
-          const colors = getInsightColors(insight.type, insight.severity);
-          
-          return (
-            <Card key={insight.id} className={cn(
-              'relative transition-all duration-200 hover:shadow-md',
-              colors.card
-            )}>
-              {insight.dismissible && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute top-2 right-2 h-6 w-6 p-0 hover:bg-white/50"
-                  onClick={() => handleDismiss(insight.id)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-              
-              <CardHeader className="pb-3">
-                <div className="flex items-start gap-3">
-                  <div className={cn('flex-shrink-0 mt-0.5', colors.icon)}>
-                    {getInsightIcon(insight.type)}
-                  </div>
-                  <div className="flex-1 min-w-0 pr-8">
-                    <div className="flex items-center gap-2 mb-1">
-                      <CardTitle className="text-base font-semibold">
-                        {insight.title}
-                      </CardTitle>
-                      <Badge variant="secondary" className={cn('text-xs', colors.badge)}>
-                        {insight.type}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-gray-700 leading-relaxed">
-                      {insight.description}
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-              
-              {insight.actionable && insight.actionText && (
-                <CardContent className="pt-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleAction(insight.id, insight.actionUrl)}
-                    className="w-full sm:w-auto"
-                  >
-                    {insight.actionText}
-                  </Button>
-                </CardContent>
-              )}
-            </Card>
-          );
-        })}
+        {visibleInsights.map((insight) => (
+          <InsightCard
+            key={insight.id}
+            insight={insight}
+            onDismiss={handleDismiss}
+            onAction={handleAction}
+          />
+        ))}
       </div>
 
       {/* Summary stats */}

@@ -10,9 +10,9 @@ This document contains all Product Backlog Items (PBIs) for the project, ordered
 | PBI-2 | Finance App User | As a user, I want to see comparative insights (month-over-month, year-over-year) with percentage changes and trend indicators so that I can understand how my financial situation is evolving | Agreed | [View Details](./2/prd.md) |
 | PBI-3 | Finance App User | As a user, I want to see detailed category-level spending reports with breakdowns and change highlights so that I can understand where my money is going and identify spending pattern changes | Agreed | [View Details](./3/prd.md) |
 | PBI-4 | Finance App User | As a user, I want to receive contextual tips and insights based on my spending patterns so that I can make better financial decisions proactively | Agreed | [View Details](./4/prd.md) |
-| PBI-5 | Finance App User | As a user, I want all public pages (login/signup/reset) to display correctly on devices with notches so that content is never hidden by the system UI | Proposed | [View Details](./5/prd.md) |
+| PBI-5 | Finance App User | As a user, I want all public pages (login/signup/reset) to display correctly on devices with notches so that content is never hidden by the system UI | Done | [View Details](./5/prd.md) |
 | PBI-6 | Finance App User | As a user, I want consistent spacing across all pages so nothing overlaps banners or safe-area and the UI feels polished | Done | [View Details](./6/prd.md) |
-| PBI-7 | Dev Team | As a developer, I want the automated test suite to run without errors so that CI provides reliable feedback and prevents regressions | Proposed | [View Details](./7/prd.md) |
+| PBI-7 | Dev Team | As a developer, I want the automated test suite to run without errors so that CI provides reliable feedback and prevents regressions | Done | [View Details](./7/prd.md) |
 
 ## PBI History Log
 
