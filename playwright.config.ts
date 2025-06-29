@@ -291,17 +291,13 @@ export default defineConfig({
     }
   ],
   
-  // Web server configuration for local development - COMMENTED OUT TO USE MANUAL SERVER
-  /*
+  // Web server configuration for local development - enabling to run E2E tests reliably
   webServer: {
     command: process.env.CI ? 'npm run preview' : 'npm run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
-    timeout: 120000, // 2 minutes to start
-    stdout: 'pipe',
-    stderr: 'pipe'
+    timeout: 120000 // 2 minutes to start the dev/preview server
   },
-  */
   
   // Output directories
   outputDir: 'test-results/artifacts',

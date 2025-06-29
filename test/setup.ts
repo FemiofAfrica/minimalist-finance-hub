@@ -42,8 +42,21 @@ Object.defineProperty(window, 'sessionStorage', {
   value: sessionStorageMock
 })
 
-// Mock fetch
-global.fetch = vi.fn()
+// Mock fetch – return a minimal successful Response so Supabase client calls don't crash in tests
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+global.fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  // Heuristic: if the URL contains 'select=' or is a GET request without body, return an empty array.
+  // This matches PostgREST responses for SELECT queries which should be JSON arrays.
+  const url = typeof input === 'string' ? input : (input instanceof URL ? input.href : '')
+  const isSelectQuery = /select=/i.test(url) || (init?.method ?? 'GET') === 'GET'
+
+  const payload = isSelectQuery ? [] : {}
+
+  return Promise.resolve(new Response(JSON.stringify(payload), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' }
+  }))
+})
 
 // Mock console methods to reduce noise in tests
 global.console = {
