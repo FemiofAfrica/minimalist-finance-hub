@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Calendar, Clock, Tag, ArrowRight } from 'lucide-react';
 import NavBar from "@/components/ui/NavBar";
+import Footer from "@/components/ui/Footer";
 
 const Blog = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -187,11 +188,7 @@ const Blog = () => {
       </main>
 
       {/* Footer */}
-      <footer className="py-8 bg-slate-900 text-slate-300">
-        <div className="container mx-auto px-4 text-center">
-          <p>© 2025 Kpege. All rights reserved.</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

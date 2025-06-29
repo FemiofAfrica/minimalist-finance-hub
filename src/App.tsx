@@ -28,6 +28,7 @@ import Blog from '@/pages/Blog';
 import KpegeCompleteGuide from '@/pages/KpegeCompleteGuide';
 import WhyMoneyManagementMatters from '@/pages/WhyMoneyManagementMatters';
 import Unsubscribe from '@/pages/Unsubscribe';
+import Privacy from '@/pages/Privacy';
 import './App.css';
 import { OnboardingProvider } from '@/contexts/OnboardingContext';
 import { Onboarding } from '@/components/onboarding/Onboarding';
@@ -153,6 +154,7 @@ function App() {
                     <Route path="/blog/kpege-complete-guide" element={<KpegeCompleteGuide />} />
                     <Route path="/blog/why-money-management-matters" element={<WhyMoneyManagementMatters />} />
                     <Route path="/unsubscribe" element={<Unsubscribe />} />
+                    <Route path="/privacy" element={<Privacy />} />
                     <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
                     <Route path="/transactions" element={<PrivateRoute><Transactions /></PrivateRoute>} />
                     <Route path="/subscriptions" element={<PrivateRoute><Subscriptions /></PrivateRoute>} />
