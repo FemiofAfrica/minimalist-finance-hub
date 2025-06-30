@@ -13,7 +13,9 @@ This document contains all Product Backlog Items (PBIs) for the project, ordered
 | PBI-5 | Finance App User | As a user, I want all public pages (login/signup/reset) to display correctly on devices with notches so that content is never hidden by the system UI | Done | [View Details](./5/prd.md) |
 | PBI-6 | Finance App User | As a user, I want consistent spacing across all pages so nothing overlaps banners or safe-area and the UI feels polished | Done | [View Details](./6/prd.md) |
 | PBI-7 | Dev Team | As a developer, I want the automated test suite to run without errors so that CI provides reliable feedback and prevents regressions | Done | [View Details](./7/prd.md) |
+| PBI-7 | Dev Team | As a developer, I want the automated test suite to run without errors so that CI provides reliable feedback and prevents regressions | InProgress | [View Details](./7/prd.md) |
 | PBI-8 | Finance App User | As a user, I want to access a privacy policy and other important external pages via the footer so that I can easily understand legal information and navigate to the blog | Agreed | [View Details](./8/prd.md) |
+| PBI-9 | Dev Team | As a developer, I want the Groq API integration to use a valid key and handle errors gracefully so that AI-powered features continue working | Proposed | [View Details](./9/prd.md) |
 
 ## PBI History Log
 
@@ -32,3 +34,5 @@ This document contains all Product Backlog Items (PBIs) for the project, ordered
 | 2025-01-19-20:15:00 | PBI-4 | propose_for_backlog | PBI-4 approved and moved to Agreed status for contextual tips implementation | User | 
 | 2025-06-29-10:00:00 | PBI-8 | create_pbi | Created PBI for privacy page and footer link updates | ai-agent |
 | 2025-06-29-10:02:00 | PBI-8 | propose_for_backlog | PBI approved and moved to Agreed status | User | 
+| 2025-06-29-20:15:00 | PBI-7 | reopen | CI failing again; moved back to InProgress for remediation | ai-agent |
+| 2025-06-29-20:16:00 | PBI-9 | create_pbi | Created PBI for Groq API key renewal and integration fixes | ai-agent | 
