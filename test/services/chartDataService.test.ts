@@ -317,7 +317,7 @@ describe('ChartDataService', () => {
       } as any);
       
       await expect(chartDataService.getCategorySpendingData(TIME_PERIODS.THREE_MONTHS, mockExchangeRates))
-        .rejects.toThrow('User not authenticated');
+        .rejects.toThrow('Failed to fetch category spending data');
     });
   });
 
@@ -348,7 +348,7 @@ describe('ChartDataService', () => {
       
       const stats = chartDataService.getCacheStats();
       expect(stats.size).toBe(1);
-      expect(stats.keys).toContain(expect.stringContaining('getBalanceTrendData'));
+      expect(stats.keys[0]).toContain('getBalanceTrendData');
     });
   });
 

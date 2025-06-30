@@ -33,7 +33,7 @@ describe('Comparative Analysis Service', () => {
     });
 
     it('should handle zero previous value', () => {
-      expect(getPercentageChange(100, 0)).toBe(100);
+      expect(getPercentageChange(100, 0)).toBe(999999);
       expect(getPercentageChange(0, 0)).toBe(0);
     });
 

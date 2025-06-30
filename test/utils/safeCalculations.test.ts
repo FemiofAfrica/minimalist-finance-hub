@@ -122,7 +122,8 @@ describe('Safe Calculations Utilities', () => {
 
     it('should format Nigerian Naira correctly', () => {
       const result = safeCurrencyFormat(1000, 'NGN');
-      expect(result).toMatch(/₦1,000\.00/);
+      // Intl.NumberFormat uses non-breaking space (char 160) between currency code and amount
+      expect(result).toMatch(/NGN[\s\u00A0]1,000\.00/);
     });
   });
 

@@ -139,11 +139,15 @@ vi.mock('lucide-react', () => {
     X: createMockIcon('X'),
     Mic: createMockIcon('Mic'),
     FileUp: createMockIcon('FileUp'),
+    Trophy: createMockIcon('Trophy'),
   }
 
   // Use a Proxy so any icon not explicitly listed still resolves to a mock component
-  return new Proxy(presetIcons, {
+  const mockModule = new Proxy(presetIcons, {
     get(target, prop: string) {
+      if (prop === 'default') {
+        return target; // Support default export
+      }
       if (!(prop in target)) {
         // lazily create & cache unknown icons
         target[prop] = createMockIcon(prop)
@@ -152,4 +156,23 @@ vi.mock('lucide-react', () => {
       return target[prop]
     }
   })
+  
+  return mockModule
 })
+
+// Mock groq-sdk
+vi.mock('groq-sdk', () => ({
+  Groq: vi.fn().mockImplementation(() => ({
+    chat: {
+      completions: {
+        create: vi.fn().mockResolvedValue({
+          choices: [{
+            message: {
+              content: 'Mock AI recommendation: Based on your financial data, I recommend allocating 50% to needs, 30% to wants, and 20% to savings.'
+            }
+          }]
+        })
+      }
+    }
+  }))
+}))
