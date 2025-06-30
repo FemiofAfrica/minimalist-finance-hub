@@ -348,7 +348,14 @@ function categorizeTransaction(text: string): { category: string, type: "INCOME"
       lowerText.includes("internet") || 
       lowerText.includes("wifi") || 
       lowerText.includes("bill") || 
-      lowerText.includes("utility")) {
+      lowerText.includes("utility") ||
+      lowerText.includes("airtime") ||
+      lowerText.includes("recharge") ||
+      lowerText.includes("data") ||
+      lowerText.includes("mtn") ||
+      lowerText.includes("glo") ||
+      lowerText.includes("airtel") ||
+      lowerText.includes("9mobile")) {
     return { category: "Utilities", type: "EXPENSE" };
   }
   
@@ -916,7 +923,7 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
                 : parsedData.category_type === "TRANSFER" || (typeof parsedData.category_type === 'string' && parsedData.category_type.toUpperCase() === "TRANSFER")
                     ? "TRANSFER"
                     : "EXPENSE", // Default to EXPENSE
-            // Date is added later in the main handler
+            date: new Date().toLocaleDateString('en-CA'), // Default date, will be overridden in main handler
         };
         
         // Set transfer flag if category type is TRANSFER
@@ -944,7 +951,38 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
 
         console.log("Parsed & Validated Groq Data:", validatedData);
 
-        // Return the successfully parsed and validated data
+        // FORCED narration handling - ALWAYS use narration if provided
+        if (context_narration) {
+          console.log("CRITICAL: Using narration text for description:", context_narration);
+          
+          // ALWAYS override description with narration
+          validatedData.description = context_narration;
+          
+          // Only use fallback categorization if Groq returned "Uncategorized"
+          if (validatedData.category_name === "Uncategorized") {
+            const categorization = categorizeTransaction(context_narration);
+            console.log(`Fallback categorizing as ${categorization.category} based on narration "${context_narration}"`);
+            validatedData.category_name = categorization.category;
+            validatedData.category_type = categorization.type;
+            
+            // If it's a transfer, set the flag
+            if (categorization.type === "TRANSFER") {
+              validatedData.is_transfer = true;
+            }
+          } else {
+            console.log(`Keeping Groq categorization: ${validatedData.category_name}`);
+          }
+        }
+
+        // Final validation - add timestamp to log
+        const timestamp = new Date().toLocaleDateString('en-CA');
+        console.log(`[${timestamp}] Final Data (Groq):`, {
+          description: validatedData.description,
+          date: validatedData.date,
+          amount: validatedData.amount,
+          category: validatedData.category_name
+        });
+        
         return new Response(
             JSON.stringify(validatedData),
             { headers: corsHeaders }
@@ -1136,15 +1174,19 @@ async function serve(req: Request): Promise<Response> {
               // ALWAYS override description with narration
               responseData.description = context_narration;
               
-              // Use the categorization helper function for more comprehensive detection
-              const categorization = categorizeTransaction(context_narration);
-              console.log(`Auto-categorizing as ${categorization.category} based on narration "${context_narration}"`);
-              responseData.category_name = categorization.category;
-              responseData.category_type = categorization.type;
-              
-              // If it's a transfer, set the flag
-              if (categorization.type === "TRANSFER") {
-                responseData.is_transfer = true;
+              // Only use fallback categorization if Groq returned "Uncategorized"
+              if (responseData.category_name === "Uncategorized") {
+                const categorization = categorizeTransaction(context_narration);
+                console.log(`Fallback categorizing as ${categorization.category} based on narration "${context_narration}"`);
+                responseData.category_name = categorization.category;
+                responseData.category_type = categorization.type;
+                
+                // If it's a transfer, set the flag
+                if (categorization.type === "TRANSFER") {
+                  responseData.is_transfer = true;
+                }
+              } else {
+                console.log(`Keeping Groq categorization: ${responseData.category_name}`);
               }
             }
 
