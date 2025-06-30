@@ -30,3 +30,5 @@ dist-ssr
 .env
 .env
 .env
+.env.development.local.bak
+.env.development.local.backup

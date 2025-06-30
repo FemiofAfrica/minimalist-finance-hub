@@ -42,7 +42,12 @@ export default defineConfig(({ mode }) => {
             console.log('Received Response from Supabase:', proxyRes.statusCode, req.url);
           });
         }
-      }
+      },
+      '/api/': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+      },
     },
     hmr: {
       protocol: 'ws',
