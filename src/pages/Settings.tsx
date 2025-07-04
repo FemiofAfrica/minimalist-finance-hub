@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -612,6 +613,38 @@ export default function Settings() {
                     <div className="flex justify-center border-t pt-4 md:pt-6 mt-6 md:mt-8">
                       <Button className="px-6 md:px-8 py-2 h-10 md:h-11 text-sm md:text-base">
                         Change Password
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Account Deletion */}
+                <Card className="border-red-200">
+                  <CardHeader className="text-center">
+                    <CardTitle className="text-red-600">Delete Account</CardTitle>
+                    <CardDescription>
+                      Permanently delete your account and all associated data
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center space-y-4">
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-sm text-red-800 mb-2">
+                          <strong>Warning:</strong> This action cannot be undone.
+                        </p>
+                        <p className="text-sm text-red-700">
+                          All your financial data, transactions, accounts, and settings will be permanently deleted.
+                        </p>
+                      </div>
+                      
+                      <Button 
+                        asChild
+                        variant="destructive" 
+                        className="px-6 md:px-8 py-2 h-10 md:h-11 text-sm md:text-base"
+                      >
+                        <Link to="/delete-account">
+                          Delete My Account
+                        </Link>
                       </Button>
                     </div>
                   </CardContent>

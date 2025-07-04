@@ -150,6 +150,76 @@ const Privacy: React.FC = () => {
               data.
             </li>
           </ul>
+          
+          <h3 className="mt-6 mb-3">Account & Data Deletion</h3>
+          <p>
+            You have the right to request deletion of your personal data. KPEGE provides 
+            two deletion options to give you control over your data:
+          </p>
+          
+          <div className="space-y-4 mb-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <h4 className="font-semibold text-red-800 mb-2">Complete Account Deletion</h4>
+              <p className="text-sm text-red-700 mb-2">
+                Permanently delete your entire account and all associated data.
+              </p>
+              <ol className="list-decimal pl-5 text-sm text-red-700 space-y-1">
+                <li>Visit the <Link to="/delete-account" className="underline font-medium">Delete Account</Link> page</li>
+                <li>Choose "Complete Account Deletion"</li>
+                <li>Review all data that will be deleted</li>
+                <li>Submit your deletion request</li>
+              </ol>
+            </div>
+            
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <h4 className="font-semibold text-orange-800 mb-2">Partial Data Deletion</h4>
+              <p className="text-sm text-orange-700 mb-2">
+                Delete only specific types of data while keeping your account active.
+              </p>
+              <ol className="list-decimal pl-5 text-sm text-orange-700 space-y-1">
+                <li>Visit the <Link to="/delete-account" className="underline font-medium">Delete Account</Link> page</li>
+                <li>Choose "Partial Data Deletion"</li>
+                <li>Select specific data types to delete</li>
+                <li>Review the impact and submit your request</li>
+              </ol>
+              <p className="text-sm text-orange-700 mt-2">
+                <strong>Available for selective deletion:</strong> Transaction history, 
+                financial accounts, custom categories, cards, notifications, biometric data, 
+                monthly snapshots, and email preferences.
+              </p>
+            </div>
+          </div>
+          
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+            <h4 className="font-semibold text-amber-800 mb-2">What Gets Deleted (Complete Account Deletion):</h4>
+            <ul className="list-disc pl-5 text-sm text-amber-700 space-y-1">
+              <li>Profile information (name, email)</li>
+              <li>Financial accounts and balances</li>
+              <li>Transaction history</li>
+              <li>Custom categories and settings</li>
+              <li>Credit/debit cards</li>
+              <li>Notification preferences and history</li>
+              <li>Biometric authentication data</li>
+              <li>Monthly financial snapshots</li>
+              <li>All other personal data associated with your account</li>
+            </ul>
+          </div>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <h4 className="font-semibold text-blue-800 mb-2">Data Retention:</h4>
+            <p className="text-sm text-blue-700">
+              Most data is deleted immediately upon request processing. Error logs 
+              may be retained for up to 1 year with personal identifiers removed 
+              for technical debugging purposes only.
+            </p>
+          </div>
+          
+          <p className="text-sm">
+            <strong>Important:</strong> Both complete and partial deletion are permanent 
+            and cannot be undone. Make sure to export any data you wish to keep before 
+            submitting a deletion request. Partial deletion allows you to remove unwanted 
+            data while maintaining your account.
+          </p>
         </section>
 
         {/* Children's Privacy */}

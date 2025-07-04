@@ -29,6 +29,7 @@ import KpegeCompleteGuide from '@/pages/KpegeCompleteGuide';
 import WhyMoneyManagementMatters from '@/pages/WhyMoneyManagementMatters';
 import Unsubscribe from '@/pages/Unsubscribe';
 import Privacy from '@/pages/Privacy';
+import DeleteAccount from '@/pages/DeleteAccount';
 import './App.css';
 import { OnboardingProvider } from '@/contexts/OnboardingContext';
 import { Onboarding } from '@/components/onboarding/Onboarding';
@@ -162,6 +163,7 @@ function App() {
                     <Route path="/budgeting" element={<PrivateRoute><Budgeting /></PrivateRoute>} />
                     <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
                     <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+                    <Route path="/delete-account" element={<PrivateRoute><DeleteAccount /></PrivateRoute>} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                   <Toaster />
