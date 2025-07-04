@@ -157,57 +157,29 @@ export class EnhancedBiometricAuthService implements BiometricAuthService {
 
       const deviceInfo = this.detectDeviceInfo();
       
-      // First, check if credential already exists
-      const { data: existingCredential } = await supabase
+      const { error } = await supabase
         .from('biometric_credentials')
-        .select('id')
-        .eq('credential_id', credential.id)
-        .eq('user_id', user.data.user.id)
-        .single();
+        .upsert({
+          user_id: user.data.user.id,
+          credential_id: credential.id,
+          public_key: credential.publicKey,
+          name: credential.name,
+          device_info: deviceInfo,
+          attestation_type: 'none',
+          aaguid: '00000000-0000-0000-0000-000000000000',
+          transports: ['internal'],
+          encrypted_credentials: credential.encryptedCredentials,
+          last_used_at: credential.last_used_at || new Date().toISOString(),
+          is_active: true,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'credential_id, user_id',
+        });
 
-      if (existingCredential) {
-        // Update existing credential
-        const { error } = await supabase
-          .from('biometric_credentials')
-          .update({
-            public_key: credential.publicKey,
-            name: credential.name,
-            device_info: deviceInfo,
-            encrypted_credentials: credential.encryptedCredentials,
-            last_used_at: credential.last_used_at || null,
-            is_active: true,
-            updated_at: new Date().toISOString()
-          })
-          .eq('credential_id', credential.id)
-          .eq('user_id', user.data.user.id);
-
-        if (error) {
-          console.error('Failed to update credential in database:', error);
-        } else {
-          console.log('Updated existing credential in database:', credential.id);
-        }
+      if (error) {
+        console.error('Failed to upsert credential in database:', error);
       } else {
-        // Insert new credential
-        const { error } = await supabase
-          .from('biometric_credentials')
-          .insert({
-            user_id: user.data.user.id,
-            credential_id: credential.id,
-            public_key: credential.publicKey,
-            name: credential.name,
-            device_info: deviceInfo,
-            attestation_type: 'none',
-            aaguid: '00000000-0000-0000-0000-000000000000',
-            transports: ['internal'],
-            encrypted_credentials: credential.encryptedCredentials,
-            last_used_at: credential.last_used_at || null
-          });
-
-        if (error) {
-          console.error('Failed to insert credential in database:', error);
-        } else {
-          console.log('Inserted new credential in database:', credential.id);
-        }
+        console.log('Upserted credential in database:', credential.id);
       }
     } catch (error) {
       console.error('Database storage failed:', error);

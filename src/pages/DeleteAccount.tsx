@@ -208,6 +208,18 @@ const DeleteAccount: React.FC = () => {
           </div>
         )}
 
+        {/* Back to settings */}
+        <div className="mb-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/settings')}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Settings
+          </Button>
+        </div>
+
         {/* Deletion Type Selection */}
         {!deletionType && (
           <div className="space-y-6">
@@ -281,7 +293,7 @@ const DeleteAccount: React.FC = () => {
                   Understanding Your Options
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="text-center">
                 <div className="space-y-4">
                   <div>
                     <h4 className="font-semibold text-gray-900 mb-2">Complete Account Deletion</h4>
