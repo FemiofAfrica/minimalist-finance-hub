@@ -399,6 +399,46 @@ function categorizeTransaction(text: string): { category: string, type: "INCOME"
   return { category: "Uncategorized", type: "EXPENSE" };
 }
 
+// List of allowed categories (should match your prompt exactly)
+const ALLOWED_CATEGORIES = [
+  "Food & Dining",
+  "Transportation",
+  "Entertainment",
+  "Utilities",
+  "Housing",
+  "Health",
+  "Shopping",
+  "Education",
+  "Personal Care",
+  "Household Services",
+  "Professional Services",
+  "Travel",
+  "Fitness",
+  "Insurance",
+  "Taxes",
+  "Investments",
+  "Debt Payment",
+  "Loans Received",
+  "Charity",
+  "Income",
+  "Salary",
+  "Transfer",
+  "Groceries"
+];
+
+// Helper to find best match (case-insensitive, simple version)
+function mapToAllowedCategory(name: string): string | null {
+  if (!name) return "Uncategorized";
+  // Exact match first
+  const exact = ALLOWED_CATEGORIES.find(cat => cat.toLowerCase() === name.toLowerCase());
+  if (exact) return exact;
+  // Fuzzy: contains
+  const contains = ALLOWED_CATEGORIES.find(cat => cat.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(cat.toLowerCase()));
+  if (contains) return contains;
+  // Default
+  return null; // null means no close match
+}
+
 // --- Fallback Parser ---
 // Simple rule-based parser used when Groq API key is missing or API call fails.
 function parseFallback(text: string): Response {
@@ -632,6 +672,14 @@ function parseFallback(text: string): Response {
       break; // Stop after first match
     }
   }
+
+  // Map category_name to allowed list or allow new only if no close match
+  const mappedCategory = mapToAllowedCategory(fallbackData.category_name);
+  if (mappedCategory) {
+    fallbackData.category_name = mappedCategory;
+  } // else keep as is (allow new category)
+  // Force category_type to uppercase
+  fallbackData.category_type = (fallbackData.category_type || "EXPENSE").toUpperCase();
 
   // Log the process and result
   console.log("Fallback Parser - Input:", text);
@@ -949,6 +997,17 @@ async function callGroqAPI(apiKey: string, text: string, context_amount?: number
             console.log("Groq Parser - Account name validated:", validatedData.account_name);
         }
 
+        // Map category_name to allowed list or allow new only if no close match
+        const mappedCategory = mapToAllowedCategory(parsedData.category_name);
+        if (mappedCategory) {
+          validatedData.category_name = mappedCategory;
+        } else {
+          // Allow new category name as provided by LLM
+          validatedData.category_name = parsedData.category_name || "Uncategorized";
+        }
+        // Force category_type to uppercase
+        validatedData.category_type = (parsedData.category_type || "EXPENSE").toUpperCase();
+
         console.log("Parsed & Validated Groq Data:", validatedData);
 
         // FORCED narration handling - ALWAYS use narration if provided
@@ -1189,6 +1248,14 @@ async function serve(req: Request): Promise<Response> {
                 console.log(`Keeping Groq categorization: ${responseData.category_name}`);
               }
             }
+
+            // Map category_name to allowed list or allow new only if no close match
+            const mappedCategory = mapToAllowedCategory(responseData.category_name);
+            if (mappedCategory) {
+              responseData.category_name = mappedCategory;
+            } // else keep as is (allow new category)
+            // Force category_type to uppercase
+            responseData.category_type = (responseData.category_type || "EXPENSE").toUpperCase();
 
             // Final validation - add timestamp to log
             const timestamp = new Date().toLocaleDateString('en-CA');

@@ -1034,7 +1034,8 @@ const OCRTransactionExtractor = ({ ocrText, onTransactionCreated }: OCRTransacti
     // Set form values for editing
     setDescription(enhancedTransaction.description);
     setAmount(enhancedTransaction.amount.toString());
-    setTransactionType(enhancedTransaction.category_type.toLowerCase() === 'income' ? 'income' : 'expense');
+    setTransactionType(enhancedTransaction.category_type.toLowerCase() === 'income' ? 'income' : 
+                      enhancedTransaction.category_type.toLowerCase() === 'transfer' ? 'transfer' : 'expense');
     setCategoryName(enhancedTransaction.category_name || 'Uncategorized');
     setCategoryType(enhancedTransaction.category_type?.toLowerCase() || 'expense');
     

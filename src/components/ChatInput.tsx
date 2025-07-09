@@ -267,7 +267,7 @@ const ChatInput = ({ onTransactionAdded }: ChatInputProps) => {
        if (!parsedData.description) throw new Error('Transaction description is missing.');
        if (isNaN(parsedData.amount) || parsedData.amount < 0) throw new Error('Invalid transaction amount received.');
        if (!parsedData.category_name) throw new Error('Transaction category is missing.');
-       if (!['INCOME', 'EXPENSE'].includes(parsedData.category_type)) throw new Error('Invalid transaction type received.');
+       if (!['INCOME', 'EXPENSE', 'TRANSFER'].includes(parsedData.category_type)) throw new Error('Invalid transaction type received.');
        if (!/^\d{4}-\d{2}-\d{2}$/.test(parsedData.date)) throw new Error('Invalid date format received.');
 
 
