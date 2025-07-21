@@ -64,82 +64,56 @@ Deno.serve(async (req) => {
     // Log all profiles returned from Supabase
     console.log('All profiles returned:', JSON.stringify(profiles, null, 2));
 
-    const brevoContacts = profiles
-      .filter(profile => profile.email === 'femifakayejo@gmail.com')
-      .map((profile) => ({
-        email: profile.email,
-        attributes: {
-          FIRSTNAME: profile.first_name,
-          LASTNAME: profile.last_name,
-          USER_ID: profile.id
-        }
-      }));
+    // Sync all users (remove filter)
+    const brevoContacts = profiles.map((profile) => ({
+      email: profile.email,
+      attributes: {
+        FIRSTNAME: profile.first_name,
+        LASTNAME: profile.last_name,
+        USER_ID: profile.id
+      }
+    }));
 
     const brevoPayload = { contacts: brevoContacts };
     console.log('Payload sent to Brevo:', JSON.stringify(brevoPayload, null, 2));
 
-    // Brevo API call to create/update contacts
-    const brevoResponse = await fetch('https://api.brevo.com/v3/contacts/batch', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': BREVO_API_KEY
-      },
-      body: JSON.stringify(brevoPayload)
-    });
-
-    // Always log the payload for debugging
-    console.log('Brevo payload sent:', JSON.stringify(brevoPayload, null, 2));
-
-    // Handle 204 No Content as success, but include payload
-    if (brevoResponse.status === 204) {
-      return withCORS(new Response(JSON.stringify({
-        message: 'Contacts synced successfully (no content returned by Brevo)',
-        brevoStatus: brevoResponse.status,
-        brevoStatusText: brevoResponse.statusText,
-        brevoPayload,
-        allProfiles: profiles
-      }), {
-        headers: {
-          'Content-Type': 'application/json'
+    // Instead of batch, loop through each contact and call /contacts endpoint
+    const results = [];
+    for (const contact of brevoContacts) {
+      try {
+        const res = await fetch('https://api.brevo.com/v3/contacts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': BREVO_API_KEY
+          },
+          body: JSON.stringify(contact)
+        });
+        let resText = await res.text();
+        let resJson;
+        try {
+          resJson = JSON.parse(resText);
+        } catch (e) {
+          resJson = resText;
         }
-      }));
-    }
-
-    let result;
-    let rawText = '';
-    try {
-      rawText = await brevoResponse.text();
-      result = JSON.parse(rawText);
-    } catch (e) {
-      result = null;
-    }
-
-    console.log('Brevo API raw response:', rawText);
-
-    if (!result) {
-      return withCORS(new Response(JSON.stringify({
-        error: 'Contact sync failed',
-        details: 'Brevo API did not return valid JSON',
-        brevoStatus: brevoResponse.status,
-        brevoStatusText: brevoResponse.statusText,
-        brevoRawResponse: rawText,
-        brevoPayload,
-        allProfiles: profiles
-      }), {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }));
+        results.push({
+          email: contact.email,
+          status: res.status,
+          statusText: res.statusText,
+          response: resJson
+        });
+      } catch (err) {
+        results.push({
+          email: contact.email,
+          error: err.message
+        });
+      }
     }
 
     return withCORS(new Response(JSON.stringify({
-      message: 'Contacts synced successfully',
-      brevoStatus: brevoResponse.status,
-      brevoStatusText: brevoResponse.statusText,
+      message: 'Contacts processed individually',
+      results,
       brevoPayload,
-      brevoResponse: result,
       allProfiles: profiles
     }), {
       headers: {
