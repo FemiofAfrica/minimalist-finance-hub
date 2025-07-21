@@ -34,6 +34,7 @@ import { SupportBanner } from '@/components/ui/SupportBanner';
 import NotificationTestCenter from '@/components/admin/NotificationTestCenter';
 import ErrorLogsViewer from '@/components/admin/ErrorLogsViewer';
 import { BiometricSettings } from '@/components/settings/BiometricSettings';
+import BrevoContactSyncButton from '@/components/admin/BrevoContactSyncButton';
 
 // Helper function to get country name for currency codes
 const getCountryName = (currencyCode: string): string => {
@@ -668,6 +669,9 @@ export default function Settings() {
                     
                     {/* Error Monitoring */}
                     <ErrorLogsViewer />
+                    
+                    {/* Brevo Contact Sync Button */}
+                    <BrevoContactSyncButton isAdmin={isAdmin} />
                     
                     {/* System Configuration */}
                     <Card className="shadow-sm border">
