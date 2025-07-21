@@ -61,9 +61,6 @@ Deno.serve(async (req) => {
       throw profilesError;
     }
 
-    // Log all profiles returned from Supabase
-    console.log('All profiles returned:', JSON.stringify(profiles, null, 2));
-
     // Sync all users (remove filter)
     const brevoContacts = profiles.map((profile) => ({
       email: profile.email,
@@ -74,11 +71,12 @@ Deno.serve(async (req) => {
       }
     }));
 
-    const brevoPayload = { contacts: brevoContacts };
-    console.log('Payload sent to Brevo:', JSON.stringify(brevoPayload, null, 2));
+    // No logging of user data or emails
 
-    // Instead of batch, loop through each contact and call /contacts endpoint
-    const results = [];
+    // Instead of logging or returning emails or user data, just track status counts
+    let created = 0;
+    let updated = 0;
+    let failed = 0;
     for (const contact of brevoContacts) {
       try {
         const res = await fetch('https://api.brevo.com/v3/contacts', {
@@ -89,32 +87,20 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify(contact)
         });
-        let resText = await res.text();
-        let resJson;
-        try {
-          resJson = JSON.parse(resText);
-        } catch (e) {
-          resJson = resText;
-        }
-        results.push({
-          email: contact.email,
-          status: res.status,
-          statusText: res.statusText,
-          response: resJson
-        });
+        if (res.status === 201) created++;
+        else if (res.status === 200) updated++;
+        else failed++;
       } catch (err) {
-        results.push({
-          email: contact.email,
-          error: err.message
-        });
+        failed++;
       }
     }
 
     return withCORS(new Response(JSON.stringify({
-      message: 'Contacts processed individually',
-      results,
-      brevoPayload,
-      allProfiles: profiles
+      message: 'Contacts processed',
+      created,
+      updated,
+      failed,
+      total: brevoContacts.length
     }), {
       headers: {
         'Content-Type': 'application/json'
