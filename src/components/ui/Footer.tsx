@@ -27,7 +27,7 @@ const Footer = () => {
         </div>
 
         <div className="pt-4 mt-6 border-t border-slate-800 text-center">
-          <p className="text-xs">© {currentYear} Kpege. All rights reserved.</p>
+          <p className="text-xs">© {currentYear} Ingenious Resources International Limited. All rights reserved.</p>
         </div>
       </div>
     </footer>

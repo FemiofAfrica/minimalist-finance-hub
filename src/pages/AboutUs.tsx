@@ -9,7 +9,7 @@ const AboutUs: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-[#e8f1df]">
       {/* Navigation Bar */}
-      <NavBar 
+      <NavBar
         isAuthenticated={false}
         showFeatures={false}
       />
@@ -20,10 +20,11 @@ const AboutUs: React.FC = () => {
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold max-w-4xl mx-auto mb-6 leading-tight">
             About <span className="text-green-700">Kpege</span>
           </h1>
-          
+
           <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-8 md:mb-12 leading-relaxed">
-            We're on a mission to make financial management simple, accessible, and stress-free for everyone, 
-            regardless of their background or experience with money.
+            We're on a mission to make financial management simple, accessible, and stress-free for everyone.
+            Kpege is a product of Ingenious Resources International Limited, dedicated to democratizing
+            personal finance management.
           </p>
         </div>
       </section>
@@ -36,24 +37,24 @@ const AboutUs: React.FC = () => {
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 md:mb-6">Our Story</h2>
               <div className="w-16 h-1 bg-green-700 mx-auto mb-6"></div>
             </div>
-            
+
             <div className="prose prose-lg max-w-none text-center">
               <p className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed mb-6">
-                Kpege was born from a simple observation: managing personal finances shouldn't require a 
-                degree in accounting or hours of manual data entry. Too many people struggle with basic 
-                financial tracking, not because they lack the desire to be financially responsible, but 
+                Kpege was born from a simple observation: managing personal finances shouldn't require a
+                degree in accounting or hours of manual data entry. Too many people struggle with basic
+                financial tracking, not because they lack the desire to be financially responsible, but
                 because the tools available are either too complex or too rigid.
               </p>
-              
+
               <p className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed mb-6">
-                Our founders experienced this frustration firsthand. After trying countless budgeting apps, 
-                spreadsheets, and financial tools, they realized there was a fundamental gap in the market: 
+                Our founders experienced this frustration firsthand. After trying countless budgeting apps,
+                spreadsheets, and financial tools, they realized there was a fundamental gap in the market:
                 a tool that could understand and adapt to how people naturally think and talk about money.
               </p>
-              
+
               <p className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed">
-                That's why we built Kpege - to bridge the gap between complex financial software and 
-                simple, everyday money management. We believe that everyone deserves to feel confident 
+                That's why we built Kpege - to bridge the gap between complex financial software and
+                simple, everyday money management. We believe that everyone deserves to feel confident
                 and in control of their finances, without needing to become a financial expert.
               </p>
             </div>
@@ -70,7 +71,7 @@ const AboutUs: React.FC = () => {
               Everything we do is guided by our core mission and the values that drive us forward.
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto">
             <Card className="p-6 md:p-8 text-center transition-all hover:translate-y-[-2px] hover:shadow-lg">
               <div className="rounded-full bg-green-100 w-12 h-12 md:w-14 md:h-14 flex items-center justify-center mb-4 md:mb-6 mx-auto">
@@ -81,7 +82,7 @@ const AboutUs: React.FC = () => {
                 To democratize financial management by making it as simple as having a conversation about money.
               </p>
             </Card>
-            
+
             <Card className="p-6 md:p-8 text-center transition-all hover:translate-y-[-2px] hover:shadow-lg">
               <div className="rounded-full bg-green-100 w-12 h-12 md:w-14 md:h-14 flex items-center justify-center mb-4 md:mb-6 mx-auto">
                 <Heart className="h-6 w-6 md:h-7 md:w-7 text-green-700" />
@@ -91,7 +92,7 @@ const AboutUs: React.FC = () => {
                 We believe that the best financial tools are the ones you actually want to use every day.
               </p>
             </Card>
-            
+
             <Card className="p-6 md:p-8 text-center transition-all hover:translate-y-[-2px] hover:shadow-lg">
               <div className="rounded-full bg-green-100 w-12 h-12 md:w-14 md:h-14 flex items-center justify-center mb-4 md:mb-6 mx-auto">
                 <Globe className="h-6 w-6 md:h-7 md:w-7 text-green-700" />
@@ -101,7 +102,7 @@ const AboutUs: React.FC = () => {
                 Financial management should work for everyone, regardless of location, currency, or background.
               </p>
             </Card>
-            
+
             <Card className="p-6 md:p-8 text-center transition-all hover:translate-y-[-2px] hover:shadow-lg">
               <div className="rounded-full bg-green-100 w-12 h-12 md:w-14 md:h-14 flex items-center justify-center mb-4 md:mb-6 mx-auto">
                 <Shield className="h-6 w-6 md:h-7 md:w-7 text-green-700" />
@@ -111,7 +112,7 @@ const AboutUs: React.FC = () => {
                 Your financial data is yours. We protect it with bank-level security and transparent practices.
               </p>
             </Card>
-            
+
             <Card className="p-6 md:p-8 text-center transition-all hover:translate-y-[-2px] hover:shadow-lg">
               <div className="rounded-full bg-green-100 w-12 h-12 md:w-14 md:h-14 flex items-center justify-center mb-4 md:mb-6 mx-auto">
                 <Zap className="h-6 w-6 md:h-7 md:w-7 text-green-700" />
@@ -121,7 +122,7 @@ const AboutUs: React.FC = () => {
                 We leverage cutting-edge AI and technology to make financial insights more accessible than ever.
               </p>
             </Card>
-            
+
             <Card className="p-6 md:p-8 text-center transition-all hover:translate-y-[-2px] hover:shadow-lg">
               <div className="rounded-full bg-green-100 w-12 h-12 md:w-14 md:h-14 flex items-center justify-center mb-4 md:mb-6 mx-auto">
                 <Users className="h-6 w-6 md:h-7 md:w-7 text-green-700" />
@@ -141,7 +142,7 @@ const AboutUs: React.FC = () => {
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 md:mb-8">Why Kpege?</h2>
             <div className="w-16 h-1 bg-green-700 mx-auto mb-8"></div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 text-left">
               <div>
                 <h3 className="text-xl md:text-2xl font-bold mb-4 text-green-700">The Problem</h3>
@@ -164,7 +165,7 @@ const AboutUs: React.FC = () => {
                   </li>
                 </ul>
               </div>
-              
+
               <div>
                 <h3 className="text-xl md:text-2xl font-bold mb-4 text-green-700">Our Solution</h3>
                 <ul className="space-y-3 text-muted-foreground">
@@ -197,11 +198,11 @@ const AboutUs: React.FC = () => {
           <div className="text-center mb-12 md:mb-16">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 md:mb-6">Our Team</h2>
             <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              We're a diverse team of technologists, designers, and financial wellness advocates 
+              We're a diverse team of technologists, designers, and financial wellness advocates
               united by a shared passion for making money management accessible to everyone.
             </p>
           </div>
-          
+
           <div className="max-w-4xl mx-auto text-center">
             <Card className="p-8 md:p-12">
               <div className="flex flex-col items-center">
@@ -210,13 +211,13 @@ const AboutUs: React.FC = () => {
                 </div>
                 <h3 className="text-xl md:text-2xl font-bold mb-4">Building Something Special</h3>
                 <p className="text-muted-foreground leading-relaxed mb-6">
-                  Our team combines expertise in artificial intelligence, user experience design, 
-                  financial services, and global markets. We're distributed across multiple time zones 
-                  but united by our commitment to creating the most intuitive financial management 
+                  Our team combines expertise in artificial intelligence, user experience design,
+                  financial services, and global markets. We're distributed across multiple time zones
+                  but united by our commitment to creating the most intuitive financial management
                   experience possible.
                 </p>
                 <p className="text-muted-foreground leading-relaxed">
-                  Every team member brings unique perspectives from their own financial journeys, 
+                  Every team member brings unique perspectives from their own financial journeys,
                   ensuring that Kpege works for people from all walks of life.
                 </p>
               </div>
@@ -232,10 +233,10 @@ const AboutUs: React.FC = () => {
             Ready to Join Our Mission?
           </h2>
           <p className="text-base sm:text-lg md:text-xl max-w-3xl mx-auto mb-6 md:mb-8 leading-relaxed">
-            Help us make financial management simple and accessible for everyone. 
+            Help us make financial management simple and accessible for everyone.
             Start your journey with Kpege today.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center max-w-md sm:max-w-none mx-auto">
             <Link to="/login" className="w-full sm:w-auto">
               <Button size="lg" className="w-full sm:w-auto bg-white text-green-700 hover:bg-gray-100 px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium">
@@ -243,9 +244,9 @@ const AboutUs: React.FC = () => {
               </Button>
             </Link>
             <Link to="/" className="w-full sm:w-auto">
-              <Button 
-                variant="outline" 
-                size="lg" 
+              <Button
+                variant="outline"
+                size="lg"
                 className="w-full sm:w-auto border-white text-black hover:bg-text-green hover:text-green-700 px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-medium"
               >
                 Learn More
@@ -265,7 +266,7 @@ const AboutUs: React.FC = () => {
                 Making financial management simple and effortless.
               </p>
             </div>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-3 gap-6 md:gap-8">
               <div>
                 <h4 className="font-bold mb-2 md:mb-3 text-xs md:text-sm">Product</h4>
@@ -275,7 +276,7 @@ const AboutUs: React.FC = () => {
                   <li><a href="#" className="text-xs hover:text-white transition-colors">Security</a></li>
                 </ul>
               </div>
-              
+
               <div>
                 <h4 className="font-bold mb-2 md:mb-3 text-xs md:text-sm">Company</h4>
                 <ul className="space-y-1 md:space-y-1.5">
@@ -284,7 +285,7 @@ const AboutUs: React.FC = () => {
                   <li><a href="#" className="text-xs hover:text-white transition-colors">Careers</a></li>
                 </ul>
               </div>
-              
+
               <div className="col-span-2 md:col-span-1">
                 <h4 className="font-bold mb-2 md:mb-3 text-xs md:text-sm">Resources</h4>
                 <ul className="space-y-1 md:space-y-1.5">
@@ -295,9 +296,9 @@ const AboutUs: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="mt-6 md:mt-8 pt-4 md:pt-6 flex flex-col md:flex-row justify-between items-center border-t border-slate-800">
-            <p className="text-xs">© 2025 Kpege. All rights reserved.</p>
+            <p className="text-xs">© 2026 Ingenious Resources International Limited. All rights reserved.</p>
             <div className="flex space-x-4 mt-3 md:mt-0">
               <a href="https://x.com/usekpege" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
                 <svg className="h-4 w-4 md:h-5 md:w-5" fill="currentColor" viewBox="0 0 24 24">
